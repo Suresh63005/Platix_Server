@@ -29,24 +29,25 @@ const registerAdmin = async (req, res) => {
 
 // Admin login controller (already created)
 const loginAdmin = async (req, res) => {
-  const { email, password } = req.body;
-
-  try {
-    const admin = await Admin.findOne({ where: { email } });
-
-    if (!admin || !(await admin.validatePassword(password))) {
-      return res.status(400).json({ message: "Invalid email or password." });
+    const { email, password } = req.body;
+  
+    try {
+      const admin = await Admin.findOne({ where: { email } });
+  
+      if (!admin || !(await admin.validatePassword(password))) {
+        return res.status(400).json({ message: "Invalid email or password." });
+      }
+  
+      // Generate token
+      const token = generateToken(admin);
+      
+      res.json({ token });
+    } catch (error) {
+      console.error(error);
+      res.status(500).json({ message: "Server error" });
     }
-
-    // Generate token
-    const token = generateToken(admin);
-    res.json({ token });
-  } catch (error) {
-    console.error(error);
-    res.status(500).json({ message: "Server error" });
-  }
-};
-
+  };
+  
 // Protected route (Admin dashboard)
 const adminDashboard = (req, res) => {
   res.json({ message: "Welcome to the Admin Dashboard!", admin: req.admin });

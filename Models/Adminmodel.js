@@ -1,32 +1,20 @@
-const { Model, DataTypes } = require("sequelize");
+const { DataTypes } = require("sequelize");
 const bcrypt = require("bcryptjs");
 const { sequelize } = require("../config/db");
 
-class Admin extends Model {
-  // Method to hash the password before saving
-  static async hashPassword(password) {
-    const salt = await bcrypt.genSalt(10);
-    return bcrypt.hash(password, salt);
-  }
-
-  // Instance method to check if password matches
-  async validatePassword(password) {
-    return bcrypt.compare(password, this.password);
-  }
-}
-
 // Define Admin model
-Admin.init(
+const Admin = sequelize.define(
+  "Admin",
   {
     id: {
-      type: DataTypes.INTEGER,
-      primaryKey: true,
-      autoIncrement: true, // Automatically increments ID
+      type: DataTypes.UUID,
       allowNull: false,
+      primaryKey: true,
+      defaultValue: DataTypes.UUIDV4, // Corrected
     },
     email: {
       type: DataTypes.STRING,
-      unique: true, // Ensure email is unique
+      unique: true,
       allowNull: false,
     },
     password: {
@@ -35,21 +23,31 @@ Admin.init(
     },
   },
   {
-    sequelize,
-    modelName: "Admin", // Table name will be 'admins'
-    timestamps: true, // Optionally, add createdAt and updatedAt
+    tableName: "Admins",
+    timestamps: true,
+    paranoid: true, // Soft deletes: includes deletedAt field
+    charset: "utf8mb4",
+    collate: "utf8mb4_general_ci",
   }
 );
 
-// Hash password before creating or updating
+// Get salt rounds from environment variable (fallback to 10)
+const SALT_ROUNDS = parseInt(process.env.SALT, 10) || 10;
+
+// Hash password before saving to the database
 Admin.beforeCreate(async (admin) => {
-  admin.password = await Admin.hashPassword(admin.password);
+  admin.password = await bcrypt.hash(admin.password, SALT_ROUNDS);
 });
 
 Admin.beforeUpdate(async (admin) => {
   if (admin.changed("password")) {
-    admin.password = await Admin.hashPassword(admin.password);
+    admin.password = await bcrypt.hash(admin.password, SALT_ROUNDS);
   }
 });
+
+
+Admin.prototype.validatePassword = async function (password) {
+  return bcrypt.compare(password, this.password);
+};
 
 module.exports = Admin;

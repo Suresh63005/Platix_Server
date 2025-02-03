@@ -1,7 +1,8 @@
 const jwt = require("jsonwebtoken");
 const dotenv = require("dotenv");
+const Admin = require("../Models/Adminmodel"); // Import Admin model
 
-dotenv.config(); // Make sure dotenv is loaded
+dotenv.config();
 
 const JWT_SECRET = process.env.JWT_TOKEN; // Use JWT_SECRET from .env
 
@@ -9,13 +10,13 @@ const JWT_SECRET = process.env.JWT_TOKEN; // Use JWT_SECRET from .env
 const generateToken = (admin) => {
   return jwt.sign(
     { id: admin.id, email: admin.email }, // Payload with admin details
-    JWT_SECRET, // JWT secret from .env
-    { expiresIn: "1h" } // Token expires in 1 hour
+    JWT_SECRET,
+    { expiresIn: "1h" }
   );
 };
 
 // Middleware to verify JWT token for admin only
-const verifyAdmin = (req, res, next) => {
+const verifyAdmin = async (req, res, next) => {
   const token = req.header("Authorization");
 
   if (!token) {
@@ -23,14 +24,16 @@ const verifyAdmin = (req, res, next) => {
   }
 
   try {
-    const decoded = jwt.verify(token.replace("Bearer ", ""), JWT_SECRET); // Verify with JWT_SECRET
+    const decoded = jwt.verify(token.replace("Bearer ", ""), JWT_SECRET); // Verify token
 
-    // Ensure the authenticated user is an admin (Optional check)
-    if (decoded.email !== "admin@example.com") {
-      return res.status(403).json({ message: "Access denied. Not an admin." });
+    // ✅ Fetch admin from DB based on ID from token
+    const admin = await Admin.findByPk(decoded.id);
+
+    if (!admin) {
+      return res.status(403).json({ message: "Access denied. Admin not found." });
     }
 
-    req.admin = decoded; // Attach admin data to the request
+    req.admin = admin; // Attach admin data to the request
     next();
   } catch (error) {
     return res.status(403).json({ message: "Invalid or expired token." });

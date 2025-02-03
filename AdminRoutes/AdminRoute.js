@@ -12,6 +12,6 @@ router.post("/register", registerAdmin);
 router.post("/login", loginAdmin);
 
 // Admin protected route (e.g., Admin Dashboard)
-router.get("/dashboard", verifyAdmin, adminDashboard);
+router.get("/organization", verifyAdmin, adminDashboard);
 
 module.exports = router;
