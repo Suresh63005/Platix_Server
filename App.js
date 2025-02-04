@@ -1,12 +1,16 @@
 
 const express = require("express");
+const app = express();
 const dotenv = require("dotenv");
+const morgan = require("morgan");
 const cors = require("cors");
 const bodyParser = require("body-parser");
 const { connectDB, sequelize } = require("./config/db");
 const logger=require("morgan")
 dotenv.config();
 connectDB();
+
+
 //routes
 const adminRoutes = require("./AdminRoutes/AdminRoute");
 const organizationtype=require("./AdminRoutes/OrganizationType.router")
@@ -15,14 +19,19 @@ const organizationtype=require("./AdminRoutes/OrganizationType.router")
 const Admin = require("./Models/Adminmodel")
 const TblOrganizationType=require("./Models/TblOrganizationType.model")
 
-
 const app = express();
 
 // Middleware
+app.use(morgan("dev"));
 app.use(cors());
-app.use(bodyParser.json());
-app.use(bodyParser.urlencoded({ extended: true }));
+app.use(express.json());  // Use express.json() for parsing JSON requests
+app.use(express.urlencoded({ extended: true }));  // Handle URL-encoded data
 
+// Routes
+app.use("/admin", adminRoutes);
+
+
+// Test route
 app.use(logger("dev"))
 app.get("/", (req, res) => {
   res.send("Server is running...");
