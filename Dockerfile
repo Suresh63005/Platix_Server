@@ -1,19 +1,20 @@
+# Use Node.js 22 as the base image
 FROM node:22-alpine
 
-# Set the working directory
+# Set the working directory inside the container
 WORKDIR /home/node/app
 
-# Copy package.json and package-lock.json files
+# Copy package.json and package-lock.json (if present)
 COPY package*.json ./
 
-# Install dependencies (including nodemon)
+# Install app dependencies (including nodemon and other dependencies)
 RUN npm install
 
-# Install nodemon globally (optional, can be installed locally)
-RUN npm install -g nodemon
+# Copy all other files to the working directory inside the container
+COPY . .
 
 # Expose the port the app runs on
 EXPOSE 8081
 
-# Use nodemon to start the application and watch for changes
-CMD ["nodemon", "App.js"]  # Or whatever entry point your app uses
+# Set the default command to run your application using npm start
+CMD ["npm", "start"]
