@@ -1,17 +1,26 @@
 const express = require("express");
-const { registerAdmin, loginAdmin, adminDashboard } = require("../AdminControllers/AdminController");
+const { registerAdmin, loginAdmin, adminDashboard,forgotPassword, resetPassword } = require("../AdminControllers/AdminController");
 const { verifyAdmin } = require("../Middlewares/auth");
+const { createRole, viewRoles } = require("../AdminControllers/Roles.controller")
+const {createservice, viewservice} = require("../AdminControllers/Services.controller")
 
 
 const router = express.Router();
 
-// Admin registration route
-router.post("/register", registerAdmin);
 
-// Admin login route
+router.post("/register", registerAdmin);
 router.post("/login", loginAdmin);
 
-// Admin protected route (e.g., Admin Dashboard)
-router.get("/organization", verifyAdmin, adminDashboard);
+router.post('/forgotpassword', forgotPassword);
+router.post('/createnewpass/:token', resetPassword);
+
+router.post("/createrole" , createRole)
+router.get("/viewrole", viewRoles)
+
+
+router.post("/createservice", createservice);
+router.get("/viewserivce",viewservice);
+
+
 
 module.exports = router;

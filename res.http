@@ -1,1 +1,8 @@
 GET http://localhost:5000/
+
+POST http://localhost:5000/admin/register
+
+POST http://localhost:5000/admin/login
+
+POST http://localhost:5000/forgotpass/forgotpassword
+

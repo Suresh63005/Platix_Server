@@ -2,7 +2,7 @@
 const express = require("express");
 const app = express();
 const dotenv = require("dotenv");
-const morgan = require("morgan");
+// const morgan = require("morgan");
 const cors = require("cors");
 const bodyParser = require("body-parser");
 const { connectDB, sequelize } = require("./config/db");
@@ -15,15 +15,24 @@ connectDB();
 const adminRoutes = require("./AdminRoutes/AdminRoute");
 const organizationtype=require("./AdminRoutes/OrganizationType.router")
 
+
 //model
 const Admin = require("./Models/Adminmodel")
 const TblOrganizationType=require("./Models/TblOrganizationType.model")
+const TblRoles = require("./Models/TblRoles.model")
+const TblServices = require("./Models/TblServices.model")
 
-const app = express();
 
 // Middleware
-app.use(morgan("dev"));
-app.use(cors());
+// app.use(morgan("dev"));
+app.use(
+  cors({
+    origin: "http://localhost:3000", // Allow only frontend domain
+    credentials: true, // Allow cookies & authentication headers
+    methods: "GET,POST,PUT,DELETE", // Allowed HTTP methods
+    allowedHeaders: "Content-Type,Authorization", // Allowed headers
+  })
+);
 app.use(express.json());  // Use express.json() for parsing JSON requests
 app.use(express.urlencoded({ extended: true }));  // Handle URL-encoded data
 

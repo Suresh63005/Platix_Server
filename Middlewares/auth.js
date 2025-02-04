@@ -9,7 +9,7 @@ const JWT_SECRET = process.env.JWT_TOKEN; // Use JWT_SECRET from .env
 // Function to generate JWT token for admin login
 const generateToken = (admin) => {
   return jwt.sign(
-    { id: admin.id, email: admin.email }, // Payload with admin details
+    { id: admin.id, email: admin.email }, 
     JWT_SECRET,
     { expiresIn: "1h" }
   );
