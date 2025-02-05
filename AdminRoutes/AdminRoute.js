@@ -18,7 +18,7 @@ router.post("/createrole" , createRole)
 router.get("/viewrole", viewRoles)
 
 
-router.post("/createservice", createservice);
+router.post("/upsert", createservice);
 router.get("/viewserivce",viewservice);
 
 

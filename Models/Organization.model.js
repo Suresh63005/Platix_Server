@@ -1,5 +1,5 @@
 const { DataTypes } = require('sequelize');
-const { sequelize } = require('../config/db'); // Import Sequelize instance
+const { sequelize } = require('../config/db');
 
 const Organization = sequelize.define('Organization', {
   id: {
