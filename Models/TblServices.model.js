@@ -14,7 +14,7 @@ const Services = sequelize.define("TblServices", {
     allowNull: false,
   },
   servicedescription: {
-    type: DataTypes.TEXT, // If the description might be longer, change it to TEXT.
+    type: DataTypes.TEXT, 
     allowNull: false,
   },
   fromdate: {

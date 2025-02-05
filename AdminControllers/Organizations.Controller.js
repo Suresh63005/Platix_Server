@@ -2,8 +2,13 @@ const { Op } = require("sequelize");
 const asyncHandler = require("../Middlewares/errorHandler")
 const Organization=require("../Models/Organization.model")
 const uploadToS3 = require("../config/fileUpload.aws");
+const { upsertOrganizationSchema, deleteOrganizationSchema, organizationGetByidSchema } = require("../Middlewares/validation");
 // Upsert (Create or Update) Organization
 const upsertOrganizations = asyncHandler(async (req, res) => {
+  const {error}=upsertOrganizationSchema.validate(req.body)
+  if(error){
+    return res.status(400).json({ message: error.details[0].message });
+  }
     const {
       id,
       address,
@@ -18,6 +23,11 @@ const upsertOrganizations = asyncHandler(async (req, res) => {
       registrationId,
       type,
       whatsapp,
+      bankName,
+      accountNumber,
+      accountHolder,
+      ifscCode,
+      upiId
     } = req.body;
 
     console.log("Request Body:", req.body);
@@ -115,6 +125,10 @@ const getAll=asyncHandler(async(req,res)=>{
 })
 
 const deleteOrganization=asyncHandler(async(req,res)=>{
+  const {error}=deleteOrganizationSchema.validate({...req.params,...req.query})
+  if(error){
+    return res.status(400).json({ message: error.details[0].message });
+  }
   const { id } = req.params;
   const { forceDelete } = req.query;
   const organization = await Organization.findOne({ where: { id }, paranoid: false });
@@ -136,6 +150,10 @@ const deleteOrganization=asyncHandler(async(req,res)=>{
 })
 
 const organizationGetByid=asyncHandler(async(req,res)=>{
+  const {error}=organizationGetByidSchema.validate({...req.params})
+  if(error){
+    return res.status(400).json({ message: error.details[0].message });
+  }
   const {id}=req.params;
   const organization=await Organization.findByPk(id)
   if(!organization){
