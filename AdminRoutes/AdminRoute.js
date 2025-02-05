@@ -16,9 +16,6 @@ router.post('/createnewpass/:token', resetPassword);
 
 router.post("/createrole" , createRole)
 router.get("/viewrole", viewRoles)
-
-
-
 router.post("/createservice", upsertService);
 router.get("/getbyid/:id", serviceGetByid);
 
@@ -27,7 +24,6 @@ router.get("/allservices", getAllServices);
 
 // Delete a Service (Soft or Permanent)
 router.delete("/deleteservice/:id", deleteService);
-
 
 
 module.exports = router;

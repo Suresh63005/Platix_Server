@@ -10,7 +10,7 @@ const Admin = sequelize.define(
       type: DataTypes.UUID,
       allowNull: false,
       primaryKey: true,
-      defaultValue: DataTypes.UUIDV4, // Corrected
+      defaultValue: DataTypes.UUIDV4, 
     },
     email: {
       type: DataTypes.STRING,
