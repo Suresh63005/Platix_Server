@@ -4,9 +4,7 @@ const { verifyAdmin } = require("../Middlewares/auth");
 const { createRole, viewRoles } = require("../AdminControllers/Roles.controller")
 const {upsertService,getAllServices,deleteService,serviceGetByid} = require("../AdminControllers/Services.controller")
 
-
 const router = express.Router();
-
 
 router.post("/register", registerAdmin);
 router.post("/login", loginAdmin);
