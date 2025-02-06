@@ -4,7 +4,7 @@ const { verifyAdmin } = require("../Middlewares/auth");
 const { createRole, viewRoles } = require("../AdminControllers/Roles.controller")
 const {upsertService,getAllServices,deleteService,serviceGetByid} = require("../AdminControllers/Services.controller");
 const upload = require("../utils/multer");
-const { getSettingsById, createOrUpdateSettings } = require('../AdminControllers/Settings.controller');
+const { getSettingsById, createOrUpdateSettings, FetchSettings, FetchSettingsById } = require('../AdminControllers/Settings.controller');
 
 
 const router = express.Router();
@@ -31,7 +31,8 @@ router.delete("/deleteservice/:id", deleteService);
 
 
 //setttings routes
-router.get('/getsettings/:id', getSettingsById)
+router.get('/getsettings', FetchSettings)
+router.get('/:settingId', FetchSettingsById)
 router.put('/updatesettings', upload.single("websiteImage"), createOrUpdateSettings);;
 
 module.exports = router;
