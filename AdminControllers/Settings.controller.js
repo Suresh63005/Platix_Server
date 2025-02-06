@@ -1,10 +1,9 @@
-const { Settings } = require("../Models/TblSettings.model");
+const Settings = require("../Models/TblSettings.model");
 
-// Get settings by ID
 const getSettingsById = async (req, res) => {
   try {
-    const { id } = req.params; // Get ID from request params
-    const settings = await Settings.findByPk(id); // Find by primary key
+    const { id } = req.params;
+    const settings = await Settings.findByPk(id);
 
     if (!settings) {
       return res.status(404).json({ message: "Settings not found" });
@@ -17,12 +16,10 @@ const getSettingsById = async (req, res) => {
   }
 };
 
-// Create or Update settings (same logic)
 const createOrUpdateSettings = async (req, res) => {
   try {
     const {
-      id, // Now accepting ID for updates
-      websiteImage,
+      id,
       notificationApiKey,
       smsApiKey,
       paymentApiKey,
@@ -35,16 +32,13 @@ const createOrUpdateSettings = async (req, res) => {
     let settings;
 
     if (id) {
-      // Check if settings exist by ID
       settings = await Settings.findByPk(id);
     } else {
-      // If no ID provided, find the first settings entry
       settings = await Settings.findOne();
     }
 
     if (settings) {
-      // Update existing settings
-      settings.websiteImage = websiteImage || settings.websiteImage;
+      settings.websiteImage = req.file ? req.file.path : settings.websiteImage;
       settings.notificationApiKey = notificationApiKey || settings.notificationApiKey;
       settings.smsApiKey = smsApiKey || settings.smsApiKey;
       settings.paymentApiKey = paymentApiKey || settings.paymentApiKey;
@@ -57,9 +51,8 @@ const createOrUpdateSettings = async (req, res) => {
       return res.json({ message: "Settings updated successfully", settings });
     }
 
-    // Create new settings if not found
     settings = await Settings.create({
-      websiteImage,
+      websiteImage: req.file ? req.file.path : null,
       notificationApiKey,
       smsApiKey,
       paymentApiKey,
@@ -77,4 +70,31 @@ const createOrUpdateSettings = async (req, res) => {
   }
 };
 
-module.exports = { getSettingsById, createOrUpdateSettings };
+const FetchSettings = async (req, res) => {
+  try {
+    const settings = await Settings.findAll();
+    if (!settings) {
+      return res.status(404).json({ message: "Settings not found!" });
+    }
+    return res.status(201).json({ message: "Settings fetched successfully!", settings });
+  } catch (error) {
+    console.error("Error Fetched Settings", error);
+    return res.status(500).json({ message: "Internal server error!" });
+  }
+};
+
+const FetchSettingsById = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const settings = await Settings.findByPk(id);
+    if (!settings) {
+      return res.status(404).json({ message: "Settings not found!" });
+    }
+    return res.status(201).json({ message: "Settings fetched successfully!", settings });
+  } catch (error) {
+    console.error("Error Fetched Settings", error);
+    return res.status(500).json({ message: "Internal server error!" });
+  }
+};
+
+module.exports = { getSettingsById, createOrUpdateSettings, FetchSettings, FetchSettingsById };
