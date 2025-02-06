@@ -2,6 +2,7 @@ const Admin = require("../Models/Adminmodel");
 const jwt = require('jsonwebtoken');
 const sendEmail = require('../utils/sendEmail'); 
 const { generateToken } = require('../Middlewares/auth');
+const uploadToS3 = require("../config/fileUpload.aws");
 
 
 // Admin registration controller
@@ -58,11 +59,63 @@ const loginAdmin = async (req, res) => {
   }
 };
 
-  
 
-const adminDashboard = (req, res) => {
-  res.json({ message: "Welcome to the Admin Dashboard!", admin: req.admin });
+
+const getAdminProfile = async (req, res) => {
+  try {
+    const admin = await Admin.findByPk(req.admin.id, {
+      attributes: { exclude: ["password"] },
+    });
+    if (!admin) return res.status(404).json({ message: "Admin not found" });
+
+    res.json(admin);
+  } catch (error) {
+    res.status(500).json({ message: "Server Error", error });
+  }
 };
+
+
+
+const updateAdminProfile = async (req, res) => {
+
+
+  try {
+    const { name, dateOfBirth, phoneNumber,confirmPassword, email, password, } = req.body;
+    console.log(req.body,"frombodt")
+
+    let imageURL; 
+
+    console.log(req.file, "from fileeeeeeeeeee")
+if(req.file)imageURL = await uploadToS3(req.file,"images")
+
+  console.log(imageURL," from image")
+    
+    const admin = await Admin.findByPk(req.admin.id);
+
+    if (!admin) return res.status(404).json({ message: "Admin not found" });
+
+    // Update fields if new values are provided
+    admin.name = name || admin.name;
+    admin.dateOfBirth = dateOfBirth || admin.dateOfBirth;
+    admin.phoneNumber = phoneNumber || admin.phoneNumber;
+    admin.email = email || admin.email;
+    admin.profileImage = imageURL || admin.profileImage;
+
+    // Directly update the password if it is provided (no hashing here)
+    if (confirmPassword && password) {
+      if(confirmPassword === password) admin.password = password; 
+      
+    }
+
+    // Save the updated admin profile
+    await admin.save();
+
+    res.json({ message: "Profile updated successfully", admin });
+  } catch (error) {
+    res.status(500).json({ message: "Server Error", error });
+  }
+};
+
 
 const forgotPassword = async (req, res) => {
   try {
@@ -115,4 +168,4 @@ const resetPassword = async (req, res) => {
 };
 
 
-module.exports = { registerAdmin, loginAdmin, adminDashboard, forgotPassword, resetPassword };
+module.exports = { registerAdmin, loginAdmin, forgotPassword, resetPassword, getAdminProfile, updateAdminProfile };

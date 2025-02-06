@@ -2,7 +2,6 @@ const { DataTypes } = require("sequelize");
 const bcrypt = require("bcryptjs");
 const { sequelize } = require("../config/db");
 
-// Define Admin model
 const Admin = sequelize.define(
   "Admin",
   {
@@ -10,7 +9,19 @@ const Admin = sequelize.define(
       type: DataTypes.UUID,
       allowNull: false,
       primaryKey: true,
-      defaultValue: DataTypes.UUIDV4, 
+      defaultValue: DataTypes.UUIDV4,
+    },
+    name: {
+      type: DataTypes.STRING,
+      allowNull: true,
+    },
+    dateOfBirth: {
+      type: DataTypes.DATEONLY,
+      allowNull: true,
+    },
+    phoneNumber: {
+      type: DataTypes.STRING,
+      allowNull: true,
     },
     email: {
       type: DataTypes.STRING,
@@ -21,20 +32,22 @@ const Admin = sequelize.define(
       type: DataTypes.STRING,
       allowNull: false,
     },
+    profileImage: {
+      type: DataTypes.STRING, // Store image URL
+      allowNull: true,
+    },
   },
   {
     tableName: "Admins",
     timestamps: true,
-    paranoid: true, // Soft deletes: includes deletedAt field
+    paranoid: true,
     charset: "utf8mb4",
     collate: "utf8mb4_general_ci",
   }
 );
 
-// Get salt rounds from environment variable (fallback to 10)
 const SALT_ROUNDS = parseInt(process.env.SALT, 10) || 10;
 
-// Hash password before saving to the database
 Admin.beforeCreate(async (admin) => {
   admin.password = await bcrypt.hash(admin.password, SALT_ROUNDS);
 });
@@ -44,7 +57,6 @@ Admin.beforeUpdate(async (admin) => {
     admin.password = await bcrypt.hash(admin.password, SALT_ROUNDS);
   }
 });
-
 
 Admin.prototype.validatePassword = async function (password) {
   return bcrypt.compare(password, this.password);

@@ -7,7 +7,7 @@ const cors = require("cors");
 const bodyParser = require("body-parser");
 const { connectDB, sequelize } = require("./config/db");
 const logger=require("morgan")
-require("./Models/associations")
+// require("./Models/associations")
 dotenv.config();
 connectDB();
 
@@ -19,11 +19,11 @@ const organization=require("./AdminRoutes/Organizations.router")
 
 
 //model
-const Admin = require("./Models/Adminmodel")
-const TblOrganizationType=require("./Models/TblOrganizationType.model")
-const TblRoles = require("./Models/TblRoles.model")
-const TblServices = require("./Models/TblServices.model");
-const Organization = require("./Models/Organization.model");
+// const Admin = require("./Models/Adminmodel")
+// const TblOrganizationType=require("./Models/TblOrganizationType.model")
+// const TblRoles = require("./Models/TblRoles.model")
+// const TblServices = require("./Models/TblServices.model");
+// const Organization = require("./Models/Organization.model");
 
 // Middleware
 // app.use(morgan("dev"));
@@ -36,7 +36,7 @@ app.use(
   })
 );
 app.use(express.json());  // Use express.json() for parsing JSON requests
-app.use(express.urlencoded({ extended: true }));  // Handle URL-encoded data
+app.use(express.urlencoded({ limit: '10mb', extended: true }));  // Handle URL-encoded data
 
 // Routes
 app.use("/admin", adminRoutes);

@@ -1,8 +1,11 @@
 const express = require("express");
-const { registerAdmin, loginAdmin, adminDashboard,forgotPassword, resetPassword } = require("../AdminControllers/AdminController");
+const { registerAdmin, loginAdmin,forgotPassword, resetPassword,getAdminProfile,updateAdminProfile } = require("../AdminControllers/AdminController");
 const { verifyAdmin } = require("../Middlewares/auth");
 const { createRole, viewRoles } = require("../AdminControllers/Roles.controller")
-const {upsertService,getAllServices,deleteService,serviceGetByid} = require("../AdminControllers/Services.controller")
+const {upsertService,getAllServices,deleteService,serviceGetByid} = require("../AdminControllers/Services.controller");
+const upload = require("../utils/multer");
+const { getSettingsById, createOrUpdateSettings } = require('../AdminControllers/Settings.controller');
+
 
 
 const router = express.Router();
@@ -10,6 +13,8 @@ const router = express.Router();
 
 router.post("/register", registerAdmin);
 router.post("/login", loginAdmin);
+router.get("/profile", verifyAdmin,getAdminProfile);
+router.put("/profile/update",upload.single('profileImage'), verifyAdmin,updateAdminProfile);
 
 router.post('/forgotpassword', forgotPassword);
 router.post('/createnewpass/:token', resetPassword);
@@ -25,5 +30,10 @@ router.get("/allservices", getAllServices);
 // Delete a Service (Soft or Permanent)
 router.delete("/deleteservice/:id", deleteService);
 
+
+
+//setttings routes
+router.get('/getsettings/:id', getSettingsById)
+router.put('/updatesettings', createOrUpdateSettings);
 
 module.exports = router;
