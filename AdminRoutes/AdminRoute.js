@@ -32,6 +32,6 @@ router.delete("/deleteservice/:id", deleteService);
 
 //setttings routes
 router.get('/getsettings/:id', getSettingsById)
-router.put('/updatesettings', createOrUpdateSettings);
+router.put('/updatesettings', upload.single("websiteImage"), createOrUpdateSettings);;
 
 module.exports = router;
