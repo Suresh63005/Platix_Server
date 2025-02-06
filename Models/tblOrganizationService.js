@@ -13,20 +13,12 @@ const TblOrganization_Service = sequelize.define("TblOrganization_Service", {
     organization_id: {
         type: DataTypes.UUID,
         allowNull: false,
-        references: {
-            model: Organization, 
-            key: 'id'
-        },
-        onDelete: 'CASCADE'
+       
     },
     service_id: {
         type: DataTypes.UUID,
         allowNull: false,
-        references: {
-            model: Services,
-            key: 'id'
-        },
-        onDelete: 'CASCADE'
+       
     },
     price: {
         type: DataTypes.DECIMAL(10, 2),
