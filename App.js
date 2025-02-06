@@ -16,14 +16,16 @@ connectDB();
 const adminRoutes = require("./AdminRoutes/AdminRoute");
 const organizationtype=require("./AdminRoutes/OrganizationType.router")
 const organization=require("./AdminRoutes/Organizations.router")
+// const UserReport=require("./AdminRoutes/ReportUser/Reports")
 
-
-//model
-// const Admin = require("./Models/Adminmodel")
-// const TblOrganizationType=require("./Models/TblOrganizationType.model")
-// const TblRoles = require("./Models/TblRoles.model")
-// const TblServices = require("./Models/TblServices.model");
-// const Organization = require("./Models/Organization.model");
+const Admin = require("./Models/Adminmodel")
+const TblOrganizationType=require("./Models/TblOrganizationType.model")
+const TblRoles = require("./Models/TblRoles.model")
+const TblServices = require("./Models/TblServices.model");
+const Organization = require("./Models/Organization.model");
+const Settings = require("./Models/Settings.model");
+const User = require("./Models/ReportsModel/User.model");
+const OrderReport = require("./Models/ReportsModel/OrderReport.model");
 
 // Middleware
 // app.use(morgan("dev"));
@@ -51,6 +53,7 @@ app.get("/", (req, res) => {
 app.use("/organization",organizationtype)
 app.use("/api/organization",organization)
 // app.use("/api/service",organization)
+// app.use("/user",UserReport)
 
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {

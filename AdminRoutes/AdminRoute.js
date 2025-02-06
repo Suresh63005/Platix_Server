@@ -7,9 +7,7 @@ const upload = require("../utils/multer");
 const { getSettingsById, createOrUpdateSettings } = require('../AdminControllers/Settings.controller');
 
 
-
 const router = express.Router();
-
 
 router.post("/register", registerAdmin);
 router.post("/login", loginAdmin);

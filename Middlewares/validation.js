@@ -76,7 +76,6 @@ const Joi = require("joi");
   });
    
 
-
   const upsertOrganizationSchema = Joi.object({
     id: Joi.string().optional().messages({
       "any.required": "id is required",
