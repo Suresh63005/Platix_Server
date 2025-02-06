@@ -10,7 +10,7 @@ const TblOrganization_Service = require("../Models/tblOrganizationService");
 const upsertOrganizations = asyncHandler(async (req, res) => {
     const {
         id, address, businessName, description, designation, email, googleCoordinates,
-        gstNumber, mobile, name, registrationId, type, whatsapp, bankName, accountNumber,
+        gstNumber, mobile, name, registrationId, organizationType_id, whatsapp, bankName, accountNumber,
         accountHolder, ifscCode, upiId, services
     } = req.body;
     console.log(req.body)
@@ -53,7 +53,7 @@ const upsertOrganizations = asyncHandler(async (req, res) => {
             await organization.update({
                 address, businessName, description, designation, email,
                 googleCoordinates: JSON.parse(googleCoordinates),
-                gstNumber, mobile, name, registrationId, type, whatsapp, 
+                gstNumber, mobile, name, registrationId, organizationType_id, whatsapp, 
                 bankName, accountNumber, accountHolder, ifscCode, upiId,
                 file1: file1 || organization.file1,
                 file2: file2.length > 0 ? file2.join(",") : organization.file2
@@ -66,7 +66,7 @@ const upsertOrganizations = asyncHandler(async (req, res) => {
             organization = await Organization.create({
                 address, businessName, description, designation, email,
                 googleCoordinates: JSON.parse(googleCoordinates),
-                gstNumber, mobile, name, registrationId, type, whatsapp,
+                gstNumber, mobile, name, registrationId, organizationType_id, whatsapp,
                 bankName, accountNumber, accountHolder, ifscCode, upiId,
                 file1, file2: file2.join(",")
             }, { transaction });
@@ -94,7 +94,6 @@ const upsertOrganizations = asyncHandler(async (req, res) => {
         return res.status(500).json({ error: "Internal Server Error", details: error.message });
     }
 });
-
 
 const getAll=asyncHandler(async(req,res)=>{
     const {page=1,limit=10,filter="",search=""}=req.query;
