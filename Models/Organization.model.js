@@ -1,3 +1,4 @@
+
 const { DataTypes } = require("sequelize");
 const { sequelize } = require("../config/db");
 
@@ -102,6 +103,31 @@ const Organization = sequelize.define("Organization", {
   organization_id: {
     type: DataTypes.UUID,
     allowNull: true,
+  },
+  // New columns
+  admin_id: {
+    type: DataTypes.UUID,
+    allowNull: true,
+  },
+  bankName: {
+    type: DataTypes.STRING,
+    allowNull: false,
+  },
+  accountNumber: {
+    type: DataTypes.STRING,
+    allowNull: false,
+  },
+  accountHolder: {
+    type: DataTypes.STRING,
+    allowNull: false,
+  },
+  ifscCode: {
+    type: DataTypes.STRING,
+    allowNull: false,
+  },
+  upiId: {
+    type: DataTypes.STRING,
+    allowNull: false,
   },
 }, {
   tableName: "Organization",
