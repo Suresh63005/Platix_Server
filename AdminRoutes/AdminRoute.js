@@ -31,8 +31,10 @@ router.delete("/deleteservice/:id", deleteService);
 
 
 //setttings routes
-router.get('/getsettings', FetchSettings)
-router.get('/:settingId', FetchSettingsById)
-router.put('/updatesettings', upload.single("websiteImage"), createOrUpdateSettings);;
+
+
+router.get("/getsettings", FetchSettings);
+router.get("/getbyid", FetchSettingsById);
+router.put("/updatesettings", upload.single("websiteImage"), createOrUpdateSettings);
 
 module.exports = router;

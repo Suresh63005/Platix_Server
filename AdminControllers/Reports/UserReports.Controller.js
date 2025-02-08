@@ -1,4 +1,4 @@
-const UserReports=require("../../Models/ReportsModel/UserReport.model")
+const UserReports=require("../../Models/ReportsModel/User.model")
 const asyncHandler = require("../../Middlewares/errorHandler");
 const { formatDateFields } = require("../../helper/formatedDate");
 

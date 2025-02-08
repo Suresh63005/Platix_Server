@@ -11,7 +11,8 @@ const logger=require("morgan")
 dotenv.config();
 connectDB();
 
-
+const UserRouter=require("./AdminRoutes/ReportUser/User.router")
+app.use("/user",UserRouter)
 //routes
 const adminRoutes = require("./AdminRoutes/AdminRoute");
 const organizationtype=require("./AdminRoutes/OrganizationType.router")
