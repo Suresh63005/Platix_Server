@@ -19,33 +19,26 @@ const getSettingsById = async (req, res) => {
 const createOrUpdateSettings = async (req, res) => {
   try {
     const {
-      id,
       notificationApiKey,
-      smsApiKey,
-      paymentApiKey,
+      smsGatewayApiKey,
+      paymentGatewayApiKey,
       emailApiKey,
       whatsappApiKey,
-      privacyContent,
-      termsContent,
+      privacyPolicy,
+      termsAndConditions,
     } = req.body;
 
-    let settings;
-
-    if (id) {
-      settings = await Settings.findByPk(id);
-    } else {
-      settings = await Settings.findOne();
-    }
+    let settings = await Settings.findOne();
 
     if (settings) {
       settings.websiteImage = req.file ? req.file.path : settings.websiteImage;
       settings.notificationApiKey = notificationApiKey || settings.notificationApiKey;
-      settings.smsApiKey = smsApiKey || settings.smsApiKey;
-      settings.paymentApiKey = paymentApiKey || settings.paymentApiKey;
+      settings.smsGatewayApiKey = smsGatewayApiKey || settings.smsGatewayApiKey;
+      settings.paymentGatewayApiKey = paymentGatewayApiKey || settings.paymentGatewayApiKey;
       settings.emailApiKey = emailApiKey || settings.emailApiKey;
       settings.whatsappApiKey = whatsappApiKey || settings.whatsappApiKey;
-      settings.privacyContent = privacyContent || settings.privacyContent;
-      settings.termsContent = termsContent || settings.termsContent;
+      settings.privacyPolicy = privacyPolicy || settings.privacyPolicy;
+      settings.termsAndConditions= termsAndConditions || settings.termsAndConditions;
 
       await settings.save();
       return res.json({ message: "Settings updated successfully", settings });
@@ -54,12 +47,12 @@ const createOrUpdateSettings = async (req, res) => {
     settings = await Settings.create({
       websiteImage: req.file ? req.file.path : null,
       notificationApiKey,
-      smsApiKey,
-      paymentApiKey,
+      smsGatewayApiKey,
+      paymentGatewayApiKey,
       emailApiKey,
       whatsappApiKey,
-      privacyContent,
-      termsContent,
+      privacyPolicy,
+      termsAndConditions,
     });
 
     res.json({ message: "Settings created successfully", settings });
@@ -73,28 +66,28 @@ const createOrUpdateSettings = async (req, res) => {
 const FetchSettings = async (req, res) => {
   try {
     const settings = await Settings.findAll();
-    if (!settings) {
+    if (!settings || settings.length === 0) {
       return res.status(404).json({ message: "Settings not found!" });
     }
-    return res.status(201).json({ message: "Settings fetched successfully!", settings });
+    return res.status(200).json({ message: "Settings fetched successfully!", settings });
   } catch (error) {
-    console.error("Error Fetched Settings", error);
+    console.error("Error fetching settings:", error);
     return res.status(500).json({ message: "Internal server error!" });
   }
 };
 
 const FetchSettingsById = async (req, res) => {
   try {
-    const { id } = req.params;
-    const settings = await Settings.findByPk(id);
+    const settings = await Settings.findOne(); // Fetches the first record
+
     if (!settings) {
       return res.status(404).json({ message: "Settings not found!" });
     }
-    return res.status(201).json({ message: "Settings fetched successfully!", settings });
+
+    return res.status(200).json({ message: "Settings fetched successfully!", settings });
   } catch (error) {
-    console.error("Error Fetched Settings", error);
+    console.error("Error fetching settings:", error);
     return res.status(500).json({ message: "Internal server error!" });
   }
 };
-
 module.exports = { getSettingsById, createOrUpdateSettings, FetchSettings, FetchSettingsById };
