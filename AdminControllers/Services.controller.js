@@ -61,7 +61,6 @@ const deleteService = asyncHandler(async (req, res) => {
   res.status(200).json({ message: "Service soft-deleted successfully." });
 });
 
-
 // Get All Services with Pagination and Filtering
 const getAllServices = asyncHandler(async (req, res) => {
     const { page = 1, limit = 10, filter = '', search = '' } = req.query;
@@ -92,6 +91,7 @@ const getAllServices = asyncHandler(async (req, res) => {
         totalCount: count,
     });
 });
+
 const serviceGetByid = asyncHandler(async (req, res) => {
   const { id } = req.params;
   

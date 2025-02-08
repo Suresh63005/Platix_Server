@@ -49,15 +49,15 @@ const User = sequelize.define("User", {
   },
   address: {
     type: DataTypes.STRING,
-    allowNull: false,
+    allowNull: true,
   },
   startDate: {
     type: DataTypes.DATE,
-    allowNull: false,
+    allowNull: true,
   },
   designation: {
     type: DataTypes.STRING,
-    allowNull: false,
+    allowNull: true,
   },
   registrationId: {
     type: DataTypes.STRING,
@@ -65,12 +65,12 @@ const User = sequelize.define("User", {
   },
   organizationType_id: {
     type: DataTypes.UUID,
-    allowNull: false,
+    allowNull: true,
     
   },
   organization_id: {
     type: DataTypes.UUID,
-    allowNull: false,
+    allowNull: true,
     
   },
 }, {
