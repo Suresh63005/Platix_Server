@@ -5,7 +5,7 @@ const { createRole, viewRoles } = require("../AdminControllers/Roles.controller"
 const {upsertService,getAllServices,deleteService,serviceGetByid} = require("../AdminControllers/Services.controller");
 const upload = require("../utils/multer");
 const { getSettingsById, createOrUpdateSettings, FetchSettings, FetchSettingsById } = require('../AdminControllers/Settings.controller');
-
+const OrderReport=require("../AdminControllers/Reports/OrederReport.Controller")
 
 const router = express.Router();
 
@@ -28,9 +28,8 @@ router.get("/allservices", getAllServices);
 // Delete a Service (Soft or Permanent)
 router.delete("/deleteservice/:id", deleteService);
 
-
-
-//setttings routes
+// for order
+router.get("/getallorder",OrderReport.getAllOrderReports)
 
 
 router.get("/getsettings", FetchSettings);

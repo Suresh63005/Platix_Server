@@ -7,7 +7,7 @@ const cors = require("cors");
 const bodyParser = require("body-parser");
 const { connectDB, sequelize } = require("./config/db");
 const logger=require("morgan")
-// require("./Models/associations")
+require("./Models/associations")
 dotenv.config();
 connectDB();
 
@@ -18,6 +18,8 @@ const adminRoutes = require("./AdminRoutes/AdminRoute");
 const organizationtype=require("./AdminRoutes/OrganizationType.router")
 const organization=require("./AdminRoutes/Organizations.router")
 // const UserReport=require("./AdminRoutes/ReportUser/Reports")
+const UserRouter=require("./AdminRoutes/User.router")
+
 
 const Admin = require("./Models/Adminmodel")
 const TblOrganizationType=require("./Models/TblOrganizationType.model")
@@ -54,7 +56,7 @@ app.get("/", (req, res) => {
 app.use("/organization",organizationtype)
 app.use("/api/organization",organization)
 // app.use("/api/service",organization)
-// app.use("/user",UserReport)
+app.use("/user",UserRouter)
 
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {

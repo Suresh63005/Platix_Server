@@ -1,6 +1,7 @@
 
 const { DataTypes } = require("sequelize");
 const { sequelize } = require("../config/db");
+const TblOrganizationType = require("./TblOrganizationType.model");
 
 const Organization = sequelize.define("Organization", {
   id: { 

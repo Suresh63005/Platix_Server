@@ -5,12 +5,12 @@ const OrganizationType=require("../Models/TblOrganizationType.model")
 const { Op } = require("sequelize");
 
 const OrganizationTypeUpsert=asyncHandler(async(req,res)=>{
-    const {error}=organizationTypeSchema.validate(req.body)
-    if(error){
-        return res.status(400).json({ message: error.details[0].message });
-    }
+    // const {error}=organizationTypeSchema.validate(req.body)
+    // if(error){
+    //     return res.status(400).json({ message: error.details[0].message });
+    // }
     const {id,organizationType,description,fromDate,toDate}=req.body
-    // console.log(req.body)
+    console.log(req.body)
 
     if(id){
         const organization=await OrganizationType.findByPk(id)
@@ -109,4 +109,13 @@ const getAll = asyncHandler(async (req, res) => {
         });
 });
 
-module.exports={OrganizationTypeUpsert,organizationDelete,getAll}
+const organizationGetByid=asyncHandler(async(req,res)=>{
+    const { id }=req.params;
+    const organizationtype=await OrganizationType.findByPk(id);
+    if(!organizationtype){
+        return res.status(404).json({message:"Organization not found"});
+    }
+    res.json({data:organizationtype});
+})
+
+module.exports={OrganizationTypeUpsert,organizationDelete,getAll,organizationGetByid}

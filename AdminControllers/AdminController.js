@@ -59,8 +59,6 @@ const loginAdmin = async (req, res) => {
   }
 };
 
-
-
 const getAdminProfile = async (req, res) => {
   try {
     const admin = await Admin.findByPk(req.admin.id, {
@@ -74,11 +72,7 @@ const getAdminProfile = async (req, res) => {
   }
 };
 
-
-
 const updateAdminProfile = async (req, res) => {
-
-
   try {
     const { name, dateOfBirth, phoneNumber,confirmPassword, email, password, } = req.body;
     console.log(req.body,"frombodt")
@@ -115,7 +109,6 @@ if(req.file)imageURL = await uploadToS3(req.file,"images")
     res.status(500).json({ message: "Server Error", error });
   }
 };
-
 
 const forgotPassword = async (req, res) => {
   try {
@@ -166,6 +159,5 @@ const resetPassword = async (req, res) => {
       res.status(500).json({ message: "Server error", error: error.message });
   }
 };
-
 
 module.exports = { registerAdmin, loginAdmin, forgotPassword, resetPassword, getAdminProfile, updateAdminProfile };

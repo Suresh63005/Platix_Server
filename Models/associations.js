@@ -1,29 +1,53 @@
-const Organization=require("./Organization.model")
-const OrderReports = require("./ReportsModel/OrderReport.model")
-const User = require("./ReportsModel/User.model")
-const UserReports = require("./ReportsModel/User.model")
-const TblOrganizationType = require("./TblOrganizationType.model")
-const Roles = require("./TblRoles.model")
+const TblOrganizationType = require("./TblOrganizationType.model");
+const Organization = require("./Organization.model");
+const OrderReports = require("./ReportsModel/OrderReport.model");
+const User = require("./ReportsModel/User.model");
+const Roles = require("./TblRoles.model");
 
+Organization.belongsTo(TblOrganizationType, {
+  foreignKey: "organizationType_id",
+  as: "organizationType",
+});
 
-Organization.belongsTo(TblOrganizationType, {foreignKey: "organizationType_id", as: "organizationType",});
-TblOrganizationType.hasMany(Organization, {foreignKey: "organizationType_id", });
+TblOrganizationType.hasMany(Organization, {
+  foreignKey: "organizationType_id",
+});
 
-OrderReports.belongsTo(UserReports, { foreignKey: "userUUID", as: "user" });
-UserReports.belongsTo(OrderReports, { foreignKey: "userUUID", as: "user" });
+OrderReports.belongsTo(User, { foreignKey: "userUUID", as: "user" });
+User.hasMany(OrderReports, { foreignKey: "userUUID", as: "orders" });
 
-OrderReports.belongsTo(Organization, { foreignKey: "fromOrganization", as: "fromOrg" });
-Organization.belongsTo(OrderReports, { foreignKey: "fromOrganization", as: "fromOrg" });
+OrderReports.belongsTo(Organization, {
+  foreignKey: "fromOrganization",
+  as: "fromOrg",
+});
+Organization.hasMany(OrderReports, {
+  foreignKey: "fromOrganization",
+  as: "fromOrders",
+});
 
-OrderReports.belongsTo(Organization, { foreignKey: "toOrganization", as: "toOrg" });
-Organization.belongsTo(OrderReports, { foreignKey: "toOrganization", as: "toOrg" });
+OrderReports.belongsTo(Organization, {
+  foreignKey: "toOrganization",
+  as: "toOrg",
+});
+Organization.hasMany(OrderReports, {
+  foreignKey: "toOrganization",
+  as: "toOrders",
+});
 
+User.belongsTo(TblOrganizationType, {
+  foreignKey: "organizationType_id",
+  as: "organizationType1",
+});
+TblOrganizationType.hasMany(User, { foreignKey: "organizationType_id" });
 
-User.belongsTo(TblOrganizationType, { foreignKey: "organizationType_id", as: "organizationType1", });
-TblOrganizationType.belongsTo(User, { foreignKey: "organizationType_id",  });
-  
-User.belongsTo(Organization, {foreignKey: "organization_id", as: "organization",});
-Organization.belongsTo(User, {foreignKey: "organization_id", as: "organization",});
-  
-User.belongsTo(Roles, { foreignKey: "role_id", as: "role",});
-Roles.belongsTo(User, { foreignKey: "role_id", as: "role",});
+User.belongsTo(Organization, {
+  foreignKey: "organization_id",
+  as: "organization",
+});
+Organization.hasMany(User, {
+  foreignKey: "organization_id",
+  as: "users",
+});
+
+User.belongsTo(Roles, { foreignKey: "role_id", as: "role" });
+Roles.hasMany(User, { foreignKey: "role_id", as: "users" });

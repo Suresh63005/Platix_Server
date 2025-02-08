@@ -4,5 +4,6 @@ const router=express.Router()
 
 router.post("/organization-type",OrganizationTypeController.OrganizationTypeUpsert);
 router.get("/getall",OrganizationTypeController.getAll)
+router.get("/getbyid/:id",OrganizationTypeController.organizationGetByid)
 router.delete("/delete/:id",OrganizationTypeController.organizationDelete)
 module.exports=router

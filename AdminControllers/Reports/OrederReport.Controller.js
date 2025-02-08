@@ -1,9 +1,9 @@
 const asyncHandler = require("../../Middlewares/errorHandler")
 const { sequelize } = require("../../config/db");
 const OrderReports = require("../../Models/ReportsModel/OrderReport.model");
-const UserReports = require("../../Models/ReportsModel/UserReport.model");
+const UserReports = require("../../Models/ReportsModel/User.model");
 const Organization = require("../../Models/Organization.model");
-const Patients = require("../../Models/ReportsModel/Patient.model");
+
 
 // ✅ Create or Update Order Report
 const upsertOrderReport = asyncHandler(async (req, res) => {
@@ -52,10 +52,9 @@ const getAllOrderReports = asyncHandler(async (req, res) => {
   try {
     const orderReports = await OrderReports.findAll({
       include: [
-        { model: UserReports, as: "doctor", attributes: ["Username"] },
-        { model: Organization, as: "from", attributes: ["id"] },
-        { model: Organization, as: "from", attributes: ["id"] },
-        { model: Patients, as: "patient", attributes: ["id", "Name", "Age","Gender","Problem"] },
+        { model: UserReports, as: "user", attributes: ["firstName"] },
+        { model: Organization, as: "fromOrg", attributes: ["id"] },
+        // { model: Organization, as: "from", attributes: ["id"] },
       ],
     });
 
