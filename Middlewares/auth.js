@@ -1,9 +1,7 @@
 const jwt = require("jsonwebtoken");
 const dotenv = require("dotenv");
 const Admin = require("../Models/Adminmodel"); // Import Admin model
-
 dotenv.config();
-
 const JWT_SECRET = process.env.JWT_TOKEN; // Use JWT_SECRET from .env
 
 // Function to generate JWT token for admin login
@@ -17,7 +15,7 @@ const generateToken = (admin) => {
 
 // Middleware to verify JWT token for admin only
 const verifyAdmin = async (req, res, next) => {
-  const token = req.header("Authorization");
+  const token = req.header("Authorization")
 
   if (!token) {
     return res.status(401).json({ message: "Access denied. No token provided." });

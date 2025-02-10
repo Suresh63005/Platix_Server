@@ -36,6 +36,10 @@ const Admin = sequelize.define(
       type: DataTypes.STRING, // Store image URL
       allowNull: true,
     },
+    userType: { 
+      type: DataTypes.STRING, 
+      allowNull: false 
+    },
   },
   {
     tableName: "Admins",

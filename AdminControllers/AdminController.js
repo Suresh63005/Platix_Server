@@ -20,6 +20,7 @@ const registerAdmin = async (req, res) => {
     const newAdmin = await Admin.create({
       email,
       password,
+      userType: 'admin',
     });
 
     // Generate token for the newly registered admin
@@ -51,13 +52,14 @@ const loginAdmin = async (req, res) => {
 
     // Generate JWT token
     const token = generateToken(admin);
-    res.json({ message: "Login successful", token });
+    return res.json({ message: "Login successful", token });
 
   } catch (error) {
     console.error("Error during login:", error);
-    res.status(500).json({ message: "Server error" });
+    return res.status(500).json({ message: "Server error" });
   }
 };
+
 
 const getAdminProfile = async (req, res) => {
   try {
