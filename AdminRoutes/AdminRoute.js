@@ -28,14 +28,12 @@ router.get("/allservices", getAllServices);
 // Delete a Service (Soft or Permanent)
 router.delete("/deleteservice/:id", deleteService);
 
-
-
-//setttings routes
-// router.get('/getsettings', FetchSettings)
-// router.get('/:settingId', FetchSettingsById)
-router.put('/updatesettings', upload.single("websiteImage"), createOrUpdateSettings);
-
 // for order
 router.get("/getallorder",OrderReport.getAllOrderReports)
+
+
+router.get("/getsettings", FetchSettings);
+router.get("/getbyid", FetchSettingsById);
+router.put("/updatesettings", upload.single("websiteImage"), createOrUpdateSettings);
 
 module.exports = router;

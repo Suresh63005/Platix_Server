@@ -1,10 +1,9 @@
-const { Settings } = require("../Models/TblSettings.model");
+const Settings = require("../Models/TblSettings.model");
 
-// Get settings by ID
 const getSettingsById = async (req, res) => {
   try {
-    const { id } = req.params; // Get ID from request params
-    const settings = await Settings.findByPk(id); // Find by primary key
+    const { id } = req.params;
+    const settings = await Settings.findByPk(id);
 
     if (!settings) {
       return res.status(404).json({ message: "Settings not found" });
@@ -17,56 +16,43 @@ const getSettingsById = async (req, res) => {
   }
 };
 
-// Create or Update settings (same logic)
 const createOrUpdateSettings = async (req, res) => {
   try {
     const {
-      id, // Now accepting ID for updates
-      websiteImage,
       notificationApiKey,
-      smsApiKey,
-      paymentApiKey,
+      smsGatewayApiKey,
+      paymentGatewayApiKey,
       emailApiKey,
       whatsappApiKey,
-      privacyContent,
-      termsContent,
+      privacyPolicy,
+      termsAndConditions,
     } = req.body;
 
-    let settings;
-
-    if (id) {
-      // Check if settings exist by ID
-      settings = await Settings.findByPk(id);
-    } else {
-      // If no ID provided, find the first settings entry
-      settings = await Settings.findOne();
-    }
+    let settings = await Settings.findOne();
 
     if (settings) {
-      // Update existing settings
-      settings.websiteImage = websiteImage || settings.websiteImage;
+      settings.websiteImage = req.file ? req.file.path : settings.websiteImage;
       settings.notificationApiKey = notificationApiKey || settings.notificationApiKey;
-      settings.smsApiKey = smsApiKey || settings.smsApiKey;
-      settings.paymentApiKey = paymentApiKey || settings.paymentApiKey;
+      settings.smsGatewayApiKey = smsGatewayApiKey || settings.smsGatewayApiKey;
+      settings.paymentGatewayApiKey = paymentGatewayApiKey || settings.paymentGatewayApiKey;
       settings.emailApiKey = emailApiKey || settings.emailApiKey;
       settings.whatsappApiKey = whatsappApiKey || settings.whatsappApiKey;
-      settings.privacyContent = privacyContent || settings.privacyContent;
-      settings.termsContent = termsContent || settings.termsContent;
+      settings.privacyPolicy = privacyPolicy || settings.privacyPolicy;
+      settings.termsAndConditions= termsAndConditions || settings.termsAndConditions;
 
       await settings.save();
       return res.json({ message: "Settings updated successfully", settings });
     }
 
-    // Create new settings if not found
     settings = await Settings.create({
-      websiteImage,
+      websiteImage: req.file ? req.file.path : null,
       notificationApiKey,
-      smsApiKey,
-      paymentApiKey,
+      smsGatewayApiKey,
+      paymentGatewayApiKey,
       emailApiKey,
       whatsappApiKey,
-      privacyContent,
-      termsContent,
+      privacyPolicy,
+      termsAndConditions,
     });
 
     res.json({ message: "Settings created successfully", settings });
@@ -77,4 +63,31 @@ const createOrUpdateSettings = async (req, res) => {
   }
 };
 
-module.exports = { getSettingsById, createOrUpdateSettings };
+const FetchSettings = async (req, res) => {
+  try {
+    const settings = await Settings.findAll();
+    if (!settings || settings.length === 0) {
+      return res.status(404).json({ message: "Settings not found!" });
+    }
+    return res.status(200).json({ message: "Settings fetched successfully!", settings });
+  } catch (error) {
+    console.error("Error fetching settings:", error);
+    return res.status(500).json({ message: "Internal server error!" });
+  }
+};
+
+const FetchSettingsById = async (req, res) => {
+  try {
+    const settings = await Settings.findOne(); // Fetches the first record
+
+    if (!settings) {
+      return res.status(404).json({ message: "Settings not found!" });
+    }
+
+    return res.status(200).json({ message: "Settings fetched successfully!", settings });
+  } catch (error) {
+    console.error("Error fetching settings:", error);
+    return res.status(500).json({ message: "Internal server error!" });
+  }
+};
+module.exports = { getSettingsById, createOrUpdateSettings, FetchSettings, FetchSettingsById };
