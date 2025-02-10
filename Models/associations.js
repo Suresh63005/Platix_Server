@@ -7,10 +7,12 @@ const Roles = require("./TblRoles.model");
 Organization.belongsTo(TblOrganizationType, {
   foreignKey: "organizationType_id",
   as: "organizationType",
+  onDelete:"CASCADE",
 });
 
 TblOrganizationType.hasMany(Organization, {
   foreignKey: "organizationType_id",
+  onDelete:"CASCADE",
 });
 
 OrderReports.belongsTo(User, { foreignKey: "userUUID", as: "user" });
