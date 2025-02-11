@@ -71,14 +71,19 @@ Roles.hasMany(User, { foreignKey: "role_id", as: "users" });
 // Services.belongsTo(TblOrganizationType,{foreignKey:"service_id"})
 
 TblOrganizationType.belongsToMany(Services, {
-  through: "OrganizationTypeServices",
+  through: "OrganizationTypeServices", // Correct junction table
   as: "services",
-  foreignKey: "organization_id",
+  foreignKey: "organizationType_id", // Correct foreign key
+  otherKey: "service_id",
 });
+
 Services.belongsToMany(TblOrganizationType, {
   through: "OrganizationTypeServices",
-  as: "organizations",
+  as: "organizationTypes",
   foreignKey: "service_id",
+  otherKey: "organizationType_id",
 });
+
+
 
 
