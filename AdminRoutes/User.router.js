@@ -6,6 +6,6 @@ router.post("/upsert",UserController.CreateUser,)
 router.get("/all",UserController.getAllUsers,)
 router.get("/getbyid/:id",UserController.getById)
 router.delete("/delete/:id",UserController.deleteUser)
-
+router.get("/getbydate/:fromDate/:toDate",UserController.filterByDate)
 
 module.exports=router

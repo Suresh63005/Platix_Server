@@ -28,32 +28,32 @@ const OrderReports = sequelize.define(
     },
     toOrganization: {
       type: DataTypes.UUID,
-      allowNull: false,
+      allowNull: true,
       
     },
     orderStatus: {
       type: DataTypes.ENUM("pending", "processing", "completed", "cancelled"),
-      allowNull: false,
+      allowNull: true,
     },
-    mobileNo: {
+    MobileNo: {
       type: DataTypes.STRING,
-      allowNull: false,
+      allowNull: true,
     },
     subTotal: {
       type: DataTypes.DECIMAL(10, 2),
-      allowNull: false,
+      allowNull: true,
     },
     tax: {
       type: DataTypes.DECIMAL(10, 2),
-      allowNull: false,
+      allowNull: true,
     },
     serviceCharges: {
       type: DataTypes.DECIMAL(10, 2),
-      allowNull: false,
+      allowNull: true,
     },
     totalAmount: {
       type: DataTypes.DECIMAL(10, 2),
-      allowNull: false,
+      allowNull: true,
     },
     paidAmount: {
       type: DataTypes.DECIMAL(10, 2),
@@ -61,7 +61,7 @@ const OrderReports = sequelize.define(
     },
     paymentMethod: {
       type: DataTypes.STRING,
-      allowNull: false,
+      allowNull: true,
     },
     patientName: {
       type: DataTypes.STRING,

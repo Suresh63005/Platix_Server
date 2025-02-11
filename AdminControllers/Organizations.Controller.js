@@ -46,14 +46,15 @@ const upsertOrganizations =async (req, res) => {
         let organization;
 
         if (id) {
-            // If updating an existing organization
+            // Find the organization
             organization = await Organization.findByPk(id, { transaction });
-
+        
             if (!organization) {
                 await transaction.rollback();
                 return res.status(404).json({ error: "Organization not found" });
             }
-
+        
+            // Update organization details
             await organization.update({
                 address, businessName, description, designation, email,
                 googleCoordinates: JSON.parse(googleCoordinates),
@@ -62,10 +63,29 @@ const upsertOrganizations =async (req, res) => {
                 file1: file1 || organization.file1,
                 file2: file2.length > 0 ? file2.join(",") : organization.file2
             }, { transaction });
-
+        
+            // Update TblOrganization_Service
+            if (parsedServices.length > 0) {
+                // Delete old services for this organization
+                await TblOrganization_Service.destroy({
+                    where: { organization_id: id },
+                    transaction
+                });
+        
+                // Insert new services
+                const serviceData = parsedServices.map(service => ({
+                    organization_id: id,
+                    service_id: service.id,
+                    price: service.price
+                }));
+        
+                await TblOrganization_Service.bulkCreate(serviceData, { transaction });
+            }
+        
             await transaction.commit();
             return res.status(200).json({ message: "Organization updated successfully", data: organization });
-        } else {
+        }
+         else {
             // Create a new organization
             organization = await Organization.create({
                 address, businessName, description, designation, email,

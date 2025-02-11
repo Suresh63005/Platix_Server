@@ -11,14 +11,15 @@ require("./Models/associations")
 dotenv.config();
 connectDB();
 
-const UserRouter=require("./AdminRoutes/ReportUser/User.router")
-app.use("/user",UserRouter)
+// const UserRouter=require("./AdminRoutes/ReportUser/User.router")
+// app.use("/user",UserRouter)
 //routes
 const adminRoutes = require("./AdminRoutes/AdminRoute");
 const organizationtype=require("./AdminRoutes/OrganizationType.router")
 const organization=require("./AdminRoutes/Organizations.router")
 // const UserReport=require("./AdminRoutes/ReportUser/Reports")
 const UserRouter=require("./AdminRoutes/User.router")
+const OrderRouter=require("./AdminRoutes/ReportUser/Reports")
 
 
 const Admin = require("./Models/Adminmodel")
@@ -57,6 +58,7 @@ app.use("/organization",organizationtype)
 app.use("/api/organization",organization)
 // app.use("/api/service",organization)
 app.use("/user",UserRouter)
+app.use("/order",OrderRouter)
 
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {

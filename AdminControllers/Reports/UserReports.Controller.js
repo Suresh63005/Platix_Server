@@ -3,6 +3,7 @@ const { formatDateFields } = require("../../helper/formatedDate");
 const Roles = require("../../Models/TblRoles.model");
 const TblOrganizationType = require("../../Models/TblOrganizationType.model");
 const { sequelize } = require("../../config/db");
+const { Op } = require("sequelize");
 
 const getAllUsers =async (req, res) => {
     try {
@@ -173,4 +174,54 @@ const deleteUser = async (req, res) => {
     }
 };
 
-module.exports={getAllUsers,CreateUser,getById,deleteUser};
+const filterByDate = async (req, res) => {
+    try {
+        const { fromDate, toDate } = req.params;
+        // console.log(req.params)
+
+        if (!fromDate || !toDate) {
+            return res.status(400).json({ message: "Both fromDate and toDate are required." });
+        }
+
+        const from = new Date(fromDate); // with time zone
+        const to = new Date(toDate);
+
+        if (isNaN(from.getTime()) || isNaN(to.getTime())) {
+            return res.status(400).json({ message: "Invalid date format." });
+        }
+        to.setHours(23, 59, 59, 999); // h-m-s-ms
+        const users = await UserReports.findAll({
+            where: {
+                createdAt: {
+                    [Op.gte]: from, 
+                    [Op.lte]: to    
+                }
+            },
+            include: {
+                model: Roles,
+                as: 'role',
+                attributes: ['id', 'rolename']
+            }
+        });
+
+        // Convert users to JSON and format dates
+        const formattedUsers = users.map(user => {
+            const userJson = user.toJSON();
+            const formattedUser = formatDateFields(userJson, ["createdAt"]);
+
+            return {
+                ...formattedUser,
+                Username: `${userJson.firstName} ${userJson.lastName}`,
+                Role: userJson.role ? userJson.role.rolename : null
+            };
+        });
+
+        res.json({ users: formattedUsers });
+
+    } catch (error) {
+        console.error("Error fetching users by date:", error);
+        res.status(500).json({ message: "Server error", error: error.message });
+    }
+};
+
+module.exports={getAllUsers,CreateUser,getById,deleteUser,filterByDate};
