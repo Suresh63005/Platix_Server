@@ -18,14 +18,14 @@ router.put("/profile/update",upload.single('profileImage'), verifyAdmin,updateAd
 router.post('/forgotpassword', forgotPassword);
 router.post('/createnewpass/:token', resetPassword);
 
-router.post("/createrole" , createRole)
-router.get("/viewrole", viewRoles)
-router.post("/createservice", upsertService);
-router.get("/getbyid/:id", serviceGetByid);
+router.post("/createrole" , verifyAdmin,createRole)
+router.get("/viewrole", verifyAdmin,viewRoles)
+router.post("/createservice", verifyAdmin,upsertService);
+router.get("/getbyid/:id", verifyAdmin,serviceGetByid);
 
 // Get All Services
 router.get("/allservices", getAllServices);
-router.post("/assign-service", OrganizationTypeController.assignServiceToOrganization)
+router.post("/assign-service",OrganizationTypeController.assignServiceToOrganization)
 router.get("/getorgservices", verifyAdmin, OrganizationTypeController.getOrganizationService)
 
 // Delete a Service (Soft or Permanent)

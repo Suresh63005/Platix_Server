@@ -107,12 +107,12 @@ const getAll = async (req, res) => {
         // Build filter conditions
         let whereConditions = {};
         if (filter) {
-            whereConditions.type = filter;
+            whereConditions.organizationType = filter;
         }
 
         if (search) {
-            whereConditions.name = {
-                [Sequelize.Op.like]: `%${search}%`
+            whereConditions.organizationType = {
+                [Op.like]: `%${search}%`
             };
         }
 
@@ -174,23 +174,6 @@ const getAll = async (req, res) => {
 
 
 
-const organizationGetByid = async (req, res) => {
-    try {
-        const { id } = req.params;
-        const organizationtype = await OrganizationType.findByPk(id);
-        
-        if (!organizationtype) {
-            return res.status(404).json({ message: "Organization not found" });
-        }
-
-        return res.json({ data: organizationtype });
-    } catch (error) {
-        console.error("Error in organizationGetByid:", error);
-        return res.status(500).json({ message: "Internal Server Error" });
-    }
-};
-
-
 const assignServiceToOrganization = async (req, res) => {
     try {
         const { organizationType_id, service_id } = req.body;
@@ -198,7 +181,7 @@ const assignServiceToOrganization = async (req, res) => {
         console.log(req.body, "from sureshhhhhhhhhhhhh");
 
         // Validate input
-        if (!organizationType_id || !Array.isArray(service_id) || service_id.length === 0) {
+        if (!organizationType_id || !Array.isArray(service_id) || service_id?.length === 0) {
             return res.status(400).json({ message: "Organization ID and Service IDs are required." });
         }
 
@@ -237,6 +220,28 @@ const assignServiceToOrganization = async (req, res) => {
         return res.status(500).json({ message: "Internal Server Error" });
     }
 };
+
+
+
+const organizationGetByid = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const organizationtype = await OrganizationType.findByPk(id);
+        
+        if (!organizationtype) {
+            return res.status(404).json({ message: "Organization not found" });
+        }
+
+        return res.json({ data: organizationtype });
+    } catch (error) {
+        console.error("Error in organizationGetByid:", error);
+        return res.status(500).json({ message: "Internal Server Error" });
+    }
+};
+
+
+
+
 
 
 
