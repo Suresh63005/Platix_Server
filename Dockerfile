@@ -7,17 +7,20 @@ RUN apk add --no-cache bash inotify-tools
 # Set the working directory inside the container
 WORKDIR /home/node/app
 
-# Copy package.json and package-lock.json
+# Copy package.json and package-lock.json to leverage Docker cache
 COPY package*.json ./
 
-# Install app dependencies (including nodemon)
-RUN npm install
-
-# instaed of Run npm install, we can use below command to install exact version 
-# RUN npm ci (npm ci is used to install exact version of dependencies and ci means clean install)
+# Install dependencies using `npm ci` for exact versions and faster builds
+RUN npm ci
 
 # Copy all source files
 COPY . .
+
+# Ensure proper permissions for the node user
+RUN chown -R node:node /home/node/app
+
+# Use non-root user for security
+USER node
 
 # Expose the port the app runs on
 EXPOSE 8081

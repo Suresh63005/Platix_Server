@@ -1,7 +1,6 @@
 
 const { sequelize } = require("../config/db");
 const { Op } = require("sequelize");
-const asyncHandler = require("../Middlewares/errorHandler")
 const TblOrganizationType=require("../Models/TblOrganizationType.model")
 const Organization=require("../Models/Organization.model")
 const uploadToS3 = require("../config/fileUpload.aws");
@@ -119,7 +118,7 @@ const upsertOrganizations =async (req, res) => {
     }
 };
 
-const getAll = asyncHandler(async (req, res) => {
+const getAll = async (req, res) => {
   const { page = 1, limit = 10, filter = "", search = "" } = req.query;
   const offset = (page - 1) * limit;
 
@@ -163,7 +162,7 @@ const getAll = asyncHandler(async (req, res) => {
       console.error("Error fetching organizations:", error);
       res.status(500).json({ message: "Server error", error: error.message });
   }
-});
+};
 
 const deleteOrganization = async (req, res) => {
     const t = await sequelize.transaction();
@@ -282,6 +281,5 @@ const organizationGetByid = async (req, res) => {
         return res.status(500).json({ error: "An error occurred while retrieving the organization." });
     }
 };
-  
 
 module.exports={upsertOrganizations,getAll,deleteOrganization,organizationGetByid}
