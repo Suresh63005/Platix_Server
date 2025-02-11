@@ -1,9 +1,18 @@
-version: '3'
+version: "3.8"
+
 services:
   app:
     build: .
+    container_name: node-backend  # Assigns a name to the container
     ports:
-      - "8081:8081"
+      - "8081:8081"  # Maps container's port 8081 to the host
     volumes:
-      - .:/home/node/app
-    command: npm run dev
+      - .:/home/node/app  # Mounts local code into the container for hot reload
+      - /home/node/app/node_modules  # Prevents overwriting node_modules
+    environment:
+      - NODE_ENV=development
+      - CHOKIDAR_USEPOLLING=true  # Ensures live file changes detection
+    command: npm run dev  # Runs the app using nodemon
+    restart: always  # Ensures the container restarts on failure
+    stdin_open: true  # Keeps container stdin open
+    tty: true  # Allocates a pseudo-TTY (useful for interactive debugging)
