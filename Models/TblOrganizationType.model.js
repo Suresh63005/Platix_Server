@@ -27,6 +27,10 @@ const TblOrganizationType = sequelize.define(
       type: DataTypes.DATE,
       allowNull: false,
     },
+    service_id:{
+      type:DataTypes.UUID,
+      allowNull:true
+    }
   },
   {
     tableName: "TblOrganizationType",

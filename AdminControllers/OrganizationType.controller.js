@@ -3,6 +3,8 @@ const { formatDate, formatDateFields } = require("../helper/formatedDate");
 const { organizationTypeSchema, organizationTypeDeleteSchema } = require("../Middlewares/validation")
 const OrganizationType=require("../Models/TblOrganizationType.model")
 const { Op } = require("sequelize");
+const Service = require('../Models/TblServices.model');
+const TblOrganizationType = require("../Models/TblOrganizationType.model");
 
 const OrganizationTypeUpsert = async (req, res) => {
     const t = await sequelize.transaction(); // Start transaction
@@ -159,4 +161,86 @@ const organizationGetByid = async (req, res) => {
     }
 };
 
-module.exports={OrganizationTypeUpsert,organizationDelete,getAll,organizationGetByid}
+
+const assignServiceToOrganization = async (req, res) => {
+    try {
+        const { organization_id, service_id } = req.body;
+
+        // Validate input
+        if (!organization_id || !service_id) {
+            return res.status(400).json({ message: "Organization ID and Service ID are required." });
+        }
+
+        // Find the organization type by ID
+        const orgType = await TblOrganizationType.findByPk(organization_id);
+        if (!orgType) {
+            return res.status(404).json({ message: "Organization type not found." });
+        }
+
+        // Find the service by ID
+        const service = await Service.findByPk(service_id);
+        if (!service) {
+            return res.status(404).json({ message: "Service not found." });
+        }
+
+        // Associate the service with the organization type (Many-to-Many)
+        await orgType.addService(service); // This assumes a Many-to-Many relationship with a join table
+
+        // Fetch the updated organization type with associated services
+        const updatedOrgType = await TblOrganizationType.findOne({
+            where: { id: orgType.id },
+            include: [
+                {
+                    model: Service,
+                    as: "services", // Must match alias in associations
+                    attributes: ["id", "servicename", "servicedescription", "fromdate", "todate"],
+                },
+            ],
+        });
+
+        await TblOrganizationType.update(
+            { service_id: service.id }, // Store service_id
+            { where: { id: organization_id } }
+        );        
+
+        return res.status(200).json({
+            message: "Service assigned to organization type successfully.",
+            organizationType: {
+                id: updatedOrgType.id,
+                name: updatedOrgType.organizationType,
+                description: updatedOrgType.description,
+                services: updatedOrgType.services, // Multiple services
+            },
+        });
+    } catch (error) {
+        console.error("Error assigning service to organization type:", error);
+        return res.status(500).json({ message: "Internal Server Error" });
+    }
+};
+
+
+const getOrganizationService = async (req, res) => {
+    try {
+      const { service_id } = req.params; // Extract service_id from request parameters
+      
+      if (!service_id) {
+        return res.status(400).json({ message: "Service ID is required" });
+      }
+  
+      const organizationService = await OrganizationType.findOne({
+        where: { service_id }
+      });
+  
+      if (!organizationService) {
+        return res.status(404).json({ message: "No organization found for this service ID" });
+      }
+  
+      return res.status(200).json(organizationService);
+    } catch (error) {
+      console.error("Error fetching organization service:", error);
+      return res.status(500).json({ message: "Internal Server Error" });
+    }
+  };
+  
+  
+module.exports={OrganizationTypeUpsert,organizationDelete,getAll,organizationGetByid,assignServiceToOrganization,getOrganizationService}

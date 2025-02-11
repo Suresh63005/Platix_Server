@@ -9,7 +9,7 @@ const Settings = sequelize.define("Settings", {
     defaultValue: DataTypes.UUIDV4,
   },
   image: { 
-    type: DataTypes.STRING, 
+    type: DataTypes.TEXT('long'), 
     allowNull: true,
   },
   notificationApiKey: {
