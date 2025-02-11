@@ -1,3 +1,4 @@
+const uploadToS3 = require("../config/fileUpload.aws");
 const Settings = require("../Models/TblSettings.model");
 
 const getSettingsById = async (req, res) => {
@@ -28,24 +29,39 @@ const createOrUpdateSettings = async (req, res) => {
       termsAndConditions,
     } = req.body;
 
+    let imgUrl;
+
+    if (req.file) {
+      imgUrl = await uploadToS3(req.file, "setting-images");
+      console.log(imgUrl, "✅ Uploaded Image URL"); // Debugging
+    }
+
+    console.log(req.file, "📸 Received Image File");
+
     let settings = await Settings.findOne();
 
     if (settings) {
-      settings.websiteImage = req.file ? req.file.path : settings.websiteImage;
+      console.log("🔄 Updating existing settings...");
+
+      settings.image = imgUrl || settings.image;  // ✅ Fix: Use `image` instead of `websiteImage`
       settings.notificationApiKey = notificationApiKey || settings.notificationApiKey;
       settings.smsGatewayApiKey = smsGatewayApiKey || settings.smsGatewayApiKey;
       settings.paymentGatewayApiKey = paymentGatewayApiKey || settings.paymentGatewayApiKey;
       settings.emailApiKey = emailApiKey || settings.emailApiKey;
       settings.whatsappApiKey = whatsappApiKey || settings.whatsappApiKey;
       settings.privacyPolicy = privacyPolicy || settings.privacyPolicy;
-      settings.termsAndConditions= termsAndConditions || settings.termsAndConditions;
+      settings.termsAndConditions = termsAndConditions || settings.termsAndConditions;
 
       await settings.save();
+      console.log(settings, "✅ Updated settings after save");
+
       return res.json({ message: "Settings updated successfully", settings });
     }
 
+    console.log("🆕 Creating new settings...");
+
     settings = await Settings.create({
-      websiteImage: req.file ? req.file.path : null,
+      image: imgUrl || null,  // ✅ Fix: Use `image` instead of `websiteImage`
       notificationApiKey,
       smsGatewayApiKey,
       paymentGatewayApiKey,
@@ -55,10 +71,12 @@ const createOrUpdateSettings = async (req, res) => {
       termsAndConditions,
     });
 
+    console.log(settings, "✅ Created new settings");
+
     res.json({ message: "Settings created successfully", settings });
 
   } catch (error) {
-    console.error("Error creating/updating settings:", error);
+    console.error("❌ Error creating/updating settings:", error);
     res.status(500).json({ message: "Internal server error" });
   }
 };
