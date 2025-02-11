@@ -25,18 +25,18 @@ router.get("/getbyid/:id", serviceGetByid);
 
 // Get All Services
 router.get("/allservices", getAllServices);
-router.post("/assign-service",OrganizationTypeController.assignServiceToOrganization)
-router.get("/getorgservices",OrganizationTypeController.getOrganizationService)
+router.post("/assign-service", OrganizationTypeController.assignServiceToOrganization)
+router.get("/getorgservices", verifyAdmin, OrganizationTypeController.getOrganizationService)
 
 // Delete a Service (Soft or Permanent)
-router.delete("/deleteservice/:id", deleteService);
+router.delete("/deleteservice/:id", verifyAdmin, deleteService);
 
 // for order
-router.get("/getallorder",OrderReport.getAllOrderReports)
+router.get("/getallorder", verifyAdmin ,OrderReport.getAllOrderReports)
 
 
-router.get("/getsettings", FetchSettings);
-router.get("/getbyid", FetchSettingsById);
+router.get("/getsettings", verifyAdmin, FetchSettings);
+router.get("/getbyid", verifyAdmin, FetchSettingsById);
 router.put("/updatesettings", upload.single("websiteImage"), createOrUpdateSettings);
 
 module.exports = router;

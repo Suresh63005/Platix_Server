@@ -117,21 +117,47 @@ const getAll = async (req, res) => {
         }
 
         // Get the total count of matching organization types
-        const totalCount = await OrganizationType.count({
-            where: whereConditions
-        });
+        const totalCount = await OrganizationType.count({ where: whereConditions });
 
         // Get the paginated results
         const organizations = await OrganizationType.findAll({
             where: whereConditions,
-            offset: offset,
+            offset,
             limit: pageSize,
             order: [['createdAt', 'DESC']], 
         });
 
-        const formattedOrganizations = formatDateFields(
-            organizations.map(org => org.toJSON()),
-            ["fromDate", "toDate"]
+        // Convert to JSON and parse service_id
+        const formattedOrganizations = await Promise.all(
+            organizations.map(async (org) => {
+                const orgData = org.toJSON();
+
+                // Ensure service_id is a valid JSON string before parsing
+                try {
+                    orgData.service_id = orgData.service_id && typeof orgData.service_id === "string" && orgData.service_id.trim() !== ""
+                        ? JSON.parse(orgData.service_id)
+                        : [];
+                } catch (error) {
+                    console.error("Invalid JSON in service_id:", orgData.service_id);
+                    orgData.service_id = [];
+                }
+
+                // Fetch service names in a single query
+                if (orgData.service_id.length > 0) {
+                    const services = await Service.findAll({
+                        where: { id: orgData.service_id },
+                        attributes: ["id", "servicename"],
+                    });
+                    orgData.services = services.map(service => ({
+                        id: service.id,
+                        servicename: service.servicename
+                    }));
+                } else {
+                    orgData.services = [];
+                }
+
+                return orgData;
+            })
         );
 
         // Send back the response with the organization data and total count
@@ -139,11 +165,14 @@ const getAll = async (req, res) => {
             results: formattedOrganizations,
             totalCount: totalCount,
         });
+
     } catch (error) {
         console.error("Error in getAll:", error);
         return res.status(500).json({ message: "Internal Server Error" });
     }
 };
+
+
 
 const organizationGetByid = async (req, res) => {
     try {
@@ -164,44 +193,35 @@ const organizationGetByid = async (req, res) => {
 
 const assignServiceToOrganization = async (req, res) => {
     try {
-        const { organization_id, service_id } = req.body;
+        const { organizationType_id, service_id } = req.body;
+
+        console.log(req.body, "from sureshhhhhhhhhhhhh");
 
         // Validate input
-        if (!organization_id || !service_id) {
-            return res.status(400).json({ message: "Organization ID and Service ID are required." });
+        if (!organizationType_id || !Array.isArray(service_id) || service_id.length === 0) {
+            return res.status(400).json({ message: "Organization ID and Service IDs are required." });
         }
 
         // Find the organization type by ID
-        const orgType = await TblOrganizationType.findByPk(organization_id);
+        const orgType = await TblOrganizationType.findByPk(organizationType_id);
         if (!orgType) {
             return res.status(404).json({ message: "Organization type not found." });
         }
 
-        // Find the service by ID
-        const service = await Service.findByPk(service_id);
-        if (!service) {
-            return res.status(404).json({ message: "Service not found." });
-        }
-
-        // Associate the service with the organization type (Many-to-Many)
-        await orgType.addService(service); // This assumes a Many-to-Many relationship with a join table
+        // Update the service_id field as a JSON array
+        await orgType.update({ service_id: JSON.stringify(service_id) });
 
         // Fetch the updated organization type with associated services
         const updatedOrgType = await TblOrganizationType.findOne({
-            where: { id: orgType.id },
+            where: { id: organizationType_id },
             include: [
                 {
                     model: Service,
-                    as: "services", // Must match alias in associations
+                    as: "services",
                     attributes: ["id", "servicename", "servicedescription", "fromdate", "todate"],
                 },
             ],
         });
-
-        await TblOrganizationType.update(
-            { service_id: service.id }, // Store service_id
-            { where: { id: organization_id } }
-        );        
 
         return res.status(200).json({
             message: "Service assigned to organization type successfully.",
@@ -209,7 +229,7 @@ const assignServiceToOrganization = async (req, res) => {
                 id: updatedOrgType.id,
                 name: updatedOrgType.organizationType,
                 description: updatedOrgType.description,
-                services: updatedOrgType.services, // Multiple services
+                services: updatedOrgType.services,
             },
         });
     } catch (error) {
@@ -217,6 +237,7 @@ const assignServiceToOrganization = async (req, res) => {
         return res.status(500).json({ message: "Internal Server Error" });
     }
 };
+
 
 
 const getOrganizationService = async (req, res) => {
