@@ -1,17 +1,41 @@
-const asyncHandler = require("../../Middlewares/errorHandler")
+const asyncHandler = require("../../Middlewares/errorHandler");
 const { sequelize } = require("../../config/db");
 const OrderReports = require("../../Models/ReportsModel/OrderReport.model");
 const UserReports = require("../../Models/ReportsModel/User.model");
 const Organization = require("../../Models/Organization.model");
-
+const TblOrganizationType = require("../../Models/TblOrganizationType.model");
+const { formatDateFields } = require("../../helper/formatedDate");
 
 // ✅ Create or Update Order Report
 const upsertOrderReport = asyncHandler(async (req, res) => {
-  const { id, OrderDate, user_UUID, From, To, OrderStatus, Patient_Id } = req.body;
+  const { 
+    id, 
+    orderDate, 
+    userUUID, 
+    fromOrganization,
+    fromOrganizationUsername, // doctor name
+    MobileNo,  // doctor mobile no
+    toOrganization,
+    orderStatus, 
+    patientName,
+  } = req.body;
 
-  const transaction = await sequelize.transaction(); // Start transaction
+  console.log(req.body);
+  const transaction = await sequelize.transaction();
 
   try {
+    // 🔍 Validate fromOrganization
+    const fromOrgExists = await TblOrganizationType.findByPk(fromOrganization);
+    if (!fromOrgExists) {
+      return res.status(400).json({ error: "Invalid fromOrganization ID" });
+    }
+    
+    const toOrgExists = await TblOrganizationType.findByPk(toOrganization);
+    if (!toOrgExists) {
+      return res.status(400).json({ error: "Invalid toOrganization ID" });
+    }
+    
+    console.log(1)
     let orderReport;
 
     if (id) {
@@ -24,7 +48,16 @@ const upsertOrderReport = asyncHandler(async (req, res) => {
       }
 
       await orderReport.update(
-        { OrderDate, user_UUID, From, To, OrderStatus, Patient_Id },
+        { 
+          orderDate, 
+          userUUID, 
+          fromOrganization,  
+          fromOrganizationUsername,  
+          MobileNo,  
+          toOrganization,  
+          orderStatus,  
+          patientName,  
+        },
         { transaction }
       );
 
@@ -33,7 +66,16 @@ const upsertOrderReport = asyncHandler(async (req, res) => {
     } else {
       // Create new order report
       orderReport = await OrderReports.create(
-        { OrderDate, user_UUID, From, To, OrderStatus, Patient_Id },
+        { 
+          orderDate, 
+          userUUID, 
+          fromOrganization,  
+          fromOrganizationUsername,  
+          MobileNo,  
+          toOrganization,  
+          orderStatus,  
+          patientName,  
+        },
         { transaction }
       );
 
@@ -47,18 +89,30 @@ const upsertOrderReport = asyncHandler(async (req, res) => {
   }
 });
 
+
 // ✅ Get All Order Reports (with Pagination & Associations)
 const getAllOrderReports = asyncHandler(async (req, res) => {
   try {
     const orderReports = await OrderReports.findAll({
       include: [
         { model: UserReports, as: "user", attributes: ["firstName"] },
-        { model: Organization, as: "fromOrg", attributes: ["id"] },
-        // { model: Organization, as: "from", attributes: ["id"] },
+        { model: TblOrganizationType, as: "fromOrg", attributes: ["id", "organizationType"] },
+        { model: TblOrganizationType, as: "toOrg", attributes: ["id", "organizationType"] },
       ],
     });
 
-    res.status(200).json({ data: orderReports });
+    // Convert orderReports to JSON
+    const formattedReports = orderReports.map(report => {
+      const reportJson = report.toJSON();
+      return {
+        ...formatDateFields(reportJson, ["orderDate"]), 
+        Username: reportJson.user ? reportJson.user.firstName : null, 
+        FromOrganization: reportJson.fromOrg ? reportJson.fromOrg.organizationType : null, // Extract from organization
+        ToOrganization: reportJson.toOrg ? reportJson.toOrg.organizationType : null, // Extract to organization
+      };
+    });
+
+    res.status(200).json({ data: formattedReports });
   } catch (error) {
     console.error("Error fetching order reports:", error);
     res.status(500).json({ error: "Internal Server Error" });
