@@ -10,6 +10,7 @@ const sequelize = new Sequelize(process.env.DB_NAME, process.env.DB_USER, proces
   port: process.env.DB_PORT,
   dialect: process.env.DB_DIALECT, // MySQL
   logging: false, // Set to true to see SQL queries in the console
+  timezone: process.env.TIMEZONE,
 });
 
 // Test the database connection

@@ -132,7 +132,9 @@ const getAll = async (req, res) => {
             organizations.map(async (org) => {
                 const orgData = org.toJSON();
 
-                // Ensure service_id is a valid JSON string before parsing
+                orgData.fromDate = formatDate(orgData.fromDate);
+                orgData.toDate = formatDate(orgData.toDate);
+                
                 try {
                     orgData.service_id = orgData.service_id && typeof orgData.service_id === "string" && orgData.service_id.trim() !== ""
                         ? JSON.parse(orgData.service_id)
@@ -171,8 +173,6 @@ const getAll = async (req, res) => {
         return res.status(500).json({ message: "Internal Server Error" });
     }
 };
-
-
 
 const assignServiceToOrganization = async (req, res) => {
     try {

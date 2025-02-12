@@ -1,13 +1,14 @@
-const UserReports=require("../../Models/ReportsModel/User.model")
 const { formatDateFields } = require("../../helper/formatedDate");
 const Roles = require("../../Models/TblRoles.model");
 const TblOrganizationType = require("../../Models/TblOrganizationType.model");
 const { sequelize } = require("../../config/db");
-const { Op } = require("sequelize");
+const { Op, where } = require("sequelize");
+const Organization = require("../../Models/Organization.model");
+const User = require("../../Models/ReportsModel/User.model");
 
 const getAllUsers =async (req, res) => {
     try {
-        const users = await UserReports.findAll({
+        const users = await User.findAll({
             include: {
                 model: Roles, 
                 as: 'role', 
@@ -33,6 +34,44 @@ const getAllUsers =async (req, res) => {
     }
 };
 
+const getAllUsersByOrganizationName=async(req,res)=>{
+    const { organization_id } = req.params;
+    
+    try {
+        const organization = await User.findOne({ where: { organization_id:organization_id } });
+        if (!organization) {
+            return res.status(404).json({ message: "Organization not found" });
+        }
+        const users = await User.findAll({
+            where: {organization_id:organization_id},
+            include: {
+                model: Roles, 
+                as: 'role', 
+                attributes: ['id', 'rolename'] 
+            }
+        });
+
+        if (users.length === 0) {
+            return res.status(404).json({ message: "No users found for this organization" });
+        }
+
+        const formattedUsers = users.map(user => {
+            const userJson = user.toJSON();
+            return {
+                ...formatDateFields(userJson, ["createdAt"]), 
+                Username: `${userJson.firstName} ${userJson.lastName}`,
+                Role: userJson.role ? userJson.role.rolename : null 
+            };
+        });
+        console.log(formattedUsers);
+        res.json({ users: formattedUsers });
+
+    } catch (error) {
+        console.error("Error fetching users:", error);
+        res.status(500).json({ message: "Server error", error: error.message });
+    }
+
+}
 
 const CreateUser = async (req, res) => {
     const {
@@ -48,8 +87,8 @@ const CreateUser = async (req, res) => {
         address = "SR NAGAR",
         startDate = "2021-09-01", // Fixed incorrect backticks
         designation,
-        organizationType_id,
-        organization_id = 2 // Default to null if not provided
+        organizationType_id =2,
+        organization_id 
     } = req.body;
     // console.log(req.body)
     const t = await sequelize.transaction();
@@ -59,7 +98,7 @@ const CreateUser = async (req, res) => {
         // Check if 'id' is provided for updating an existing user
         if (id) {
             // Update existing user
-            user = await UserReports.findByPk(id,{transaction:t});
+            user = await User.findByPk(id,{transaction:t});
             if (!user) {
                 await t.rollback();
                 return res.status(404).json({ message: "User not found" });
@@ -85,7 +124,7 @@ const CreateUser = async (req, res) => {
             return res.status(200).json({ message: "User updated successfully", user });
         } else {
             // Create new user
-            user = await UserReports.create({
+            user = await User.create({
                 prefix,
                 firstName,
                 lastName,
@@ -113,7 +152,7 @@ const CreateUser = async (req, res) => {
 const getById=async(req,res)=>{
     const { id }=req.params;
     const t = await sequelize.transaction();
-    const user=await UserReports.findByPk(id,{
+    const user=await User.findByPk(id,{
         include:[
             {
                 model:Roles,
@@ -145,7 +184,7 @@ const deleteUser = async (req, res) => {
 
     try {
         // is used to tell Sequelize that the query (findByPk(id)) should be executed within the scope of the transaction t
-        const user = await UserReports.findOne({ where: { id }, transaction: t });
+        const user = await User.findOne({ where: { id }, transaction: t });
 
         if (!user) {
             await t.rollback(); // Rollback if user not found
@@ -190,7 +229,7 @@ const filterByDate = async (req, res) => {
             return res.status(400).json({ message: "Invalid date format." });
         }
         to.setHours(23, 59, 59, 999); // h-m-s-ms
-        const users = await UserReports.findAll({
+        const users = await User.findAll({
             where: {
                 createdAt: {
                     [Op.gte]: from, 
@@ -224,4 +263,4 @@ const filterByDate = async (req, res) => {
     }
 };
 
-module.exports={getAllUsers,CreateUser,getById,deleteUser,filterByDate};
+module.exports={getAllUsers,CreateUser,getById,deleteUser,filterByDate,getAllUsersByOrganizationName};
