@@ -7,5 +7,6 @@ router.get("/all",UserController.getAllUsers,)
 router.get("/getbyid/:id",UserController.getById)
 router.delete("/delete/:id",UserController.deleteUser)
 router.get("/getbydate/:fromDate/:toDate",UserController.filterByDate)
+router.get("/getbyorganization/:organization_id",UserController.getAllUsersByOrganizationName)
 
 module.exports=router

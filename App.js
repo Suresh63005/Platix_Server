@@ -60,6 +60,11 @@ app.use("/api/organization",organization)
 app.use("/user",UserRouter)
 app.use("/order",OrderRouter)
 
+
+
+
+// for mobile
+app.use("/login",require("./userRoutes/auth/authRouter"))
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);

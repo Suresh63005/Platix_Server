@@ -13,39 +13,39 @@ const User = sequelize.define("User", {
   },
   prefix: {
     type: DataTypes.ENUM("mr", "mrs"),
-    allowNull: false,
+    allowNull: true,
   },
   firstName: {
     type: DataTypes.STRING,
-    allowNull: false,
+    allowNull: true,
   },
   lastName: {
     type: DataTypes.STRING,
-    allowNull: false,
+    allowNull: true,
   },
   email: {
     type: DataTypes.STRING,
-    allowNull: false,
+    allowNull: true,
     validate: {
       isEmail: true,
     },
   },
   mobileNo: {
     type: DataTypes.STRING,
-    allowNull: false,
+    allowNull: true,
   },
   whatsappNo: {
     type: DataTypes.STRING,
-    allowNull: false,
+    allowNull: true,
   },
-  role_id: { // ✅ Fixed: Referencing TblRoles as a UUID
+  role_id: {
     type: DataTypes.UUID,
-    allowNull: false,
+    allowNull: true,
     
   },
   dateOfBirth: {
     type: DataTypes.DATE,
-    allowNull: false,
+    allowNull: true,
   },
   address: {
     type: DataTypes.STRING,
