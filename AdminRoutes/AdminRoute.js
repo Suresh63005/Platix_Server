@@ -32,7 +32,7 @@ router.get("/getorgservices", verifyAdmin, OrganizationTypeController.getOrganiz
 router.delete("/deleteservice/:id", verifyAdmin, deleteService);
 
 // for order
-router.get("/getallorder", verifyAdmin ,OrderReport.getAllOrderReports)
+router.get("/getallorder" ,OrderReport.getAllOrderReports)
 
 
 router.get("/getsettings", verifyAdmin, FetchSettings);
