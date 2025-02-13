@@ -125,7 +125,7 @@ const forgotPassword = async (req, res) => {
       console.log(token)
 
       
-      const resetLink = `http://localhost:3000/createnewpass/${token}`;
+      const resetLink = `https://platix-eight.vercel.app/createnewpass/${token}`;
 
       
       await sendEmail(email, "Reset Password", `Click here to reset: ${resetLink}`);
