@@ -1,6 +1,15 @@
 const User = require("../../Models/ReportsModel/User.model");
 const admin = require("../../config/firebase-config");
 const jwt = require("jsonwebtoken");
+const {sendEmail,subscribeUser} = require("../../utils/sendEmail");
+
+let otpStore={};
+
+const generateOTP = () => {
+    const otp = Math.floor(100000 + Math.random() * 900000); 
+    return otp.toString(); 
+};
+
 
 const verifyMobile = async (req, res) => {
     let { mobileNo } = req.body;
@@ -61,6 +70,7 @@ const verifyMobile = async (req, res) => {
     }
 };
 
+// this role details for when user sucessfully logined  and  set their roles at that time send email otp 
 const RoleDetails = async (req, res) => {
     const { firstName, lastName, email, role_id, id } = req.body;
 
@@ -70,21 +80,63 @@ const RoleDetails = async (req, res) => {
 
     try {
         let user = await User.findOne({ where: { id } });
-        if(!user){
+        if (!user) {
             return res.status(404).json({ message: "User not found!" });
         }
-        if (user) {
-            await User.update(
-                { firstName, lastName, email, role_id },
-                { where: { id } }
-            );
 
-            return res.status(200).json({ message: "Role details updated successfully!" });
-        }
+        // Update role details
+        await User.update(
+            { firstName, lastName, email, role_id },
+            { where: { id } }
+        );
+        await subscribeUser(email)
+        // Generate OTP
+        const otp = generateOTP();
+
+        // Store OTP in memory with expiration time
+        otpStore[id] = { otp, expiry: Date.now() + 5 * 60 * 1000 };  // Expiry after 5 minutes
+
+        // Prepare and send OTP email using OneSignal
+        const subject = 'Your OTP Code';
+        const text = `Your 6-digit OTP code is: ${otp}`;
+        await sendEmail(email, subject, text);
+
+        return res.status(200).json({ message: "Role details updated successfully! OTP has been sent to your email." });
+
     } catch (error) {
         console.error("Error assigning/updating role:", error.message);
         return res.status(500).json({ message: "Internal server error: " + error.message });
     }
 };
 
-module.exports = { verifyMobile ,RoleDetails};
+const verifyOtp = (req, res) => {
+    const { id, otp } = req.body;
+
+    if (!id || !otp) {
+        return res.status(400).json({ message: "User ID and OTP are required!" });
+    }
+
+    const otpData = otpStore[id];
+
+    if (!otpData) {
+        return res.status(400).json({ message: "OTP not found or expired!" });
+    }
+
+    const { otp: storedOtp, expiry } = otpData;
+
+    // Check if OTP has expired
+    if (Date.now() > expiry) {
+        delete otpStore[id];  // Remove expired OTP
+        return res.status(400).json({ message: "OTP has expired!" });
+    }
+
+    // Verify OTP
+    if (storedOtp === otp) {
+        delete otpStore[id];  // Clear OTP after successful verification
+        return res.status(200).json({ message: "OTP verified successfully!" });
+    } else {
+        return res.status(400).json({ message: "Invalid OTP!" });
+    }
+};
+
+module.exports = { verifyMobile ,RoleDetails,verifyOtp};

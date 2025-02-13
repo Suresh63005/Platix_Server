@@ -26,7 +26,7 @@ const getAllUsers =async (req, res) => {
             };
         });
 
-        console.log(formattedUsers);
+        // console.log(formattedUsers);
         res.json({ users: formattedUsers });
     } catch (error) {
         console.error("Error fetching users:", error);
@@ -173,7 +173,8 @@ const getById=async(req,res)=>{
     }
     // console.log(user)
     await t.commit()
-    res.json({user});
+    const formattedUser=formatDateFields(user.toJSON(),['dateOfBirth'])
+    res.json({user:formattedUser});
 }
 
 const deleteUser = async (req, res) => {
