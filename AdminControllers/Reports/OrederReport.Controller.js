@@ -13,11 +13,20 @@ const upsertOrderReport = asyncHandler(async (req, res) => {
     orderDate, 
     userUUID, 
     fromOrganization,
-    fromOrganizationUsername, // doctor name
-    MobileNo,  // doctor mobile no
-    toOrganization,
-    orderStatus, 
+    fromOrganizationUsername,
+    toOrganization, // doctor name
+    orderStatus,  // doctor mobile no
+    MobileNo,
+    subTotal, 
+    tax,
+    serviceCharges,
+    totalAmount,
+    paidAmount,
+    paymentMethod,
     patientName,
+    patientAge,
+    patientGender,
+    patientProblem
   } = req.body;
 
   console.log(req.body);
@@ -49,14 +58,24 @@ const upsertOrderReport = asyncHandler(async (req, res) => {
 
       await orderReport.update(
         { 
+          id, 
           orderDate, 
           userUUID, 
-          fromOrganization,  
-          fromOrganizationUsername,  
-          MobileNo,  
-          toOrganization,  
-          orderStatus,  
-          patientName,  
+          fromOrganization,
+          fromOrganizationUsername,
+          toOrganization, // doctor name
+          orderStatus,  // doctor mobile no
+          MobileNo,
+          subTotal, 
+          tax,
+          serviceCharges,
+          totalAmount,
+          paidAmount,
+          paymentMethod,
+          patientName,
+          patientAge,
+          patientGender,
+          patientProblem  
         },
         { transaction }
       );
@@ -69,12 +88,21 @@ const upsertOrderReport = asyncHandler(async (req, res) => {
         { 
           orderDate, 
           userUUID, 
-          fromOrganization,  
-          fromOrganizationUsername,  
-          MobileNo,  
-          toOrganization,  
-          orderStatus,  
-          patientName,  
+          fromOrganization,
+          fromOrganizationUsername,
+          toOrganization, // doctor name
+          orderStatus,  // doctor mobile no
+          MobileNo,
+          subTotal, 
+          tax,
+          serviceCharges,
+          totalAmount,
+          paidAmount,
+          paymentMethod,
+          patientName,
+          patientAge,
+          patientGender,
+          patientProblem  
         },
         { transaction }
       );
