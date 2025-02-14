@@ -194,32 +194,29 @@ const assignServiceToOrganization = async (req, res) => {
         // Update the service_id field as a JSON array
         await orgType.update({ service_id: JSON.stringify(service_id) });
 
-        // Fetch the updated organization type with associated services
-        const updatedOrgType = await TblOrganizationType.findOne({
-            where: { id: organizationType_id },
-            include: [
-                {
-                    model: Service,
-                    as: "services",
-                    attributes: ["id", "servicename", "servicedescription", "fromdate", "todate"],
-                },
-            ],
-        });
-
+    
         return res.status(200).json({
             message: "Service assigned to organization type successfully.",
-            organizationType: {
-                id: updatedOrgType.id,
-                name: updatedOrgType.organizationType,
-                description: updatedOrgType.description,
-                services: updatedOrgType.services,
-            },
+            orgType
         });
     } catch (error) {
         console.error("Error assigning service to organization type:", error);
         return res.status(500).json({ message: "Internal Server Error" });
     }
 };
+
+
+// Fetch the updated organization type with associated services
+// const updatedOrgType = await TblOrganizationType.findOne({
+//     where: { id: organizationType_id },
+//     include: [
+//         {
+//             model: Service,
+//             as: "services",
+//             attributes: ["id", "servicename", "servicedescription", "fromdate", "todate"],
+//         },
+//     ],
+// });
 
 
 
