@@ -19,9 +19,6 @@
 
 // module.exports = sendEmail;
 const axios=require("axios")
-const generateOTP = () => {
-    return Math.floor(100000 + Math.random() * 900000).toString();
-};
 
 // Function to subscribe user to OneSignal and tag them with their email
 const subscribeUser = async (email) => {
@@ -30,8 +27,9 @@ const subscribeUser = async (email) => {
             'https://onesignal.com/api/v1/players',
             {
                 app_id: process.env.ONESIGNAL_APP_ID,
-                email: email,  // User's email to subscribe
-                tags: { email: email },  // Tagging the user with their email
+                identifier: email, // Email identifier for OneSignal
+                device_type: 11, // 11 represents email subscription
+                tags: { email },  // Correct way to set the tag
             },
             {
                 headers: {
@@ -40,27 +38,21 @@ const subscribeUser = async (email) => {
                 },
             }
         );
-        console.log(email)
         console.log('User subscribed and tagged:', response.data);
     } catch (error) {
         console.error('Error subscribing user to OneSignal:', error.response ? error.response.data : error.message);
     }
 };
 
+
+
 // Function to send OTP via OneSignal
 const sendEmail = async (to, subject, text) => {
     const message = {
         app_id: process.env.ONESIGNAL_APP_ID,
-        headings: { en: subject },  // Subject of the email
-        contents: { en: text },     // OTP text body
-        filters: [
-            {
-                field: 'tag',
-                key: 'email',
-                relation: '=',
-                value: to,  // Filter by the email address
-            },
-        ],
+        headings: { en: subject },
+        contents: { en: text },
+        include_email_tokens: [to], // This is how OneSignal sends emails
     };
 
     try {
@@ -79,5 +71,7 @@ const sendEmail = async (to, subject, text) => {
         console.error('Error sending OTP email:', error.response ? error.response.data : error.message);
     }
 };
+
+
 
 module.exports = {sendEmail,subscribeUser};
