@@ -6,14 +6,15 @@ const {upsertService,getAllServices,deleteService,serviceGetByid} = require("../
 const upload = require("../utils/multer");
 const { getSettingsById, createOrUpdateSettings, FetchSettings, FetchSettingsById } = require('../AdminControllers/Settings.controller');
 const OrderReport=require("../AdminControllers/Reports/OrederReport.Controller");
-const OrganizationTypeController = require("../AdminControllers/OrganizationType.controller")
+const OrganizationTypeController = require("../AdminControllers/OrganizationType.controller");
+const { verifyAdmin } = require("../Middlewares/auth");
 
 const router = express.Router();
 
 router.post("/register", registerAdmin);
 router.post("/login", loginAdmin);
-router.get("/profile", getAdminProfile);
-router.put("/profile/update",upload.single('profileImage'), updateAdminProfile);
+router.get("/profile",verifyAdmin, getAdminProfile);
+router.put("/profile/update",verifyAdmin,upload.single('profileImage'), updateAdminProfile);
 
 router.post('/forgotpassword', forgotPassword);
 router.post('/createnewpass/:token', resetPassword);

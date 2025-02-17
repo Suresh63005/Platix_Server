@@ -2,7 +2,8 @@ const { sequelize } = require("../config/db");
 const { formatDate, formatDateFields } = require("../helper/formatedDate");
 const { organizationTypeSchema, organizationTypeDeleteSchema } = require("../Middlewares/validation")
 const OrganizationType=require("../Models/TblOrganizationType.model")
-const { Op } = require("sequelize");
+const { Sequelize, Op } = require('sequelize');
+
 const Service = require('../Models/TblServices.model');
 const TblOrganizationType = require("../Models/TblOrganizationType.model");
 
@@ -111,10 +112,26 @@ const getAll = async (req, res) => {
         }
 
         if (search) {
-            whereConditions.organizationType = {
-                [Op.like]: `%${search}%`
-            };
+            whereConditions[Op.or] = [
+                { organizationType: { [Op.like]: `%${search}%` } },
+                { description: { [Op.like]: `%${search}%` } },
+                // Convert date fields to string for wildcard search
+                Sequelize.where(
+                    Sequelize.fn("DATE_FORMAT", Sequelize.col("createdAt"), "%Y-%m-%d"),
+                    { [Op.like]: `%${search}%` }
+                ),
+                Sequelize.where(
+                    Sequelize.fn("DATE_FORMAT", Sequelize.col("fromDate"), "%Y-%m-%d"),
+                    { [Op.like]: `%${search}%` }
+                ),
+                Sequelize.where(
+                    Sequelize.fn("DATE_FORMAT", Sequelize.col("toDate"), "%Y-%m-%d"),
+                    { [Op.like]: `%${search}%` }
+                ),
+            ];
         }
+
+        console.log("whereConditions:", JSON.stringify(whereConditions, null, 2));
 
         // Get the total count of matching organization types
         const totalCount = await OrganizationType.count({ where: whereConditions });

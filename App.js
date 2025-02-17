@@ -7,8 +7,8 @@ const cors = require("cors");
 const bodyParser = require("body-parser");
 const { connectDB, sequelize } = require("./config/db");
 const logger=require("morgan")
-const PORT = process.env.PORT
-const PORT2 = process.env.PORT2
+const PORT = process.env.PORT || 5000
+// const PORT2 = process.env.PORT2 || 8081
 require("./Models/associations")
 dotenv.config();
 connectDB();
@@ -74,9 +74,9 @@ app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
 });
 
-app.listen(PORT2, () => {
-  console.log(`Server running on port ${PORT2}`);
-});
+// app.listen(PORT2, () => {
+//   console.log(`Server running on port ${PORT2}`);
+// });
 
 sequelize
   .sync()

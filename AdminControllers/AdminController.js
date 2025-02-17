@@ -3,6 +3,7 @@ const jwt = require('jsonwebtoken');
 const sendEmail = require('../utils/sendEmail'); 
 const { generateToken } = require('../Middlewares/auth');
 const uploadToS3 = require("../config/fileUpload.aws");
+const registerSchema = require("../Middlewares/validation")
 
 
 // Admin registration controller
@@ -62,6 +63,7 @@ const loginAdmin = async (req, res) => {
 
 
 const getAdminProfile = async (req, res) => {
+  
   try {
     const admin = await Admin.findByPk(req.admin.id, {
       attributes: { exclude: ["password"] },
@@ -141,7 +143,8 @@ const resetPassword = async (req, res) => {
       const { token } = req.params;  
       const { newPassword } = req.body;  
 
-      
+      const { error } = registerSchema.validate({ newPassword });
+      if (error) return res.status(400).json({ message: error.details[0].message });
       const decoded = jwt.verify(token, process.env.JWT_TOKEN);  
       if (!decoded) return res.status(400).json({ message: "Invalid or expired token" });
 
