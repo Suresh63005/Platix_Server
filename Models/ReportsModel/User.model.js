@@ -73,6 +73,22 @@ const User = sequelize.define("User", {
     allowNull: true,
     
   },
+  profileImage: {
+    type: DataTypes.TEXT,
+    allowNull:true
+  },
+  hospital_name: {
+    type: DataTypes.TEXT,
+    allowNull:true
+  },
+  googleMapLink: {
+    type:DataTypes.TEXT,
+    allowNull:true
+  },
+  type: {
+    type: DataTypes.STRING,
+    allowNull:true
+  }
 }, {
   tableName: "User",
   timestamps: true,
