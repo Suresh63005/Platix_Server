@@ -191,7 +191,19 @@ const Joi = require("joi");
       "string.empty": "Organization ID cannot be an empty string.",
     }),
   })
-
+  const registerSchema = Joi.object({
+    password: Joi.string()
+      .min(8)
+      .max(20)
+      .regex(/^(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/)
+      .required()
+      .messages({
+        "string.min": "Password must be at least 8 characters long",
+        "string.max": "Password cannot exceed 20 characters",
+        "string.pattern.base": "Password must contain at least 1 uppercase letter, 1 number, and 1 special character",
+        "any.required": "Password is required",
+      }),
+  });
   module.exports = {organizationTypeSchema ,organizationTypeDeleteSchema,
-    upsertOrganizationSchema,deleteOrganizationSchema,organizationGetByidSchema,ServiceDeleteSchema,ServiceSchema
+    upsertOrganizationSchema,deleteOrganizationSchema,organizationGetByidSchema,ServiceDeleteSchema,ServiceSchema,registerSchema
    };
