@@ -76,39 +76,3 @@ const sendEmail = async (to, subject, text) => {
 
 
 module.exports = {sendEmail,subscribeUser};
-
-
-// require("dotenv").config();
-// const SibApiV3Sdk = require("sib-api-v3-sdk");
-
-// const apiKey = process.env.BREVO_API_KEY;
-
-// SibApiV3Sdk.ApiClient.instance.authentications["api-key"].apiKey = apiKey;
-
-// const sendEmail = async (toEmail, subject, htmlContent) => {
-//     const tranEmailApi = new SibApiV3Sdk.TransactionalEmailsApi();
-
-//     const sender = {
-//         email: "rajeshkumar73812@gmail.com", // Replace with your verified sender email
-//         name: "Your App Name"
-//     };
-
-//     const receivers = [{ email: toEmail }];
-
-//     try {
-//         await tranEmailApi.sendTransacEmail({
-//             sender,
-//             to: receivers,
-//             subject,
-//             htmlContent,
-//         });
-
-//         console.log(`OTP email sent to ${toEmail}`);
-//         return { success: true, message: "Email sent successfully!" };
-//     } catch (error) {
-//         console.error("Failed to send email:", error.message);
-//         return { success: false, message: error.message };
-//     }
-// };
-
-// module.exports = { sendEmail,subscribeUser };
