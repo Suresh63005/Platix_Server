@@ -125,7 +125,7 @@ const getAllOrderReports = asyncHandler(async (req, res) => {
       include: [
         { model: UserReports, as: "user", attributes: ["firstName"] },
         { model: TblOrganizationType, as: "fromOrg", attributes: ["id", "organizationType"] },
-        { model: TblOrganizationType, as: "toOrg", attributes: ["id", "organizationType"] },
+        // { model: TblOrganizationType, as: "toOrg", attributes: ["id", "organizationType"] },
       ],
     });
 
@@ -136,7 +136,7 @@ const getAllOrderReports = asyncHandler(async (req, res) => {
         ...formatDateFields(reportJson, ["orderDate"]), 
         Username: reportJson.user ? reportJson.user.firstName : null, 
         FromOrganization: reportJson.fromOrg ? reportJson.fromOrg.organizationType : null, // Extract from organization
-        ToOrganization: reportJson.toOrg ? reportJson.toOrg.organizationType : null, // Extract to organization
+        // ToOrganization: reportJson.toOrg ? reportJson.toOrg.organizationType : null, // Extract to organization
       };
     });
 

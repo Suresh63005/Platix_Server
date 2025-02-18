@@ -69,6 +69,7 @@ app.use("/order",OrderRouter)
 app.use("/login",require("./userRoutes/auth/authRouter"))
 app.use("/dashboard",require("./userRoutes/DashBoard.router"))
 app.use("/profile",require("./userRoutes/Profile.router"))
+app.use("/dentist",require("./userRoutes/Dentist/Dentist.router"))
 
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);

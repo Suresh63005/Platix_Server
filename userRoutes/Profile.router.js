@@ -4,5 +4,6 @@ const profileController=require("../userControllers/Profile.Controller");
 const upload = require("../utils/multer");
 
 router.put("/edit",upload.single("profileImage"),profileController.editprofile);
+router.delete("/delete",profileController.deleteAccount);
 
 module.exports=router

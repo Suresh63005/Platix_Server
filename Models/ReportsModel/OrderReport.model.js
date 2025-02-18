@@ -1,6 +1,4 @@
 const { DataTypes } = require("sequelize");
-const UserReports = require("./User.model");
-const Organization = require("../Organization.model");
 const { sequelize } = require("../../config/db");
 
 const OrderReports = sequelize.define(
@@ -16,26 +14,49 @@ const OrderReports = sequelize.define(
       type: DataTypes.DATE,
       allowNull: false,
     },
+    orderId: {
+      type: DataTypes.STRING,
+      allowNull: true,
+    },
+
+    requiredDate: {
+      type: DataTypes.DATE,
+      allowNull: true,
+    },
+    toothName: {
+      type: DataTypes.STRING,
+      allowNull: true,
+    },
+    shades: {
+      type: DataTypes.STRING,
+      allowNull: true,
+    },
+    remarks: {
+      type: DataTypes.STRING,
+      allowNull: true,
+    },
+    reasonForScan: {
+      type: DataTypes.TEXT,
+      allowNull: true,
+    },
+    
     userUUID: {
       type: DataTypes.UUID,
-      allowNull: false,
-      
+      allowNull: true,
     },
     fromOrganization: {
       type: DataTypes.UUID,
       allowNull: false,
-      
     },
     toOrganization: {
       type: DataTypes.UUID,
       allowNull: true,
-      
     },
     orderStatus: {
-      type: DataTypes.ENUM("pending", "processing", "completed", "cancelled"),
+      type: DataTypes.ENUM( "processing", "completed", "cancelled"),
       allowNull: true,
     },
-    MobileNo: {
+    mobileNo: {
       type: DataTypes.STRING,
       allowNull: true,
     },
@@ -63,6 +84,10 @@ const OrderReports = sequelize.define(
       type: DataTypes.STRING,
       allowNull: true,
     },
+    patientId: {
+      type: DataTypes.STRING,
+      allowNull: true,
+    },
     patientName: {
       type: DataTypes.STRING,
       allowNull: true,
@@ -84,7 +109,7 @@ const OrderReports = sequelize.define(
     tableName: "OrderReports",
     timestamps: true,
     paranoid: true,
-    underscored: true, 
+    underscored: true,
     charset: "utf8mb4",
     collate: "utf8mb4_general_ci",
   }
