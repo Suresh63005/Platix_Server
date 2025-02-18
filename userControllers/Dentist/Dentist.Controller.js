@@ -251,4 +251,52 @@ const fromDentist = async (req, res) => {
     }
 };
 
-module.exports = { fromDentist,orderDetails };
+const orderReport = async (req, res) => {
+  try {
+    const { fromdate, todate } = req.params;
+
+    let whereCondition = {
+      orderStatus: {
+        [Op.eq]: "completed",
+      },
+    };
+
+    if (fromdate && todate) {
+      whereCondition.createdAt = {
+        [Op.between]: [new Date(fromdate), new Date(todate)],
+      };
+    }
+
+    else if (fromdate) {
+      whereCondition.createdAt = {
+        [Op.gte]: new Date(fromdate),
+      };
+    }
+
+    else if (todate) {
+      whereCondition.createdAt = {
+        [Op.lte]: new Date(todate),
+      };
+    }
+
+    const allOrder = await OrderReports.findAll({
+      where: whereCondition,
+    });
+
+    return res.status(200).json({
+      success: true,
+      message: "Order reports fetched successfully.",
+      data: allOrder,
+    });
+  } catch (error) {
+    console.error("Error fetching order reports:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Internal Server Error",
+      error: error.message,
+    });
+  }
+};
+
+
+module.exports = { fromDentist,orderDetails,orderReport };
