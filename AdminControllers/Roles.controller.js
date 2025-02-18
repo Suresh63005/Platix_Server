@@ -50,7 +50,7 @@ const viewRoles = async (req, res) => {
     // Format date fields before sending response
     const formattedRoles = formatDateFields(roles.map(role => role.toJSON()), ["fromdate", "todate"]);
 
-    res.status(200).json({ roles: formattedRoles });
+    res.status(200).json({ formattedRoles });
   } catch (error) {
     console.error(error);
     res.status(500).json({ message: "Server error", error: error.message });

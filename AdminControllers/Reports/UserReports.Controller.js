@@ -6,33 +6,67 @@ const { Op, where } = require("sequelize");
 const Organization = require("../../Models/Organization.model");
 const User = require("../../Models/ReportsModel/User.model");
 
-const getAllUsers =async (req, res) => {
+const getAllUsers = async (req, res) => {
     try {
-        const users = await User.findAll({
-            include: {
-                model: Roles, 
-                as: 'role', 
-                attributes: ['id', 'rolename'] 
-            }
-        });
-
-        // Convert users to JSON and format dates
-        const formattedUsers = users.map(user => {
-            const userJson = user.toJSON();
-            return {
-                ...formatDateFields(userJson, ["createdAt"]), 
-                Username: `${userJson.firstName} ${userJson.lastName}`,
-                Role: userJson.role ? userJson.role.rolename : null 
-            };
-        });
-
-        // console.log(formattedUsers);
-        res.json({ users: formattedUsers });
+      const { page = 1, limit = 10, filter = "", search = "" } = req.query;
+      const offset = (page - 1) * limit;
+  
+      const whereCondition = {};
+  
+      // Add search condition if search query exists
+      if (search) {
+        whereCondition[Op.or] = [
+          { "$role.rolename$": { [Op.like]: `%${search}%` } },
+          { "$users.firstName$": { [Op.like]: `%${search}%` } },
+          { "$users.lastName$": { [Op.like]: `%${search}%` } },
+          { "$users.username$": { [Op.like]: `%${search}%` } },
+        ];
+      }
+  
+      // Add filter condition (role filter) if filter is provided
+      if (filter) {
+        whereCondition.role_id = filter;
+      }
+  
+      // Query the users with pagination and filters
+      const users = await User.findAndCountAll({
+        where: whereCondition,
+        limit: parseInt(limit),
+        offset: parseInt(offset),
+        order: [["createdAt", "DESC"]],
+        include: {
+          model: Roles,
+          as: 'role',
+          attributes: ['id', 'rolename'],
+        },
+      });
+  
+      // Format the users
+      const formattedUsers = users.rows.map(user => {
+        const userJson = user.toJSON();
+        return {
+          ...formatDateFields(userJson, ["createdAt"]),
+          Username: `${userJson.firstName} ${userJson.lastName}`,
+          Role: userJson.role ? userJson.role.rolename : null,
+        };
+      });
+  
+      // Send the response with the formatted users and pagination info
+      res.status(200).json({
+        users: formattedUsers,
+        pagination: {
+          total: users.count,
+          page: parseInt(page),
+          limit: parseInt(limit),
+          totalPages: Math.ceil(users.count / limit),
+        },
+      });
     } catch (error) {
-        console.error("Error fetching users:", error);
-        res.status(500).json({ message: "Server error", error: error.message });
+      console.error("Error fetching users:", error);
+      res.status(500).json({ message: "Server error", error: error.message });
     }
-};
+  };
+  
 
 const getAllUsersByOrganizationName=async(req,res)=>{
     const { organization_id } = req.params;
