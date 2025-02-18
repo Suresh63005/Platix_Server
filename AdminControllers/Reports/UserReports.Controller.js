@@ -8,7 +8,7 @@ const User = require("../../Models/ReportsModel/User.model");
 
 const getAllUsers = async (req, res) => {
     try {
-      const { page = 1, limit = 10, filter = "", search = "" } = req.query;
+      const { page = 1, limit = 10, filter = "", search = "" } = req.params;
       const offset = (page - 1) * limit;
   
       const whereCondition = {};
@@ -16,12 +16,13 @@ const getAllUsers = async (req, res) => {
       // Add search condition if search query exists
       if (search) {
         whereCondition[Op.or] = [
-          { "$role.rolename$": { [Op.like]: `%${search}%` } },
-          { "$users.firstName$": { [Op.like]: `%${search}%` } },
-          { "$users.lastName$": { [Op.like]: `%${search}%` } },
-          { "$users.username$": { [Op.like]: `%${search}%` } },
+            { "$role.rolename$": { [Op.like]: `%${search}%` } },
+            { firstName: { [Op.like]: `%${search}%` } },
+            { lastName: { [Op.like]: `%${search}%` } },
+            { email: { [Op.like]: `%${search}%` } },
+            { mobileNo: { [Op.like]: `%${search}%` } }
         ];
-      }
+    }
   
       // Add filter condition (role filter) if filter is provided
       if (filter) {
@@ -68,44 +69,75 @@ const getAllUsers = async (req, res) => {
   };
   
 
-const getAllUsersByOrganizationName=async(req,res)=>{
-    const { organization_id } = req.params;
-    
+  const getAllUsersByOrganizationName = async (req, res) => {
     try {
-        const organization = await User.findOne({ where: { organization_id:organization_id } });
+        const { organization_id } = req.params;
+        const { page = 1, limit = 10, search = "", filter = "" } = req.query;
+        const offset = (page - 1) * limit;
+        
+        // Check if the organization exists
+        const organization = await Organization.findOne({ where: { id: organization_id } });
         if (!organization) {
             return res.status(404).json({ message: "Organization not found" });
         }
-        const users = await User.findAll({
-            where: {organization_id:organization_id},
+
+        const whereCondition = { organization_id };
+
+        // Apply search filter
+        if (search) {
+            whereCondition[Op.or] = [
+                { "$role.rolename$": { [Op.like]: `%${search}%` } },
+                { firstName: { [Op.like]: `%${search}%` } },
+                { lastName: { [Op.like]: `%${search}%` } },
+                { email: { [Op.like]: `%${search}%` } },
+                { mobileNo: { [Op.like]: `%${search}%` } }
+            ];
+        }
+
+        // Apply role filter
+        if (filter) {
+            whereCondition.role_id = filter;
+        }
+
+        // Fetch users with pagination and filters
+        const users = await User.findAndCountAll({
+            where: whereCondition,
+            limit: parseInt(limit),
+            offset: parseInt(offset),
+            order: [["createdAt", "DESC"]],
             include: {
-                model: Roles, 
-                as: 'role', 
-                attributes: ['id', 'rolename'] 
+                model: Roles,
+                as: 'role',
+                attributes: ['id', 'rolename']
             }
         });
 
-        if (users.length === 0) {
-            return res.status(404).json({ message: "No users found for this organization" });
-        }
-
-        const formattedUsers = users.map(user => {
+        // Format user data
+        const formattedUsers = users.rows.map(user => {
             const userJson = user.toJSON();
             return {
-                ...formatDateFields(userJson, ["createdAt"]), 
+                ...formatDateFields(userJson, ["createdAt"]),
                 Username: `${userJson.firstName} ${userJson.lastName}`,
-                Role: userJson.role ? userJson.role.rolename : null 
+                Role: userJson.role ? userJson.role.rolename : null
             };
         });
-        console.log(formattedUsers);
-        res.json({ users: formattedUsers });
 
+        // Send response
+        res.status(200).json({
+            users: formattedUsers,
+            pagination: {
+                total: users.count,
+                page: parseInt(page),
+                limit: parseInt(limit),
+                totalPages: Math.ceil(users.count / limit)
+            }
+        });
     } catch (error) {
         console.error("Error fetching users:", error);
         res.status(500).json({ message: "Server error", error: error.message });
     }
+};
 
-}
 
 const CreateUser = async (req, res) => {
     const {

@@ -78,18 +78,17 @@ const getAdminProfile = async (req, res) => {
 
 const updateAdminProfile = async (req, res) => {
   try {
-    const { name, dateOfBirth, phoneNumber,confirmPassword, email, password, } = req.body;
-    console.log(req.body,"frombodt")
+    const { name, dateOfBirth, phoneNumber, confirmPassword, email, password } = req.body;
+    console.log(req.body, "from body");
 
-    let imageURL; 
+    let imageURL;
+    console.log(req.file, "from file");
 
-    console.log(req.file, "from fileeeeeeeeeee")
-if(req.file)imageURL = await uploadToS3(req.file,"images")
+    if (req.file) imageURL = await uploadToS3(req.file, "images");
 
-  console.log(imageURL," from image")
-    
+    console.log(imageURL, "from image");
+
     const admin = await Admin.findByPk(req.admin.id);
-
     if (!admin) return res.status(404).json({ message: "Admin not found" });
 
     // Update fields if new values are provided
@@ -99,10 +98,22 @@ if(req.file)imageURL = await uploadToS3(req.file,"images")
     admin.email = email || admin.email;
     admin.profileImage = imageURL || admin.profileImage;
 
-    // Directly update the password if it is provided (no hashing here)
+    // Validate and update password
     if (confirmPassword && password) {
-      if(confirmPassword === password) admin.password = password; 
-      
+      if (confirmPassword !== password) {
+        return res.status(400).json({ message: "Passwords do not match" });
+      }
+
+      // Password validation (min 8 chars, 1 uppercase, 1 number, 1 symbol)
+      const passwordRegex = /^(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/;
+      if (!passwordRegex.test(password)) {
+        return res.status(400).json({
+          message:
+            "Password must be at least 8 characters long, contain at least one uppercase letter, one number, and one special character.",
+        });
+      }
+
+      admin.password = password; // Save the new password (consider hashing it)
     }
 
     // Save the updated admin profile
@@ -110,9 +121,10 @@ if(req.file)imageURL = await uploadToS3(req.file,"images")
 
     res.json({ message: "Profile updated successfully", admin });
   } catch (error) {
-    res.status(500).json({ message: "Server Error", error });
+    res.status(500).json({ message: "Server Error", error: error.message });
   }
 };
+
 
 const forgotPassword = async (req, res) => {
   try {
@@ -140,29 +152,41 @@ const forgotPassword = async (req, res) => {
 
 const resetPassword = async (req, res) => {
   try {
-      const { token } = req.params;  
-      const { newPassword } = req.body;  
+    const { token } = req.params;
+    const { newPassword } = req.body;
 
-      const { error } = registerSchema.validate({ newPassword });
-      if (error) return res.status(400).json({ message: error.details[0].message });
-      const decoded = jwt.verify(token, process.env.JWT_TOKEN);  
-      if (!decoded) return res.status(400).json({ message: "Invalid or expired token" });
+    // Validate password format
+    const passwordRegex = /^(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/;
+    if (!passwordRegex.test(newPassword)) {
+      return res.status(400).json({
+        message:
+          "Password must be at least 8 characters long, contain at least one uppercase letter, one number, and one special character.",
+      });
+    }
 
-      
-      const admin = await Admin.findOne({ where: { email: decoded.email } });
-      if (!admin) return res.status(404).json({ message: "Admin not found" });
+    // Verify the token
+    const decoded = jwt.verify(token, process.env.JWT_TOKEN);
+    if (!decoded) {
+      return res.status(400).json({ message: "Invalid or expired token" });
+    }
 
-     
-      // const hashedPassword = await bcrypt.hash(newPassword, 10);
+    // Find admin by email
+    const admin = await Admin.findOne({ where: { email: decoded.email } });
+    if (!admin) {
+      return res.status(404).json({ message: "Admin not found" });
+    }
 
-      
-      await admin.update({ password: newPassword });
-      console.log({"updated password":newPassword});
-      res.json({ message: "Password reset successful" });  
+    // Update the password
+    await admin.update({ password: newPassword });
+
+    console.log({ "updated password": newPassword });
+    res.json({ message: "Password reset successful" });
+
   } catch (error) {
-      console.error("Error resetting password:", error);
-      res.status(500).json({ message: "Server error", error: error.message });
+    console.error("Error resetting password:", error);
+    res.status(500).json({ message: "Server error", error: error.message });
   }
 };
+
 
 module.exports = { registerAdmin, loginAdmin, forgotPassword, resetPassword, getAdminProfile, updateAdminProfile };
