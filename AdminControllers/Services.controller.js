@@ -69,8 +69,9 @@ const getAllServices = asyncHandler(async (req, res) => {
     const offset = (pageNumber - 1) * pageSize;
     
     let whereConditions = {};
+    
     if (filter) {
-        whereConditions.servicename = filter;
+        whereConditions.id = filter;
     }
     if (search) {
         whereConditions.servicename = { [Op.like]: `%${search}%` };

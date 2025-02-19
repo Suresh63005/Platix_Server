@@ -93,7 +93,9 @@ const getAllUsers = async (req, res) => {
                 { mobileNo: { [Op.like]: `%${search}%` } }
             ];
         }
-
+        if (filter && filter !== "all") {
+            whereCondition.role_id = filter;
+        }
         // Apply role filter
         if (filter) {
             whereCondition.role_id = filter;

@@ -107,15 +107,15 @@ const getAll = async (req, res) => {
 
         // Build filter conditions
         let whereConditions = {};
-        if (filter) {
-            whereConditions.organizationType = filter;
+
+        if (filter && filter !== "all") { 
+            whereConditions.organizationType = filter; 
         }
 
         if (search) {
             whereConditions[Op.or] = [
                 { organizationType: { [Op.like]: `%${search}%` } },
                 { description: { [Op.like]: `%${search}%` } },
-                // Convert date fields to string for wildcard search
                 Sequelize.where(
                     Sequelize.fn("DATE_FORMAT", Sequelize.col("createdAt"), "%Y-%m-%d"),
                     { [Op.like]: `%${search}%` }
@@ -190,6 +190,7 @@ const getAll = async (req, res) => {
         return res.status(500).json({ message: "Internal Server Error" });
     }
 };
+
 
 const assignServiceToOrganization = async (req, res) => {
     try {
