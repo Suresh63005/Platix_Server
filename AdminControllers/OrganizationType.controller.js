@@ -62,7 +62,7 @@ const organizationDelete = async (req, res) => {
 
         const organization = await OrganizationType.findOne({ 
             where: { id }, 
-            paranoid: false, 
+            paranoid: true, 
             transaction: t  // Pass transaction
         });
 

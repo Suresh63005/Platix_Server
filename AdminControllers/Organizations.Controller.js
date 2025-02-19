@@ -64,12 +64,25 @@ const upsertOrganizations =async (req, res) => {
                 file2: file2.length > 0 ? file2.join(",") : organization.file2
             }, { transaction });
         
-           console.log("yyyyyyyyyyyyyyyyyyyyy")
+           
+
+           if (parsedServices.length === 0) {
+
+            await TblOrganization_Service.destroy({
+                where: { organization_id: id },
+                force: true,  
+                transaction
+            });
+
+           }
+
+
             if (parsedServices.length > 0) {
                
                 await TblOrganization_Service.destroy({
                     where: { organization_id: id },
-
+                    force: true,  
+                    transaction
                 });
         
                 const serviceData = parsedServices.map(service => ({
@@ -78,7 +91,7 @@ const upsertOrganizations =async (req, res) => {
                     price: service.price
                 }));
         
-                await TblOrganization_Service.bulkCreate(serviceData,);
+                await TblOrganization_Service.bulkCreate(serviceData,{ transaction });
             }
         
             await transaction.commit();
@@ -187,7 +200,7 @@ const deleteOrganization = async (req, res) => {
         const { forceDelete } = req.query;
 
         // Find the parent organization
-        const organization = await Organization.findOne({ where: { id }, paranoid: false, transaction: t });
+        const organization = await Organization.findOne({ where: { id }, paranoid: true, transaction: t });
 
         if (!organization) {
             await t.rollback();
