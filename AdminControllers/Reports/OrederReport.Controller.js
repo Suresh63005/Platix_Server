@@ -5,6 +5,8 @@ const UserReports = require("../../Models/ReportsModel/User.model");
 const Organization = require("../../Models/Organization.model");
 const TblOrganizationType = require("../../Models/TblOrganizationType.model");
 const { formatDateFields } = require("../../helper/formatedDate");
+const Roles = require("../../Models/TblRoles.model");
+const { Op } = require("sequelize");
 
 // ✅ Create or Update Order Report
 const upsertOrderReport = asyncHandler(async (req, res) => {
@@ -147,7 +149,44 @@ const getAllOrderReports = asyncHandler(async (req, res) => {
   }
 });
 
+const filterByOrderDate = async (req, res) => {
+  try {
+      const { fromDate, toDate } = req.params;
+      console.log(req.params)
+
+      if (!fromDate || !toDate) {
+          return res.status(400).json({ message: "Both fromDate and toDate are required." });
+      }
+
+      const from = new Date(fromDate); // with time zone
+      const to = new Date(toDate);
+
+      if (isNaN(from.getTime()) || isNaN(to.getTime())) {
+          return res.status(400).json({ message: "Invalid date format." });
+      }
+      to.setHours(23, 59, 59, 999); // h-m-s-ms
+      const orders = await OrderReports.findAll({
+          where: {
+              createdAt: {
+                  [Op.gte]: from, 
+                  [Op.lte]: to    
+              }
+          },
+         
+      });
+
+
+
+      res.json({ data: orders });
+
+  } catch (error) {
+      console.error("Error fetching users by date:", error);
+      res.status(500).json({ message: "Server error", error: error.message });
+  }
+};
+
 module.exports = {
   upsertOrderReport,
   getAllOrderReports,
+  filterByOrderDate
 };

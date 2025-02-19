@@ -1,7 +1,7 @@
 const { DataTypes } = require("sequelize");
 const { sequelize } = require("../config/db");
 
-const Services = sequelize.define("TblServices", {
+const Services = sequelize.define("Services", {
   id: {
     type: DataTypes.UUID,
     allowNull: false,
@@ -25,6 +25,13 @@ const Services = sequelize.define("TblServices", {
     type: DataTypes.DATE,
     allowNull: false,
   },
+},
+{
+  tableName: "Services",
+  timestamps: true,
+  paranoid: true, 
+  charset: "utf8mb4",
+  collate: "utf8mb4_general_ci",
 });
 
 module.exports = Services;

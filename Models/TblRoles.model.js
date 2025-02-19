@@ -2,7 +2,7 @@ const { DataTypes } = require("sequelize");
 const { sequelize } = require("../config/db");
 
 const Roles = sequelize.define(
-    "TblRoles",
+    "Roles",
     {
       id: {
         type: DataTypes.UUID,
@@ -25,7 +25,7 @@ const Roles = sequelize.define(
       },
     },
     {
-      tableName: "TblRoles",
+      tableName: "Roles",
       timestamps: true,
       paranoid: true, // Soft deletes: includes deletedAt field
       charset: "utf8mb4",
