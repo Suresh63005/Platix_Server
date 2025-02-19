@@ -3,7 +3,7 @@ const { sequelize } = require("../config/db");
 const Organization = require('./Organization.model');
 const Services = require('./TblServices.model');
 
-const TblOrganization_Service = sequelize.define("TblOrganization_Service", {
+const TblOrganization_Service = sequelize.define("Organization_Service", {
     id: {
         type: DataTypes.UUID,
         allowNull: false,
@@ -13,7 +13,6 @@ const TblOrganization_Service = sequelize.define("TblOrganization_Service", {
     organization_id: {
         type: DataTypes.UUID,
         allowNull: false,
-       
     },
     service_id: {
         type: DataTypes.UUID,
@@ -25,7 +24,7 @@ const TblOrganization_Service = sequelize.define("TblOrganization_Service", {
         allowNull: false
     },
 }, {
-      tableName: 'TblOrganization_Service' ,
+      tableName: 'Organization_Service' ,
       timestamps: true,
       paranoid: true,
       charset: "utf8mb4",

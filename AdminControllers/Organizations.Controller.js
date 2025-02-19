@@ -18,6 +18,7 @@ const upsertOrganizations =async (req, res) => {
     console.log(req.body)
 
     const parsedServices = typeof services === "string" ? JSON.parse(services) : services;
+    console.log(parsedServices,"from servicesssssssssssssss");
     
     if (!Array.isArray(parsedServices)) {
         return res.status(400).json({ error: "Invalid services format" });
@@ -63,22 +64,21 @@ const upsertOrganizations =async (req, res) => {
                 file2: file2.length > 0 ? file2.join(",") : organization.file2
             }, { transaction });
         
-            // Update TblOrganization_Service
+           console.log("yyyyyyyyyyyyyyyyyyyyy")
             if (parsedServices.length > 0) {
-                // Delete old services for this organization
+               
                 await TblOrganization_Service.destroy({
                     where: { organization_id: id },
-                    transaction
+
                 });
         
-                // Insert new services
                 const serviceData = parsedServices.map(service => ({
                     organization_id: id,
                     service_id: service.id,
                     price: service.price
                 }));
         
-                await TblOrganization_Service.bulkCreate(serviceData, { transaction });
+                await TblOrganization_Service.bulkCreate(serviceData,);
             }
         
             await transaction.commit();

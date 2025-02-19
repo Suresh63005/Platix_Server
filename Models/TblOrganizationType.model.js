@@ -3,7 +3,7 @@ const { sequelize } = require("../config/db");
 const { v4: uuidv4 } = require("uuid");
 
 const TblOrganizationType = sequelize.define(
-  "TblOrganizationType",
+  "OrganizationType",
   {
     id: {
       type: DataTypes.UUID,
@@ -34,7 +34,7 @@ const TblOrganizationType = sequelize.define(
     }
   },
   {
-    tableName: "TblOrganizationType",
+    tableName: "OrganizationType",
     timestamps: true,
     paranoid: true,
     charset: "utf8mb4",
