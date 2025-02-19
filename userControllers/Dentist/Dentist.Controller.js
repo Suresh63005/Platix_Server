@@ -8,17 +8,17 @@ const User = require("../../Models/ReportsModel/User.model");
 const { sequelize } = require("../../config/db");
 
 const fromDentist = async (req, res) => {
-  const transaction = await sequelize.transaction();
+  const transaction = await sequelize.transaction();  // Start a new transaction
 
   try {
     const {
-      id,
+      id, // ID may or may not be provided for update
       fromOrganization,
       patientName,
       orderId,
       patientId,
       toOrganization,
-      serviceId = [],
+      serviceId,
       orderDate,
       requiredDate,
       toothName,
@@ -35,32 +35,15 @@ const fromDentist = async (req, res) => {
       order_status,
     } = req.body;
 
-    const isCancel = req.params.cancel === "cancel";
-    const genereateUniqueId=async(field,model)=>{
-      let uniqueId;
-      let exists;
-      do{
-        uniqueId=`#${Math.floor(100000000 + Math.random() * 900000000)}`
-        exists=await model.findOne({where:{[field] : uniqueId}})
-      } while(exists){
-        return uniqueId;
-      }
-    }
-
     let orderReport;
-
-    if (req.method === "POST") {
+      // POST logic: Create or update an order
       if (id) {
         // Update existing order
         orderReport = await OrderReports.findByPk(id, { transaction });
 
-        if (!orderReport) {
-          return res.status(404).json({ success: false, message: "Order not found." });
-        }
-
-        console.log(`Updating order ${id}`);
-        await orderReport.update(
-          {
+        if (orderReport) {
+          console.log(`Updating order ${id}`);
+          await orderReport.update({
             fromOrganization,
             patientName,
             orderId,
@@ -73,73 +56,88 @@ const fromDentist = async (req, res) => {
             remarks,
             reasonForScan,
             userUUID,
-            subTotal: sub_total,
+            sub_total,
             tax,
-            serviceCharges: service_charges,
-            paidAmount: paid_amount,
-            totalAmount: total_amount,
-            paymentMethod: payment_method,
-            orderStatus: order_status,
-          },
-          { transaction }
-        );
+            service_charges,
+            paid_amount,
+            total_amount,
+            payment_method,
+            order_status,
+          }, { transaction });
+        } else {
+          console.log(`Order with id ${id} not found`);
+          return res.status(404).json({ success: false, message: "Order not found." });
+        }
       } else {
-        const uniqueOrderId=orderId ||  (await genereateUniqueId("orderId",OrderReports))
-        const uniquePatientId =orderId ||  (await genereateUniqueId("patientId",OrderReports))
-        // Create new order
+        // Create a new order if no id is provided
         console.log("Creating a new order");
-        orderReport = await OrderReports.create(
-          {
-            fromOrganization,
-            patientName,
-            orderId : uniqueOrderId,
-            patientId : uniquePatientId ,
-            toOrganization,
-            orderDate,
-            requiredDate,
-            toothName,
-            shades,
-            remarks,
-            reasonForScan,
-            userUUID,
-            subTotal: sub_total,
-            tax,
-            serviceCharges: service_charges,
-            paidAmount: paid_amount,
-            totalAmount: total_amount,
-            paymentMethod: payment_method,
-            orderStatus: order_status,
-          },
-          { transaction }
-        );
+        orderReport = await OrderReports.create({
+          fromOrganization,
+          patientName,
+          orderId,
+          patientId,
+          toOrganization,
+          orderDate,
+          requiredDate,
+          toothName,
+          shades,
+          remarks,
+          reasonForScan,
+          userUUID,
+          sub_total,
+          tax,
+          service_charges,
+          paid_amount,
+          total_amount,
+          payment_method,
+          order_status,
+        }, { transaction });
       }
 
-      // Handle order services if provided
-      if (serviceId.length > 0) {
-        console.log(`Managing services for order ${orderReport.id}`);
+    //   if (serviceId && serviceId.length > 0) {
+    //     console.log(`Handling services for order ${orderReport.id}`);
+    
+    //     // Delete existing services for this order (if any)
+    //     await OrderServices.destroy({ where: { orderId: orderReport.id }, transaction });
+    
+    //     // Add new services
+    //     await Promise.all(
+    //         serviceId.map(async (item) => {
+    //             let service = await TblOrganization_Service.findOne({
+    //                 where: {
+    //                     service_id: item.id,
+    //                     organization_id: fromOrganization, // Ensure service belongs to the organization
+    //                 },
+    //                 transaction
+    //             });
+    
+    //             // If service is not found, create it in TblOrganization_Service
+    //             if (!service) {
+    //                 console.log(`Service with ID ${item.id} not found. Creating new entry...`);
+    //                 service = await TblOrganization_Service.create({
+    //                     id: item.id,  // Ensure the ID matches the expected UUID format
+    //                     service_id: item.id,
+    //                     organization_id: fromOrganization,
+    //                     price: 0, // Set a default price, update later if needed
+    //                 }, { transaction });
+    //             }
+    
+    //             // Ensure numeric calculation
+    //             const price = parseFloat(service.price) * parseInt(item.quantity);
+    
+    //             // Insert into OrderServices
+    //             await OrderServices.create({
+    //                 orderId: orderReport.id,
+    //                 orgserviceId: service.id, // Use the primary key of TblOrganization_Service
+    //                 quantity: item.quantity,
+    //                 price: price,
+    //             }, { transaction });
+    //         })
+    //     );
+    // }
+    
 
-        // Remove existing services for this order
-        await OrderServices.destroy({ where: { orderId: orderReport.id }, transaction });
-
-        // Add new services
-        const servicesToAdd = await Promise.all(
-          serviceId.map(async (item) => {
-            const service = await TblOrganization_Service.findByPk(item.id, { transaction });
-
-            if (!service) throw new Error(`Service with ID ${item.id} not found`);
-
-            return {
-              orderId: orderReport.id,
-              orgserviceId: item.id,
-              quantity: item.quantity,
-              price: service.price * item.quantity,
-            };
-          })
-        );
-
-        await OrderServices.bulkCreate(servicesToAdd, { transaction });
-      }
-
+      // Commit the transaction after success
       await transaction.commit();
 
       return res.status(200).json({
@@ -147,41 +145,14 @@ const fromDentist = async (req, res) => {
         message: "Order processed successfully.",
         data: orderReport,
       });
-    }
 
-    if (req.method === "PUT" && isCancel) {
-      // Cancel an order
-      console.log(`Cancelling order with id ${id}`);
-      orderReport = await OrderReports.findByPk(id, { transaction });
-
-      if (!orderReport) {
-        return res.status(404).json({ success: false, message: "Order not found." });
-      }
-
-      if (orderReport.orderStatus === "cancelled") {
-        return res.status(400).json({ success: false, message: "Order is already cancelled." });
-      }
-
-      await orderReport.update({ orderStatus: "cancelled" }, { transaction });
-
-      await transaction.commit();
-
-      return res.status(200).json({
-        success: true,
-        message: "Order cancelled successfully.",
-        data: orderReport,
-      });
-    }
-
-    return res.status(400).json({ success: false, message: "Invalid request method." });
+    
   } catch (error) {
+    // Rollback the transaction if there is any error
     await transaction.rollback();
-    console.error("Error processing order:", error);
-    return res.status(500).json({
-      success: false,
-      message: "Internal server error",
-      error: error.message,
-    });
+
+    console.error("Error processing Order:", error);
+    res.status(500).json({ success: false, message: "Internal server error", error: error.message });
   }
 };
 
@@ -251,52 +222,6 @@ const fromDentist = async (req, res) => {
     }
 };
 
-const orderReport = async (req, res) => {
-  try {
-    const { fromdate, todate } = req.params;
-
-    let whereCondition = {
-      orderStatus: {
-        [Op.eq]: "completed",
-      },
-    };
-
-    if (fromdate && todate) {
-      whereCondition.createdAt = {
-        [Op.between]: [new Date(fromdate), new Date(todate)],
-      };
-    }
-
-    else if (fromdate) {
-      whereCondition.createdAt = {
-        [Op.gte]: new Date(fromdate),
-      };
-    }
-
-    else if (todate) {
-      whereCondition.createdAt = {
-        [Op.lte]: new Date(todate),
-      };
-    }
-
-    const allOrder = await OrderReports.findAll({
-      where: whereCondition,
-    });
-
-    return res.status(200).json({
-      success: true,
-      message: "Order reports fetched successfully.",
-      data: allOrder,
-    });
-  } catch (error) {
-    console.error("Error fetching order reports:", error);
-    return res.status(500).json({
-      success: false,
-      message: "Internal Server Error",
-      error: error.message,
-    });
-  }
-};
 
 
-module.exports = { fromDentist,orderDetails,orderReport };
+module.exports = { fromDentist,orderDetails };
