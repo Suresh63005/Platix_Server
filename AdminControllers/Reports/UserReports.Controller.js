@@ -153,7 +153,7 @@ const CreateUser = async (req, res) => {
         address = "SR NAGAR",
         startDate = "2021-09-01", // Fixed incorrect backticks
         designation,
-        organizationType_id =2,
+        // organizationType_id =2,
         organization_id 
     } = req.body;
     // console.log(req.body)
@@ -183,7 +183,7 @@ const CreateUser = async (req, res) => {
                 address,
                 startDate :startDate || "2021-09-01",
                 designation,
-                organizationType_id,
+                // organizationType_id,
                 organization_id
             });
             await t.commit()
@@ -202,7 +202,7 @@ const CreateUser = async (req, res) => {
                 address,
                 startDate,
                 designation,
-                organizationType_id,
+                // organizationType_id,
                 organization_id
             });
             await t.commit()

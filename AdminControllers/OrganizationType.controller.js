@@ -180,6 +180,7 @@ const getAll = async (req, res) => {
         );
 
         // Send back the response with the organization data and total count
+        console.log(formattedOrganizations)
         return res.status(200).json({
             results: formattedOrganizations,
             totalCount: totalCount,
