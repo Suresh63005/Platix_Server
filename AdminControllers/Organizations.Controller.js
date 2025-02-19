@@ -119,57 +119,60 @@ const upsertOrganizations =async (req, res) => {
 };
 
 const getAll = async (req, res) => {
-    console.log("xdfhcjgkllhvgjcf")
-  const { page = 1, limit = 10, filter = "", search = "" } = req.query;
-  console.log(req.query);
-  const offset = (page - 1) * limit;
-
-  const whereCondition = {};  
-
-  if (search) {
-    console.log(1)
-    whereCondition[Op.or] = [
-      { "$organizationType.organizationType$": { [Op.like]: `%${search}%` } }, // Corrected search for organizationType name
-      { name: { [Op.like]: `%${search}%` } },  // Searching for organization name
-      { mobile: { [Op.like]: `%${search}%` } },  // Searching for mobile number
-      { description: { [Op.like]: `%${search}%` } },  // Searching for description
-    ];
-  }
-
-  if (filter) {
-    whereCondition.organizationType_id = filter;
-  }
-
-  try {
-    const { rows: organizations, count: total } = await Organization.findAndCountAll({
-      where: whereCondition,
-      limit: parseInt(limit),
-      offset: parseInt(offset),
-      order: [["createdAt", "DESC"]],
-      include: [
-        {
-          model: TblOrganizationType,
-          as: "organizationType",  
-          attributes: ["id", "organizationType"]
-        }
-      ]
-    });
-
-    res.status(200).json({
-      message: "All Organizations Retrieved",
-      data: organizations,
-      pagination: {
-        total,
-        page: parseInt(page),
+    console.log("Fetching organizations...");
+  
+    const { page = 1, limit = 10, filter = "", search = "" } = req.query;
+    console.log(req.query);
+    const offset = (page - 1) * limit;
+  
+    const whereCondition = {};  
+  
+    if (search) {
+      console.log("Applying search filter...");
+      whereCondition[Op.or] = [
+        { "$organizationType.organizationType$": { [Op.like]: `%${search}%` } }, 
+        { name: { [Op.like]: `%${search}%` } },
+        { mobile: { [Op.like]: `%${search}%` } },
+        { description: { [Op.like]: `%${search}%` } },
+      ];
+    }
+  
+    // If filter is not "all" and is not empty, apply filtering
+    if (filter && filter !== "all") {
+      whereCondition.organizationType_id = filter;
+    }
+  
+    try {
+      const { rows: organizations, count: total } = await Organization.findAndCountAll({
+        where: whereCondition,
         limit: parseInt(limit),
-        totalPages: Math.ceil(total / limit),
-      },
-    });
-  } catch (error) {
-    console.error("Error fetching organizations:", error);
-    res.status(500).json({ message: "Server error", error: error.message });
-  }
-};
+        offset: parseInt(offset),
+        order: [["createdAt", "DESC"]],
+        include: [
+          {
+            model: TblOrganizationType,
+            as: "organizationType",  
+            attributes: ["id", "organizationType"]
+          }
+        ]
+      });
+  
+      res.status(200).json({
+        message: "All Organizations Retrieved",
+        data: organizations,
+        pagination: {
+          total,
+          page: parseInt(page),
+          limit: parseInt(limit),
+          totalPages: Math.ceil(total / limit),
+        },
+      });
+    } catch (error) {
+      console.error("Error fetching organizations:", error);
+      res.status(500).json({ message: "Server error", error: error.message });
+    }
+  };
+  
 
 
 const deleteOrganization = async (req, res) => {
