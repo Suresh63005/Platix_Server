@@ -126,8 +126,8 @@ const getAllOrderReports = asyncHandler(async (req, res) => {
     const orderReports = await OrderReports.findAll({
       include: [
         { model: UserReports, as: "user", attributes: ["firstName"] },
-        { model: TblOrganizationType, as: "fromOrg", attributes: ["id", "organizationType"] },
-        // { model: TblOrganizationType, as: "toOrg", attributes: ["id", "organizationType"] },
+        { model: Organization, as: "fromOrg", attributes: ["id", "name"] },
+        { model: Organization, as: "toOrg", attributes: ["id", "name"] },
       ],
     });
 

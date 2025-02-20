@@ -197,23 +197,33 @@ const assignServiceToOrganization = async (req, res) => {
     try {
         const { organizationType_id, service_id } = req.body;
 
-        console.log(req.body, "from sureshhhhhhhhhhhhh");
-
-        // Validate input
-        if (!organizationType_id || !Array.isArray(service_id) || service_id?.length === 0) {
+        
+        if (!organizationType_id || !Array.isArray(service_id) || service_id.length === 0) {
             return res.status(400).json({ message: "Organization ID and Service IDs are required." });
         }
 
-        // Find the organization type by ID
+        
         const orgType = await TblOrganizationType.findByPk(organizationType_id);
         if (!orgType) {
             return res.status(404).json({ message: "Organization type not found." });
         }
 
-        // Update the service_id field as a JSON array
-        await orgType.update({ service_id: JSON.stringify(service_id) });
+        
+        let existingServices = [];
+        if (orgType.service_id) {
+            try {
+                existingServices = JSON.parse(orgType.service_id); // Convert stored JSON string to an array
+            } catch (error) {
+                return res.status(500).json({ message: "Invalid service_id format in database." });
+            }
+        }
 
-    
+        // Merge existing and new services, avoiding duplicates
+        const updatedServices = [...new Set([...existingServices, ...service_id])];
+
+        // Update the service_id field as a JSON array
+        await orgType.update({ service_id: JSON.stringify(updatedServices) });
+
         return res.status(200).json({
             message: "Service assigned to organization type successfully.",
             orgType
@@ -223,6 +233,7 @@ const assignServiceToOrganization = async (req, res) => {
         return res.status(500).json({ message: "Internal Server Error" });
     }
 };
+
 
 
 // Fetch the updated organization type with associated services

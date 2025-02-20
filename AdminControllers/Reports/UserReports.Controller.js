@@ -35,11 +35,14 @@ const getAllUsers = async (req, res) => {
         limit: parseInt(limit),
         offset: parseInt(offset),
         order: [["createdAt", "DESC"]],
-        include: {
-          model: Roles,
+        include: [
+          {model: Roles,
           as: 'role',
-          attributes: ['id', 'rolename'],
-        },
+          attributes: ['id', 'rolename'],},
+          {model: Organization,
+          as: 'organization',
+          attributes: ['id', 'name'],},
+        ]
       });
   
       // Format the users
