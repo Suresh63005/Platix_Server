@@ -152,13 +152,12 @@ const getAllOrderReports = asyncHandler(async (req, res) => {
 const filterByOrderDate = async (req, res) => {
   try {
       const { fromDate, toDate } = req.params;
-      console.log(req.params)
+      console.log(req.params);
 
       if (!fromDate || !toDate) {
           return res.status(400).json({ message: "Both fromDate and toDate are required." });
       }
-
-      const from = new Date(fromDate); // with time zone
+      const from = new Date(fromDate);
       const to = new Date(toDate);
 
       if (isNaN(from.getTime()) || isNaN(to.getTime())) {
@@ -172,6 +171,11 @@ const filterByOrderDate = async (req, res) => {
                   [Op.lte]: to    
               }
           },
+          include: [
+            { model: UserReports, as: "user", attributes: ["firstName"] },
+            { model: Organization, as: "fromOrg", attributes: ["id", "name"] },
+            { model: Organization, as: "toOrg", attributes: ["id", "name"] },
+          ],
          
       });
 
