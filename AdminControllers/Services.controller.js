@@ -2,7 +2,7 @@ const { formatDateFields } = require("../helper/formatedDate");
 const asyncHandler = require("../Middlewares/errorHandler");
 const { ServiceDeleteSchema,ServiceSchema } = require("../Middlewares/validation");
 const Services = require("../Models/TblServices.model");
-const { Op } = require("sequelize");
+const { Op, Sequelize } = require("sequelize");
 
 // Upsert (Create or Update) Service
 const upsertService = asyncHandler(async (req, res) => {
@@ -74,8 +74,23 @@ const getAllServices = asyncHandler(async (req, res) => {
         whereConditions.id = filter;
     }
     if (search) {
-        whereConditions.servicename = { [Op.like]: `%${search}%` };
+      whereConditions[Op.or] = [
+        { servicename: { [Op.like]: `%${search}%` } },
+        Sequelize.where(
+          Sequelize.fn("DATE_FORMAT", Sequelize.col("createdAt"), "%Y-%m-%d"),
+          { [Op.like]: `%${search}%` }
+        ),
+        Sequelize.where(
+          Sequelize.fn("DATE_FORMAT", Sequelize.col("fromdate"), "%Y-%m-%d"),
+          { [Op.like]: `%${search}%` }
+        ),
+        Sequelize.where(
+          Sequelize.fn("DATE_FORMAT", Sequelize.col("todate"), "%Y-%m-%d"),
+          { [Op.like]: `%${search}%` }
+        )
+      ];
     }
+    
     
     const { count, rows: services } = await Services.findAndCountAll({
         where: whereConditions,
