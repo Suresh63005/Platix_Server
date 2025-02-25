@@ -13,9 +13,9 @@ const upsertOrganizations =async (req, res) => {
     const {
         id, address, businessName, description, designation, email, googleCoordinates,
         gstNumber, mobile, name, registrationId, organizationType_id, whatsapp, bankName, accountNumber,
-        accountHolder, ifscCode, upiId, services
+        accountHolder, ifscCode, upiId, services,fileextras
     } = req.body;
-    console.log(req.body)
+    
 
     const parsedServices = typeof services === "string" ? JSON.parse(services) : services;
     
@@ -25,18 +25,18 @@ const upsertOrganizations =async (req, res) => {
     }
 
     let file1 = null;
-    let file2 = [];
+    let files = [];
 
     // Upload file1 to S3 (single file)
     if (req.files?.file1) {
         file1 = await uploadToS3(req.files.file1[0], "organization");
     }
 
-    // Upload file2 to S3 (multiple files)
+    // Upload files to S3 (multiple files)
     if (req.files?.file2) {
         for (const file of req.files.file2) {
             const uploadedUrl = await uploadToS3(file, "Extraorganization");
-            file2.push(uploadedUrl);
+            files.push(uploadedUrl);
         }
     }
 
@@ -48,24 +48,66 @@ const upsertOrganizations =async (req, res) => {
         if (id) {
             // Find the organization
             organization = await Organization.findByPk(id, { transaction });
+
+
         
             if (!organization) {
                 await transaction.rollback();
                 return res.status(404).json({ error: "Organization not found" });
             }
+
+            
+
+                await organization.update({
+                    address, businessName, description, designation, email,
+                    googleCoordinates: JSON.parse(googleCoordinates),
+                    gstNumber, mobile, name, registrationId, organizationType_id, whatsapp, 
+                    bankName, accountNumber, accountHolder, ifscCode, upiId,
+                    file1: file1 || organization.file1,
+                    file2:  fileextras
+                }, { transaction }); 
+
+            
+            
+            if(files.length > 0){
+
+                let existingImages = organization.file2 ? organization.file2.split(",") : [];
+                let updatedImages = [...existingImages, ...files];
+          
+                // Remove duplicates and limit to 3 images
+                updatedImages = Array.from(new Set(updatedImages)).slice(0, 3);
+          
+                // Update organization details
+                await organization.update({
+                  address,
+                  businessName,
+                  description,
+                  designation,
+                  email,
+                  googleCoordinates: JSON.parse(googleCoordinates),
+                  gstNumber,
+                  mobile,
+                  name,
+                  registrationId,
+                  organizationType_id,
+                  whatsapp,
+                  bankName,
+                  accountNumber,
+                  accountHolder,
+                  ifscCode,
+                  upiId,
+                  file1: file1 || organization.file1,
+                  file2: updatedImages.join(",")
+                }, { transaction });
+
+            }
+
+               
+            
         
             // Update organization details
-            await organization.update({
-                address, businessName, description, designation, email,
-                googleCoordinates: JSON.parse(googleCoordinates),
-                gstNumber, mobile, name, registrationId, organizationType_id, whatsapp, 
-                bankName, accountNumber, accountHolder, ifscCode, upiId,
-                file1: file1 || organization.file1,
-                file2: file2.length > 0 ? file2.join(",") : organization.file2
-            }, { transaction });
+            
         
-           
-
            if (parsedServices.length === 0) {
 
             await TblOrganization_Service.destroy({
@@ -75,7 +117,6 @@ const upsertOrganizations =async (req, res) => {
             });
 
            }
-
 
             if (parsedServices.length > 0) {
                
@@ -104,7 +145,7 @@ const upsertOrganizations =async (req, res) => {
                 googleCoordinates: JSON.parse(googleCoordinates),
                 gstNumber, mobile, name, registrationId, organizationType_id, whatsapp,
                 bankName, accountNumber, accountHolder, ifscCode, upiId,
-                file1, file2: file2.join(",")
+                file1, file2: files.join(",")
             }, { transaction });
 
             console.log("Created Organization:", organization); // Log new organization
