@@ -18,7 +18,7 @@ const upsertOrganizations =async (req, res) => {
     console.log(req.body)
 
     const parsedServices = typeof services === "string" ? JSON.parse(services) : services;
-    console.log(parsedServices,"from servicesssssssssssssss");
+    
     
     if (!Array.isArray(parsedServices)) {
         return res.status(400).json({ error: "Invalid services format" });
