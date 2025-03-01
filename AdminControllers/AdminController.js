@@ -178,6 +178,7 @@ const resetPassword = async (req, res) => {
 
     // Update the password
     await admin.update({ password: newPassword });
+    
 
     console.log({ "updated password": newPassword });
     res.json({ message: "Password reset successful" });
