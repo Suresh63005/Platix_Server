@@ -126,8 +126,14 @@ const getAllOrderReports = asyncHandler(async (req, res) => {
     const orderReports = await OrderReports.findAll({
       include: [
         { model: UserReports, as: "user", attributes: ["firstName"] },
-        { model: TblOrganizationType, as: "fromOrg", attributes: ["id", "organizationType"] },
-        // { model: TblOrganizationType, as: "toOrg", attributes: ["id", "organizationType"] },
+        { 
+          model: Organization, 
+          as: "fromOrg", 
+          include: [
+            { model: TblOrganizationType, as: "organizationType", attributes: ["id", "organizationType"] }
+          ] 
+        },
+        // { model: TblOrganizationType, as: "toOrg", attributes: ["id", "organizationType"] }, // Uncomment if needed
       ],
     });
 
@@ -137,8 +143,8 @@ const getAllOrderReports = asyncHandler(async (req, res) => {
       return {
         ...formatDateFields(reportJson, ["orderDate"]), 
         Username: reportJson.user ? reportJson.user.firstName : null, 
-        FromOrganization: reportJson.fromOrg ? reportJson.fromOrg.organizationType : null, // Extract from organization
-        // ToOrganization: reportJson.toOrg ? reportJson.toOrg.organizationType : null, // Extract to organization
+        FromOrganization: reportJson.fromOrg && reportJson.fromOrg.organizationType ? reportJson.fromOrg.organizationType.organizationType : null, // Access nested organizationType
+        // ToOrganization: reportJson.toOrg && reportJson.toOrg.organizationType ? reportJson.toOrg.organizationType.organizationType : null, // Access nested organizationType if needed
       };
     });
 
@@ -148,6 +154,7 @@ const getAllOrderReports = asyncHandler(async (req, res) => {
     res.status(500).json({ error: "Internal Server Error" });
   }
 });
+
 
 const filterByOrderDate = async (req, res) => {
   try {
