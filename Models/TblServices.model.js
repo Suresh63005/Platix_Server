@@ -23,7 +23,7 @@ const Services = sequelize.define("Services", {
   },
   todate: {
     type: DataTypes.DATE,
-    allowNull: false,
+    allowNull: true,
   },
 },
 {

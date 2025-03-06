@@ -11,32 +11,39 @@ const Services = require("../Models/TblServices.model");
 // Upsert (Create or Update) Organization
 const upsertOrganizations =async (req, res) => {
     const {
-        id, address, businessName, description, designation, email, googleCoordinates,
+        id, addresses, businessName, description, designation, email, googleCoordinates,
         gstNumber, mobile, name, registrationId, organizationType_id, whatsapp, bankName, accountNumber,
-        accountHolder, ifscCode, upiId, services
+        accountHolder, ifscCode, upiId, services,fileextras
     } = req.body;
-    console.log(req.body)
+
+    console.log(typeof addresses,"addresssssssssssssssssssssssssssss");
+    console.log(req.body,"bodyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyy");
+    
+    
 
     const parsedServices = typeof services === "string" ? JSON.parse(services) : services;
-    console.log(parsedServices,"from servicesssssssssssssss");
+    // const parsedAddress = typeof address === "string" ? JSON.parse(address) : address;
     
     if (!Array.isArray(parsedServices)) {
         return res.status(400).json({ error: "Invalid services format" });
     }
+    // if (!Array.isArray(parsedAddress)) {
+    //     return res.status(400).json({ error: "Invalid addres format" });
+    // }
 
     let file1 = null;
-    let file2 = [];
+    let files = [];
 
     // Upload file1 to S3 (single file)
     if (req.files?.file1) {
         file1 = await uploadToS3(req.files.file1[0], "organization");
     }
 
-    // Upload file2 to S3 (multiple files)
+    // Upload files to S3 (multiple files)
     if (req.files?.file2) {
         for (const file of req.files.file2) {
             const uploadedUrl = await uploadToS3(file, "Extraorganization");
-            file2.push(uploadedUrl);
+            files.push(uploadedUrl);
         }
     }
 
@@ -48,28 +55,76 @@ const upsertOrganizations =async (req, res) => {
         if (id) {
             // Find the organization
             organization = await Organization.findByPk(id, { transaction });
+
+
         
             if (!organization) {
                 await transaction.rollback();
                 return res.status(404).json({ error: "Organization not found" });
             }
-        
-            // Update organization details
-            await organization.update({
-                address, businessName, description, designation, email,
-                googleCoordinates: JSON.parse(googleCoordinates),
-                gstNumber, mobile, name, registrationId, organizationType_id, whatsapp, 
-                bankName, accountNumber, accountHolder, ifscCode, upiId,
-                file1: file1 || organization.file1,
-                file2: file2.length > 0 ? file2.join(",") : organization.file2
-            }, { transaction });
-        
-           console.log("yyyyyyyyyyyyyyyyyyyyy")
+
+            
+
+                await organization.update({
+                    address:addresses, businessName, description, designation, email,
+                    googleCoordinates: JSON.parse(googleCoordinates),
+                    gstNumber, mobile, name, registrationId, organizationType_id, whatsapp, 
+                    bankName, accountNumber, accountHolder, ifscCode, upiId,
+                    file1: file1 || organization.file1,
+                    file2:  fileextras
+                }, { transaction }); 
+
+            
+            
+            if(files.length > 0){
+
+                let existingImages = organization.file2 ? organization.file2.split(",") : [];
+                let updatedImages = [...existingImages, ...files];
+          
+                // Remove duplicates and limit to 3 images
+                updatedImages = Array.from(new Set(updatedImages)).slice(0, 3);
+          
+                // Update organization details
+                await organization.update({
+                    address:addresses,
+                  businessName,
+                  description,
+                  designation,
+                  email,
+                  googleCoordinates: JSON.parse(googleCoordinates),
+                  gstNumber,
+                  mobile,
+                  name,
+                  registrationId,
+                  organizationType_id,
+                  whatsapp,
+                  bankName,
+                  accountNumber,
+                  accountHolder,
+                  ifscCode,
+                  upiId,
+                  file1: file1 || organization.file1,
+                  file2: updatedImages.join(",")
+                }, { transaction });
+
+            }
+
+           if (parsedServices.length === 0) {
+
+            await TblOrganization_Service.destroy({
+                where: { organization_id: id },
+                force: true,  
+                transaction
+            });
+
+           }
+
             if (parsedServices.length > 0) {
                
                 await TblOrganization_Service.destroy({
                     where: { organization_id: id },
-
+                    force: true,  
+                    transaction
                 });
         
                 const serviceData = parsedServices.map(service => ({
@@ -78,7 +133,7 @@ const upsertOrganizations =async (req, res) => {
                     price: service.price
                 }));
         
-                await TblOrganization_Service.bulkCreate(serviceData,);
+                await TblOrganization_Service.bulkCreate(serviceData,{ transaction });
             }
         
             await transaction.commit();
@@ -91,7 +146,7 @@ const upsertOrganizations =async (req, res) => {
                 googleCoordinates: JSON.parse(googleCoordinates),
                 gstNumber, mobile, name, registrationId, organizationType_id, whatsapp,
                 bankName, accountNumber, accountHolder, ifscCode, upiId,
-                file1, file2: file2.join(",")
+                file1, file2: files.join(",")
             }, { transaction });
 
             console.log("Created Organization:", organization); // Log new organization
@@ -119,57 +174,60 @@ const upsertOrganizations =async (req, res) => {
 };
 
 const getAll = async (req, res) => {
-    console.log("xdfhcjgkllhvgjcf")
-  const { page = 1, limit = 10, filter = "", search = "" } = req.query;
-  console.log(req.query);
-  const offset = (page - 1) * limit;
-
-  const whereCondition = {};  
-
-  if (search) {
-    console.log(1)
-    whereCondition[Op.or] = [
-      { "$organizationType.organizationType$": { [Op.like]: `%${search}%` } }, // Corrected search for organizationType name
-      { name: { [Op.like]: `%${search}%` } },  // Searching for organization name
-      { mobile: { [Op.like]: `%${search}%` } },  // Searching for mobile number
-      { description: { [Op.like]: `%${search}%` } },  // Searching for description
-    ];
-  }
-
-  if (filter) {
-    whereCondition.organizationType_id = filter;
-  }
-
-  try {
-    const { rows: organizations, count: total } = await Organization.findAndCountAll({
-      where: whereCondition,
-      limit: parseInt(limit),
-      offset: parseInt(offset),
-      order: [["createdAt", "DESC"]],
-      include: [
-        {
-          model: TblOrganizationType,
-          as: "organizationType",  
-          attributes: ["id", "organizationType"]
-        }
-      ]
-    });
-
-    res.status(200).json({
-      message: "All Organizations Retrieved",
-      data: organizations,
-      pagination: {
-        total,
-        page: parseInt(page),
+    console.log("Fetching organizations...");
+  
+    const { page = 1, limit = 10, filter = "", search = "" } = req.query;
+    console.log(req.query);
+    const offset = (page - 1) * limit;
+  
+    const whereCondition = {};  
+  
+    if (search) {
+      console.log("Applying search filter...");
+      whereCondition[Op.or] = [
+        { "$organizationType.organizationType$": { [Op.like]: `%${search}%` } }, 
+        { name: { [Op.like]: `%${search}%` } },
+        { mobile: { [Op.like]: `%${search}%` } },
+        { description: { [Op.like]: `%${search}%` } },
+      ];
+    }
+  
+    // If filter is not "all" and is not empty, apply filtering
+    if (filter && filter !== "all") {
+      whereCondition.organizationType_id = filter;
+    }
+  
+    try {
+      const { rows: organizations, count: total } = await Organization.findAndCountAll({
+        where: whereCondition,
         limit: parseInt(limit),
-        totalPages: Math.ceil(total / limit),
-      },
-    });
-  } catch (error) {
-    console.error("Error fetching organizations:", error);
-    res.status(500).json({ message: "Server error", error: error.message });
-  }
-};
+        offset: parseInt(offset),
+        order: [["createdAt", "DESC"]],
+        include: [
+          {
+            model: TblOrganizationType,
+            as: "organizationType",  
+            attributes: ["id", "organizationType"]
+          }
+        ]
+      });
+  
+      res.status(200).json({
+        message: "All Organizations Retrieved",
+        data: organizations,
+        pagination: {
+          total,
+          page: parseInt(page),
+          limit: parseInt(limit),
+          totalPages: Math.ceil(total / limit),
+        },
+      });
+    } catch (error) {
+      console.error("Error fetching organizations:", error);
+      res.status(500).json({ message: "Server error", error: error.message });
+    }
+  };
+  
 
 
 const deleteOrganization = async (req, res) => {
@@ -184,7 +242,7 @@ const deleteOrganization = async (req, res) => {
         const { forceDelete } = req.query;
 
         // Find the parent organization
-        const organization = await Organization.findOne({ where: { id }, paranoid: false, transaction: t });
+        const organization = await Organization.findOne({ where: { id }, paranoid: true, transaction: t });
 
         if (!organization) {
             await t.rollback();
@@ -255,7 +313,7 @@ const organizationGetByid = async (req, res) => {
         // Now fetch details of these services
         const serviceDetails = await Services.findAll({
             where: {
-                id: serviceIds // Query based on the extracted service_ids
+                id: serviceIds 
             },
             transaction: t
         });

@@ -42,7 +42,7 @@ const loginAdmin = async (req, res) => {
 
     // Check if the admin exists
     if (!admin) {
-      return res.status(404).json({ message: "Admin not found" });
+      return res.status(404).json({ message: "This Mail ID is not associated as Admin" });
     }
 
     // Check if the password matches the hashed password
@@ -89,7 +89,7 @@ const updateAdminProfile = async (req, res) => {
     console.log(imageURL, "from image");
 
     const admin = await Admin.findByPk(req.admin.id);
-    if (!admin) return res.status(404).json({ message: "Admin not found" });
+    if (!admin) return res.status(404).json({ message: "This Mail ID is not associated as Admin" });
 
     // Update fields if new values are provided
     admin.name = name || admin.name;
@@ -132,14 +132,14 @@ const forgotPassword = async (req, res) => {
       console.log({"email is here ":email})
       
       const admin = await Admin.findOne({ where: { email } });
-      if (!admin) return res.status(404).json({ message: "Admin not found" });
+      if (!admin) return res.status(404).json({ message: "This Mail ID is not associated as Admin" });
 
       
       const token = generateToken(admin);
       console.log(token)
 
       
-      const resetLink = `https://platix-eight.vercel.app/createnewpass/${token}`;
+      const resetLink = `https://platix-client.vercel.app/createnewpass/${token}`;
 
       
       await sendEmail(email, "Reset Password", `Click here to reset: ${resetLink}`);
@@ -178,6 +178,7 @@ const resetPassword = async (req, res) => {
 
     // Update the password
     await admin.update({ password: newPassword });
+    
 
     console.log({ "updated password": newPassword });
     res.json({ message: "Password reset successful" });

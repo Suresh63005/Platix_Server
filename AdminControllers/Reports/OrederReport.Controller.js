@@ -126,14 +126,8 @@ const getAllOrderReports = asyncHandler(async (req, res) => {
     const orderReports = await OrderReports.findAll({
       include: [
         { model: UserReports, as: "user", attributes: ["firstName"] },
-        { 
-          model: Organization, 
-          as: "fromOrg", 
-          include: [
-            { model: TblOrganizationType, as: "organizationType", attributes: ["id", "organizationType"] }
-          ] 
-        },
-        // { model: TblOrganizationType, as: "toOrg", attributes: ["id", "organizationType"] }, // Uncomment if needed
+        { model: Organization, as: "fromOrg", attributes: ["id", "name"] },
+        { model: Organization, as: "toOrg", attributes: ["id", "name"] },
       ],
     });
 
@@ -143,8 +137,8 @@ const getAllOrderReports = asyncHandler(async (req, res) => {
       return {
         ...formatDateFields(reportJson, ["orderDate"]), 
         Username: reportJson.user ? reportJson.user.firstName : null, 
-        FromOrganization: reportJson.fromOrg && reportJson.fromOrg.organizationType ? reportJson.fromOrg.organizationType.organizationType : null, // Access nested organizationType
-        // ToOrganization: reportJson.toOrg && reportJson.toOrg.organizationType ? reportJson.toOrg.organizationType.organizationType : null, // Access nested organizationType if needed
+        FromOrganization: reportJson.fromOrg ? reportJson.fromOrg.organizationType : null, // Extract from organization
+        // ToOrganization: reportJson.toOrg ? reportJson.toOrg.organizationType : null, // Extract to organization
       };
     });
 
@@ -155,17 +149,15 @@ const getAllOrderReports = asyncHandler(async (req, res) => {
   }
 });
 
-
 const filterByOrderDate = async (req, res) => {
   try {
       const { fromDate, toDate } = req.params;
-      console.log(req.params)
+      console.log(req.params);
 
       if (!fromDate || !toDate) {
           return res.status(400).json({ message: "Both fromDate and toDate are required." });
       }
-
-      const from = new Date(fromDate); // with time zone
+      const from = new Date(fromDate);
       const to = new Date(toDate);
 
       if (isNaN(from.getTime()) || isNaN(to.getTime())) {
@@ -179,6 +171,11 @@ const filterByOrderDate = async (req, res) => {
                   [Op.lte]: to    
               }
           },
+          include: [
+            { model: UserReports, as: "user", attributes: ["firstName"] },
+            { model: Organization, as: "fromOrg", attributes: ["id", "name"] },
+            { model: Organization, as: "toOrg", attributes: ["id", "name"] },
+          ],
          
       });
 

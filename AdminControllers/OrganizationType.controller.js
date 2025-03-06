@@ -3,7 +3,6 @@ const { formatDate, formatDateFields } = require("../helper/formatedDate");
 const { organizationTypeSchema, organizationTypeDeleteSchema } = require("../Middlewares/validation")
 const OrganizationType=require("../Models/TblOrganizationType.model")
 const { Sequelize, Op } = require('sequelize');
-
 const Service = require('../Models/TblServices.model');
 const TblOrganizationType = require("../Models/TblOrganizationType.model");
 
@@ -62,7 +61,7 @@ const organizationDelete = async (req, res) => {
 
         const organization = await OrganizationType.findOne({ 
             where: { id }, 
-            paranoid: false, 
+            paranoid: true, 
             transaction: t  // Pass transaction
         });
 
@@ -107,15 +106,15 @@ const getAll = async (req, res) => {
 
         // Build filter conditions
         let whereConditions = {};
-        if (filter) {
-            whereConditions.organizationType = filter;
+
+        if (filter && filter !== "all") { 
+            whereConditions.organizationType = filter; 
         }
 
         if (search) {
             whereConditions[Op.or] = [
                 { organizationType: { [Op.like]: `%${search}%` } },
                 { description: { [Op.like]: `%${search}%` } },
-                // Convert date fields to string for wildcard search
                 Sequelize.where(
                     Sequelize.fn("DATE_FORMAT", Sequelize.col("createdAt"), "%Y-%m-%d"),
                     { [Op.like]: `%${search}%` }
@@ -153,9 +152,8 @@ const getAll = async (req, res) => {
                 orgData.toDate = formatDate(orgData.toDate);
                 
                 try {
-                    orgData.service_id = orgData.service_id && typeof orgData.service_id === "string" && orgData.service_id.trim() !== ""
-                        ? JSON.parse(orgData.service_id)
-                        : [];
+                    orgData.service_id = orgData.service_id 
+                        
                 } catch (error) {
                     console.error("Invalid JSON in service_id:", orgData.service_id);
                     orgData.service_id = [];
@@ -195,24 +193,35 @@ const getAll = async (req, res) => {
 const assignServiceToOrganization = async (req, res) => {
     try {
         const { organizationType_id, service_id } = req.body;
-
-        console.log(req.body, "from sureshhhhhhhhhhhhh");
-
-        // Validate input
-        if (!organizationType_id || !Array.isArray(service_id) || service_id?.length === 0) {
+        
+        if (!organizationType_id || !Array.isArray(service_id) || service_id.length === 0) {
             return res.status(400).json({ message: "Organization ID and Service IDs are required." });
         }
-
-        // Find the organization type by ID
         const orgType = await TblOrganizationType.findByPk(organizationType_id);
+        
         if (!orgType) {
             return res.status(404).json({ message: "Organization type not found." });
         }
 
-        // Update the service_id field as a JSON array
-        await orgType.update({ service_id: JSON.stringify(service_id) });
+        let existingServices = [];
+        if (orgType.service_id) {
+            try {
+                existingServices = orgType.service_id;
+            } catch (error) {
+                return res.status(500).json({ message: "Invalid service_id format in database." });
+            }
+        }
 
-    
+        
+
+        // Merge existing and new services, avoiding duplicates
+        const updatedServices = [...new Set([...existingServices, ...service_id])];
+
+        
+
+        // Update the service_id field as a JSON array
+        await orgType.update({ service_id: updatedServices });
+
         return res.status(200).json({
             message: "Service assigned to organization type successfully.",
             orgType
@@ -222,21 +231,6 @@ const assignServiceToOrganization = async (req, res) => {
         return res.status(500).json({ message: "Internal Server Error" });
     }
 };
-
-
-// Fetch the updated organization type with associated services
-// const updatedOrgType = await TblOrganizationType.findOne({
-//     where: { id: organizationType_id },
-//     include: [
-//         {
-//             model: Service,
-//             as: "services",
-//             attributes: ["id", "servicename", "servicedescription", "fromdate", "todate"],
-//         },
-//     ],
-// });
-
-
 
 const organizationGetByid = async (req, res) => {
     try {
@@ -254,15 +248,9 @@ const organizationGetByid = async (req, res) => {
     }
 };
 
-
-
-
-
-
-
 const getOrganizationService = async (req, res) => {
     try {
-      const { service_id } = req.params; // Extract service_id from request parameters
+      const { service_id } = req.params; 
       
       if (!service_id) {
         return res.status(400).json({ message: "Service ID is required" });
@@ -282,6 +270,5 @@ const getOrganizationService = async (req, res) => {
       return res.status(500).json({ message: "Internal Server Error" });
     }
   };
-  
-  
+
 module.exports={OrganizationTypeUpsert,organizationDelete,getAll,organizationGetByid,assignServiceToOrganization,getOrganizationService}

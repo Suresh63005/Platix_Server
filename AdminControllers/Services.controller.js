@@ -1,8 +1,9 @@
 const { formatDateFields } = require("../helper/formatedDate");
 const asyncHandler = require("../Middlewares/errorHandler");
 const { ServiceDeleteSchema,ServiceSchema } = require("../Middlewares/validation");
+const TblOrganizationType = require("../Models/TblOrganizationType.model");
 const Services = require("../Models/TblServices.model");
-const { Op } = require("sequelize");
+const { Op, Sequelize } = require("sequelize");
 
 // Upsert (Create or Update) Service
 const upsertService = asyncHandler(async (req, res) => {
@@ -69,12 +70,33 @@ const getAllServices = asyncHandler(async (req, res) => {
     const offset = (pageNumber - 1) * pageSize;
     
     let whereConditions = {};
+    
     if (filter) {
-        whereConditions.servicename = filter;
+        whereConditions.id = filter;
     }
+
     if (search) {
-        whereConditions.servicename = { [Op.like]: `%${search}%` };
+      whereConditions[Op.or] = [
+        { servicename: { [Op.like]: `%${search}%` } },
+        Sequelize.where(
+          Sequelize.fn("DATE_FORMAT", Sequelize.col("createdAt"), "%Y-%m-%d"),
+          { [Op.like]: `%${search}%` }
+        ),
+        Sequelize.where(
+          Sequelize.fn("DATE_FORMAT", Sequelize.col("fromdate"), "%Y-%m-%d"),
+          { [Op.like]: `%${search}%` }
+        ),
+        Sequelize.where(
+          Sequelize.fn("DATE_FORMAT", Sequelize.col("todate"), "%Y-%m-%d"),
+          { [Op.like]: `%${search}%` }
+        )
+      ];
     }
+
+    const organizationtype = await TblOrganizationType.findAll({})
+
+
+    
     
     const { count, rows: services } = await Services.findAndCountAll({
         where: whereConditions,
@@ -84,6 +106,14 @@ const getAllServices = asyncHandler(async (req, res) => {
     });
     
     const formattedServices = formatDateFields(services.map(service => service.toJSON()), ["fromdate", "todate"]);
+
+      let serviceswithOrgType;
+
+      formattedServices.forEach(service => {
+        serviceswithOrgType = organizationtype.filter(org => org.service_id.includes(service.id))
+        service.organizationType = serviceswithOrgType.map(org => org.organizationType);
+
+      })
     
     res.status(200).json({
         services: formattedServices,
