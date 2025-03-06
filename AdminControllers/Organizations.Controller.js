@@ -16,8 +16,295 @@ const upsertOrganizations =async (req, res) => {
         accountHolder, ifscCode, upiId, services,fileextras
     } = req.body;
 
-    console.log(typeof addresses,"addresssssssssssssssssssssssssssss");
-    console.log(req.body,"bodyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyy");
+  const { sequelize } = require("../config/db");
+const { Sequelize, Op } = require("sequelize");
+const TblOrganizationType = require("../Models/TblOrganizationType.model");
+const Organization = require("../Models/Organization.model");
+const uploadToS3 = require("../config/fileUpload.aws");
+const { upsertOrganizationSchema, deleteOrganizationSchema, organizationGetByidSchema } = require("../Middlewares/validation");
+const TblOrganization_Service = require("../Models/tblOrganizationService");
+const Services = require("../Models/TblServices.model");
+
+// Upsert (Create or Update) Organization
+const upsertOrganizations = async (req, res) => {
+    try {
+        const {
+            id, addresses, businessName, description, designation, email, googleCoordinates,
+            gstNumber, mobile, name, registrationId, organizationType_id, whatsapp, bankName, accountNumber,
+            accountHolder, ifscCode, upiId, services, fileextras
+        } = req.body;
+
+        const parsedServices = typeof services === "string" ? JSON.parse(services) : services;
+
+        if (!Array.isArray(parsedServices)) {
+            return res.status(400).json({ error: "Invalid services format" });
+        }
+
+        let file1 = null;
+        let files = [];
+
+        // Upload file1 to S3 (single file)
+        if (req.files?.file1) {
+            file1 = await uploadToS3(req.files.file1[0], "organization");
+        }
+
+        // Upload files to S3 (multiple files)
+        if (req.files?.file2) {
+            for (const file of req.files.file2) {
+                const uploadedUrl = await uploadToS3(file, "Extraorganization");
+                files.push(uploadedUrl);
+            }
+        }
+
+        const transaction = await sequelize.transaction(); // Start a transaction
+
+        let organization;
+
+        if (id) {
+            // Find the organization
+            organization = await Organization.findByPk(id, { transaction });
+
+            if (!organization) {
+                await transaction.rollback();
+                return res.status(404).json({ error: "Organization not found" });
+            }
+
+            await organization.update({
+                address: addresses, businessName, description, designation, email,
+                googleCoordinates: JSON.parse(googleCoordinates),
+                gstNumber, mobile, name, registrationId, organizationType_id, whatsapp,
+                bankName, accountNumber, accountHolder, ifscCode, upiId,
+                file1: file1 || organization.file1,
+                file2: fileextras
+            }, { transaction });
+
+            if (files.length > 0) {
+                let existingImages = organization.file2 ? organization.file2.split(",") : [];
+                let updatedImages = [...existingImages, ...files];
+
+                // Remove duplicates and limit to 3 images
+                updatedImages = Array.from(new Set(updatedImages)).slice(0, 3);
+
+                // Update organization details
+                await organization.update({
+                    address: addresses,
+                    businessName,
+                    description,
+                    designation,
+                    email,
+                    googleCoordinates: JSON.parse(googleCoordinates),
+                    gstNumber,
+                    mobile,
+                    name,
+                    registrationId,
+                    organizationType_id,
+                    whatsapp,
+                    bankName,
+                    accountNumber,
+                    accountHolder,
+                    ifscCode,
+                    upiId,
+                    file1: file1 || organization.file1,
+                    file2: updatedImages.join(",")
+                }, { transaction });
+            }
+
+            if (parsedServices.length === 0) {
+                await TblOrganization_Service.destroy({
+                    where: { organization_id: id },
+                    force: true,
+                    transaction
+                });
+            }
+
+            if (parsedServices.length > 0) {
+                await TblOrganization_Service.destroy({
+                    where: { organization_id: id },
+                    force: true,
+                    transaction
+                });
+
+                const serviceData = parsedServices.map(service => ({
+                    organization_id: id,
+                    service_id: service.id,
+                    price: service.price
+                }));
+
+                await TblOrganization_Service.bulkCreate(serviceData, { transaction });
+            }
+
+            await transaction.commit();
+            return res.status(200).json({ message: "Organization updated successfully", data: organization });
+        } else {
+            // Create a new organization
+            organization = await Organization.create({
+                address: addresses, businessName, description, designation, email,
+                googleCoordinates: JSON.parse(googleCoordinates),
+                gstNumber, mobile, name, registrationId, organizationType_id, whatsapp,
+                bankName, accountNumber, accountHolder, ifscCode, upiId,
+                file1, file2: files.join(",")
+            }, { transaction });
+
+            console.log("Created Organization:", organization); // Log new organization
+
+            const organizationId = organization.id;
+
+            if (parsedServices.length > 0) {
+                const serviceData = parsedServices.map(service => ({
+                    organization_id: organizationId,
+                    service_id: service.id,
+                    price: service.price
+                }));
+
+                await TblOrganization_Service.bulkCreate(serviceData, { transaction });
+            }
+
+            await transaction.commit();
+            return res.status(201).json({ message: "Organization created successfully", data: organization });
+        }
+    } catch (error) {
+        console.error("Error inserting/updating organization:", error);
+        return res.status(500).json({ error: "Internal Server Error", details: error.message });
+    }
+};
+
+const getAll = async (req, res) => {
+    try {
+        const { page = 1, limit = 10, filter = "", search = "" } = req.query;
+        const offset = (page - 1) * limit;
+
+        const whereCondition = {};
+
+        if (search) {
+            whereCondition[Op.or] = [
+                { "$organizationType.organizationType$": { [Op.like]: `%${search}%` } },
+                { name: { [Op.like]: `%${search}%` } },
+                { mobile: { [Op.like]: `%${search}%` } },
+                { description: { [Op.like]: `%${search}%` } },
+            ];
+        }
+
+        // If filter is not "all" and is not empty, apply filtering
+        if (filter && filter !== "all") {
+            whereCondition.organizationType_id = filter;
+        }
+
+        const { rows: organizations, count: total } = await Organization.findAndCountAll({
+            where: whereCondition,
+            limit: parseInt(limit),
+            offset: parseInt(offset),
+            order: [["createdAt", "DESC"]],
+            include: [
+                {
+                    model: TblOrganizationType,
+                    as: "organizationType",
+                    attributes: ["id", "organizationType"]
+                }
+            ]
+        });
+
+        res.status(200).json({
+            message: "All Organizations Retrieved",
+            data: organizations,
+            pagination: {
+                total,
+                page: parseInt(page),
+                limit: parseInt(limit),
+                totalPages: Math.ceil(total / limit),
+            },
+        });
+    } catch (error) {
+        console.error("Error fetching organizations:", error);
+        res.status(500).json({ message: "Server error", error: error.message });
+    }
+};
+
+const deleteOrganization = async (req, res) => {
+    try {
+        const { error } = deleteOrganizationSchema.validate({ ...req.params, ...req.query });
+        if (error) {
+            return res.status(400).json({ message: error.details[0].message });
+        }
+
+        const { id } = req.params;
+        const { forceDelete } = req.query;
+
+        const organization = await Organization.findOne({ where: { id }, paranoid: true });
+
+        if (!organization) {
+            return res.status(404).json({ error: "Organization not found!" });
+        }
+
+        if (organization.deletedAt && forceDelete !== "true") {
+            return res.status(400).json({ error: "Organization is already soft deleted." });
+        }
+
+        // Delete related child records first
+        await TblOrganization_Service.destroy({
+            where: { organization_id: id },
+        });
+
+        // Now delete the parent organization
+        if (forceDelete === "true") {
+            await organization.destroy({ force: true }); // Hard delete
+        } else {
+            await organization.destroy(); // Soft delete
+        }
+
+        return res.status(200).json({
+            message: forceDelete === "true"
+                ? "Organization and related services permanently deleted!"
+                : "Organization and related services soft-deleted!"
+        });
+    } catch (error) {
+        console.error("Error deleting organization:", error);
+        return res.status(500).json({ error: "An error occurred while deleting the organization." });
+    }
+};
+
+const organizationGetByid = async (req, res) => {
+    try {
+        const { error } = organizationGetByidSchema.validate({ ...req.params });
+        if (error) {
+            return res.status(400).json({ message: error.details[0].message });
+        }
+
+        const { id } = req.params;
+
+        // Fetch organization
+        const organization = await Organization.findByPk(id);
+
+        if (!organization) {
+            return res.status(404).json({ error: "Organization not found" });
+        }
+
+        // Fetch associated services from TblOrganization_Service
+        const services = await TblOrganization_Service.findAll({
+            where: { organization_id: id }
+        });
+
+        // Fetch details of services from Services table
+        const serviceIds = services.map(service => service.service_id); // Extract service_ids
+
+        // Now fetch details of these services
+        const serviceDetails = await Services.findAll({
+            where: {
+                id: serviceIds
+            }
+        });
+
+        // Parse stored file2 if applicable
+        const formattedOrganization = {
+            ...organization.toJSON(),
+            file2: organization.file2 ? organization.file2.split(",") : []
+        };
+
+        return res.status(200).json({
+            message: "Organization Retrieved",
+            data: {
+                ...formattedOrganization,
+                services: services.map(service => {
+                    // Combine the service data with the actual service details
     
     
 
@@ -142,7 +429,7 @@ const upsertOrganizations =async (req, res) => {
          else {
             // Create a new organization
             organization = await Organization.create({
-                address, businessName, description, designation, email,
+                address: addresses, businessName, description, designation, email,
                 googleCoordinates: JSON.parse(googleCoordinates),
                 gstNumber, mobile, name, registrationId, organizationType_id, whatsapp,
                 bankName, accountNumber, accountHolder, ifscCode, upiId,
