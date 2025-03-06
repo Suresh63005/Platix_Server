@@ -16,8 +16,7 @@ const upsertOrganizations =async (req, res) => {
         accountHolder, ifscCode, upiId, services,fileextras
     } = req.body;
 
-    console.log(typeof addresses,"addresssssssssssssssssssssssssssss");
-    console.log(req.body,"bodyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyy");
+  
     
     
 
@@ -140,9 +139,25 @@ const upsertOrganizations =async (req, res) => {
             return res.status(200).json({ message: "Organization updated successfully", data: organization });
         }
          else {
-            // Create a new organization
+
+            
+
+            const organizationwithname = await Organization.findOne({ where: {name,organizationType_id  } });
+            const organizationwithnumber = await Organization.findOne({ where: {mobile }, transaction });
+
+            if(organizationwithname){
+                
+                return res.status(400).json({ error: "Organization with this name already exists" });
+
+            }
+            else if(organizationwithnumber){
+                return res.status(400).json({ error: "Organization with this number already exists" });
+            }
+            else{
+
+                 // Create a new organization
             organization = await Organization.create({
-                address, businessName, description, designation, email,
+                address: addresses, businessName, description, designation, email,
                 googleCoordinates: JSON.parse(googleCoordinates),
                 gstNumber, mobile, name, registrationId, organizationType_id, whatsapp,
                 bankName, accountNumber, accountHolder, ifscCode, upiId,
@@ -165,6 +180,14 @@ const upsertOrganizations =async (req, res) => {
 
             await transaction.commit();
             return res.status(201).json({ message: "Organization created successfully", data: organization });
+
+            }
+
+
+
+
+
+           
         }
     } catch (error) {
         console.error("Error inserting/updating organization:", error);

@@ -121,6 +121,32 @@ const getAllServices = asyncHandler(async (req, res) => {
         totalCount: count,
     });
 });
+const getorgAllServices = asyncHandler(async (req, res) => {
+  
+  const currentDate = new Date();
+
+  const whereConditions = {
+      [Op.or]: [
+          { todate: { [Op.is]: null } },  
+          { todate: { [Op.gte]: currentDate } }  
+      ]
+  };
+
+  
+  const services = await Services.findAll({
+      where: whereConditions,
+      order: [['createdAt', 'DESC']],
+  });
+
+      return res.status(200).json({ 
+        message: "Service Retrieved",
+        services: services
+       });
+
+
+ 
+});
+
 
 const serviceGetByid = asyncHandler(async (req, res) => {
   const { id } = req.params;
@@ -143,4 +169,4 @@ const serviceGetByid = asyncHandler(async (req, res) => {
   });
 });
 
-module.exports = { upsertService, deleteService, getAllServices,serviceGetByid };
+module.exports = { upsertService, deleteService, getAllServices,serviceGetByid,getorgAllServices };
