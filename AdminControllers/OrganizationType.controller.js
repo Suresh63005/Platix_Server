@@ -198,6 +198,7 @@ const getAll = async (req, res) => {
 };
 
 const assignServiceToOrganization = async (req, res) => {
+    
     try {
         const { organizationType_id, service_id } = req.body;
         
