@@ -11,18 +11,25 @@ const Services = require("../Models/TblServices.model");
 // Upsert (Create or Update) Organization
 const upsertOrganizations =async (req, res) => {
     const {
-        id, address, businessName, description, designation, email, googleCoordinates,
+        id, addresses, businessName, description, designation, email, googleCoordinates,
         gstNumber, mobile, name, registrationId, organizationType_id, whatsapp, bankName, accountNumber,
         accountHolder, ifscCode, upiId, services,fileextras
     } = req.body;
+
+    console.log(typeof addresses,"addresssssssssssssssssssssssssssss");
+    console.log(req.body,"bodyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyy");
+    
     
 
     const parsedServices = typeof services === "string" ? JSON.parse(services) : services;
-    
+    // const parsedAddress = typeof address === "string" ? JSON.parse(address) : address;
     
     if (!Array.isArray(parsedServices)) {
         return res.status(400).json({ error: "Invalid services format" });
     }
+    // if (!Array.isArray(parsedAddress)) {
+    //     return res.status(400).json({ error: "Invalid addres format" });
+    // }
 
     let file1 = null;
     let files = [];
@@ -59,7 +66,7 @@ const upsertOrganizations =async (req, res) => {
             
 
                 await organization.update({
-                    address, businessName, description, designation, email,
+                    address:addresses, businessName, description, designation, email,
                     googleCoordinates: JSON.parse(googleCoordinates),
                     gstNumber, mobile, name, registrationId, organizationType_id, whatsapp, 
                     bankName, accountNumber, accountHolder, ifscCode, upiId,
@@ -79,7 +86,7 @@ const upsertOrganizations =async (req, res) => {
           
                 // Update organization details
                 await organization.update({
-                  address,
+                    address:addresses,
                   businessName,
                   description,
                   designation,
@@ -102,12 +109,6 @@ const upsertOrganizations =async (req, res) => {
 
             }
 
-               
-            
-        
-            // Update organization details
-            
-        
            if (parsedServices.length === 0) {
 
             await TblOrganization_Service.destroy({

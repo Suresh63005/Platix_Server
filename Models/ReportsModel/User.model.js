@@ -12,7 +12,7 @@ const User = sequelize.define("User", {
     defaultValue: DataTypes.UUIDV4,
   },
   prefix: {
-    type: DataTypes.ENUM("mr", "mrs"),
+    type: DataTypes.ENUM("mr", "ms", "mrs", "dr"),
     allowNull: true,
   },
   firstName: {

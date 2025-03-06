@@ -3,7 +3,6 @@ const { formatDate, formatDateFields } = require("../helper/formatedDate");
 const { organizationTypeSchema, organizationTypeDeleteSchema } = require("../Middlewares/validation")
 const OrganizationType=require("../Models/TblOrganizationType.model")
 const { Sequelize, Op } = require('sequelize');
-
 const Service = require('../Models/TblServices.model');
 const TblOrganizationType = require("../Models/TblOrganizationType.model");
 
@@ -153,9 +152,8 @@ const getAll = async (req, res) => {
                 orgData.toDate = formatDate(orgData.toDate);
                 
                 try {
-                    orgData.service_id = orgData.service_id && typeof orgData.service_id === "string" && orgData.service_id.trim() !== ""
-                        ? JSON.parse(orgData.service_id)
-                        : [];
+                    orgData.service_id = orgData.service_id 
+                        
                 } catch (error) {
                     console.error("Invalid JSON in service_id:", orgData.service_id);
                     orgData.service_id = [];
@@ -192,37 +190,37 @@ const getAll = async (req, res) => {
     }
 };
 
-
 const assignServiceToOrganization = async (req, res) => {
     try {
         const { organizationType_id, service_id } = req.body;
-
         
         if (!organizationType_id || !Array.isArray(service_id) || service_id.length === 0) {
             return res.status(400).json({ message: "Organization ID and Service IDs are required." });
         }
-
-        
         const orgType = await TblOrganizationType.findByPk(organizationType_id);
+        
         if (!orgType) {
             return res.status(404).json({ message: "Organization type not found." });
         }
 
-        
         let existingServices = [];
         if (orgType.service_id) {
             try {
-                existingServices = JSON.parse(orgType.service_id); // Convert stored JSON string to an array
+                existingServices = orgType.service_id;
             } catch (error) {
                 return res.status(500).json({ message: "Invalid service_id format in database." });
             }
         }
 
+        
+
         // Merge existing and new services, avoiding duplicates
         const updatedServices = [...new Set([...existingServices, ...service_id])];
 
+        
+
         // Update the service_id field as a JSON array
-        await orgType.update({ service_id: JSON.stringify(updatedServices) });
+        await orgType.update({ service_id: updatedServices });
 
         return res.status(200).json({
             message: "Service assigned to organization type successfully.",
@@ -233,22 +231,6 @@ const assignServiceToOrganization = async (req, res) => {
         return res.status(500).json({ message: "Internal Server Error" });
     }
 };
-
-
-
-// Fetch the updated organization type with associated services
-// const updatedOrgType = await TblOrganizationType.findOne({
-//     where: { id: organizationType_id },
-//     include: [
-//         {
-//             model: Service,
-//             as: "services",
-//             attributes: ["id", "servicename", "servicedescription", "fromdate", "todate"],
-//         },
-//     ],
-// });
-
-
 
 const organizationGetByid = async (req, res) => {
     try {
@@ -266,15 +248,9 @@ const organizationGetByid = async (req, res) => {
     }
 };
 
-
-
-
-
-
-
 const getOrganizationService = async (req, res) => {
     try {
-      const { service_id } = req.params; // Extract service_id from request parameters
+      const { service_id } = req.params; 
       
       if (!service_id) {
         return res.status(400).json({ message: "Service ID is required" });
@@ -294,6 +270,5 @@ const getOrganizationService = async (req, res) => {
       return res.status(500).json({ message: "Internal Server Error" });
     }
   };
-  
-  
+
 module.exports={OrganizationTypeUpsert,organizationDelete,getAll,organizationGetByid,assignServiceToOrganization,getOrganizationService}

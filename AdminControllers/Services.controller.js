@@ -1,6 +1,7 @@
 const { formatDateFields } = require("../helper/formatedDate");
 const asyncHandler = require("../Middlewares/errorHandler");
 const { ServiceDeleteSchema,ServiceSchema } = require("../Middlewares/validation");
+const TblOrganizationType = require("../Models/TblOrganizationType.model");
 const Services = require("../Models/TblServices.model");
 const { Op, Sequelize } = require("sequelize");
 
@@ -73,6 +74,7 @@ const getAllServices = asyncHandler(async (req, res) => {
     if (filter) {
         whereConditions.id = filter;
     }
+
     if (search) {
       whereConditions[Op.or] = [
         { servicename: { [Op.like]: `%${search}%` } },
@@ -90,6 +92,10 @@ const getAllServices = asyncHandler(async (req, res) => {
         )
       ];
     }
+
+    const organizationtype = await TblOrganizationType.findAll({})
+
+
     
     
     const { count, rows: services } = await Services.findAndCountAll({
@@ -100,6 +106,14 @@ const getAllServices = asyncHandler(async (req, res) => {
     });
     
     const formattedServices = formatDateFields(services.map(service => service.toJSON()), ["fromdate", "todate"]);
+
+      let serviceswithOrgType;
+
+      formattedServices.forEach(service => {
+        serviceswithOrgType = organizationtype.filter(org => org.service_id.includes(service.id))
+        service.organizationType = serviceswithOrgType.map(org => org.organizationType);
+
+      })
     
     res.status(200).json({
         services: formattedServices,

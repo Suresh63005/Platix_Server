@@ -119,7 +119,7 @@ const updateAdminProfile = async (req, res) => {
     // Save the updated admin profile
     await admin.save();
 
-    res.json({ message: "Profile updated successfully", admin });
+    res.status(200).json({ message: "Profile updated successfully", admin });
   } catch (error) {
     res.status(500).json({ message: "Server Error", error: error.message });
   }
@@ -139,7 +139,7 @@ const forgotPassword = async (req, res) => {
       console.log(token)
 
       
-      const resetLink = `https://platix-eight.vercel.app/createnewpass/${token}`;
+      const resetLink = `https://platix-client.vercel.app/createnewpass/${token}`;
 
       
       await sendEmail(email, "Reset Password", `Click here to reset: ${resetLink}`);
