@@ -161,8 +161,15 @@ const getAll = async (req, res) => {
 
                 // Fetch service names in a single query
                 if (orgData.service_id.length > 0) {
+                    const currentDate = new Date();
+
                     const services = await Service.findAll({
-                        where: { id: orgData.service_id },
+                        where: { id: orgData.service_id,
+                            [Op.or]: [
+                                { todate: { [Op.is]: null } },  
+                                { todate: { [Op.gte]: currentDate } }  
+                            ]
+                          },
                         attributes: ["id", "servicename"],
                     });
                     orgData.services = services.map(service => ({
@@ -197,6 +204,7 @@ const assignServiceToOrganization = async (req, res) => {
         if (!organizationType_id || !Array.isArray(service_id) || service_id.length === 0) {
             return res.status(400).json({ message: "Organization ID and Service IDs are required." });
         }
+
         const orgType = await TblOrganizationType.findByPk(organizationType_id);
         
         if (!orgType) {
@@ -212,18 +220,22 @@ const assignServiceToOrganization = async (req, res) => {
             }
         }
 
-        
+        // Check if any of the provided services are not already assigned
+        const newServices = service_id.filter(service => !existingServices.includes(service));
+
+        // If no new services, return a message saying the services already exist
+        if (newServices.length === 0) {
+            return res.status(400).json({ message: "All provided services are already assigned to this organization type." });
+        }
 
         // Merge existing and new services, avoiding duplicates
-        const updatedServices = [...new Set([...existingServices, ...service_id])];
-
-        
+        const updatedServices = [...new Set([...existingServices, ...newServices])];
 
         // Update the service_id field as a JSON array
         await orgType.update({ service_id: updatedServices });
 
         return res.status(200).json({
-            message: "Service assigned to organization type successfully.",
+            message: "Service(s) assigned to organization type successfully.",
             orgType
         });
     } catch (error) {
@@ -231,6 +243,7 @@ const assignServiceToOrganization = async (req, res) => {
         return res.status(500).json({ message: "Internal Server Error" });
     }
 };
+
 
 const organizationGetByid = async (req, res) => {
     try {
