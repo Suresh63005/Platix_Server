@@ -106,3 +106,13 @@ TblOrganization_Service.belongsTo(Organization, {
   as: 'organization'
 });
 
+Services.belongsToMany(TblOrganizationType, {
+  through: 'OrganizationTypeServices', // or the actual junction table name
+  foreignKey: 'service_id', // The foreign key in the junction table
+});
+
+TblOrganizationType.belongsToMany(Services, {
+  through: 'OrganizationTypeServices', // or the actual junction table name
+  foreignKey: 'organizationType_id', // The foreign key in the junction table
+});
+

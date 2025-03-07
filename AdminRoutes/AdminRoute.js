@@ -2,7 +2,7 @@ const express = require("express");
 const { registerAdmin, loginAdmin,forgotPassword, resetPassword,getAdminProfile,updateAdminProfile } = require("../AdminControllers/AdminController");
 // const { } = require("../Middlewares/auth");
 const { createRole, viewRoles } = require("../AdminControllers/Roles.controller")
-const {upsertService,getAllServices,deleteService,serviceGetByid} = require("../AdminControllers/Services.controller");
+const {upsertService,getAllServices,deleteService,serviceGetByid, getorgAllServices} = require("../AdminControllers/Services.controller");
 const upload = require("../utils/multer");
 const { getSettingsById, createOrUpdateSettings, FetchSettings, FetchSettingsById } = require('../AdminControllers/Settings.controller');
 const OrderReport=require("../AdminControllers/Reports/OrederReport.Controller");
@@ -26,6 +26,7 @@ router.get("/getbyid/:id", serviceGetByid);
 
 // Get All Services
 router.get("/allservices", getAllServices);
+router.get("/allorgservices", getorgAllServices);
 router.post("/assign-service",OrganizationTypeController.assignServiceToOrganization)
 router.get("/getorgservices",  OrganizationTypeController.getOrganizationService)
 
