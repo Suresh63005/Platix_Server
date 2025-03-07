@@ -16,7 +16,7 @@ const upsertOrganizations =async (req, res) => {
         accountHolder, ifscCode, upiId, services,fileextras
     } = req.body;
     
-
+console.log(req.body)
     const parsedServices = typeof services === "string" ? JSON.parse(services) : services;
     
     
