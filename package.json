@@ -4,7 +4,7 @@
   "description": "Platix Server",
   "main": "app.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
+    "test": "jest",
     "start": "nodemon App.js",
     "dev": "nodemon App.js"
   },
@@ -35,5 +35,13 @@
     "sequelize": "^6.37.5",
     "sib-api-v3-sdk": "^8.5.0",
     "uuid": "^11.0.5"
+  },
+  "devDependencies": {
+    "jest": "^29.7.0",
+    "sequelize-mock": "^0.10.2",
+    "supertest": "^6.3.4"
+  },
+  "jest": {
+    "testEnvironment": "node"
   }
 }
