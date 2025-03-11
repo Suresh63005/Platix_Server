@@ -148,25 +148,26 @@ const getorgAllServices = asyncHandler(async (req, res) => {
 });
 
 
-const serviceGetByid = asyncHandler(async (req, res) => {
+const serviceGetByid = async (req, res, next) => {
   const { id } = req.params;
-  
-  // Find the service by ID
-  const service = await Services.findByPk(id);
 
-  // If not found, return 404
-  if (!service) {
-    return res.status(404).json({ error: "Service not found" });
+  try {
+    const service = await Services.findByPk(id);
+
+    if (!service) {
+      return res.status(404).json({ error: "Service not found" });
+    }
+
+    const formattedService = formatDateFields(service.toJSON(), ["fromdate", "todate"]);
+
+    return res.status(200).json({
+      message: "Service Retrieved",
+      data: formattedService,
+    });
+  } catch (error) {
+    // console.error("Error fetching service:", error);
+    next(error); // Ensure the error is passed to the next middleware
   }
-
-  // Format the date fields
-  const formattedService = formatDateFields(service.toJSON(), ["fromdate", "todate"]);
-
-  // Send response with formatted service
-  res.status(200).json({
-    message: "Service Retrieved",
-    data: formattedService
-  });
-});
+};
 
 module.exports = { upsertService, deleteService, getAllServices,serviceGetByid,getorgAllServices };
