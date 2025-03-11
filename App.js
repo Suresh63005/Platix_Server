@@ -7,7 +7,7 @@ const cors = require("cors");
 const bodyParser = require("body-parser");
 const { connectDB, sequelize } = require("./config/db");
 const logger=require("morgan")
-const PORT = process.env.PORT || 4444
+const PORT = process.env.PORT || 5001 
 // const PORT2 = process.env.PORT2 || 8081 
 require("./Models/associations")
 dotenv.config();

@@ -93,8 +93,8 @@ const sendEmail = async (toEmail, subject, htmlContent) => {
 
     // Define the sender (must be verified in Brevo)
     const sender = {
-        email: "rajeshkumar73812@gmail.com", // Replace with your verified Brevo sender email
-        name: "platix" // Change this to match your app's branding
+        email: process.env.SENDER_EMAIL, // Replace with your verified Brevo sender email
+        name: process.env.SENDER_NAME // Change this to match your app's branding
     };
 
     // Define the recipient(s)
