@@ -71,8 +71,8 @@ const fromDentist = async (req, res) => {
           {
             fromOrganization,
             patientName,
-            orderId: orderReport.orderId, // Preserve existing orderId
-            patientId: orderReport.patientId, // Preserve existing patientId
+            orderId: orderReport.orderId, 
+            patientId: orderReport.patientId, 
             toOrganization,
             requiredDate,
             toothName,
@@ -93,8 +93,8 @@ const fromDentist = async (req, res) => {
       }
     } else {
       // Create a new order if ID is not provided
-      const orderIdValue = await generateUniqueId("#", OrderReports, "orderId");
-      const patientIdValue = await generateUniqueId("#", OrderReports, "patientId");
+      const orderIdValue = await generateUniqueId("ORD", OrderReports, "orderId");
+      const patientIdValue = await generateUniqueId("PN", OrderReports, "patientId");
 
       console.log("Creating a new order");
       orderReport = await OrderReports.create(
@@ -185,7 +185,7 @@ const fromDentist = async (req, res) => {
     });
   }
 };
-
+   
 const orderReport = async (req, res) => {
   try {
     const { fromdate, todate } = req.params;
@@ -235,12 +235,11 @@ const orderReport = async (req, res) => {
 
 const orderDetails = async (req, res) => {
   const { id } = req.params;
-
   try {
       // Fetch the order report by ID and include associated user details
       const orderReport = await OrderReports.findByPk(id, {
           include: [
-              {
+              { 
                   model: User,
                   as: 'user',  
                   attributes: ['id', 'firstName', 'email', 'address', 'hospital_name'], 
@@ -274,7 +273,6 @@ const orderDetails = async (req, res) => {
               },
           ],
       });
-
       if (!orderServices || orderServices.length === 0) {
           return res.status(404).json({
               success: false,
@@ -286,7 +284,6 @@ const orderDetails = async (req, res) => {
       const toOrganizationDetails = await Organization.findByPk(orderReport.toOrganization, {
           attributes: ["id", "name"],
       });
-
       return res.status(200).json({
           success: true,
           message: "Order Report found successfully!",
