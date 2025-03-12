@@ -10,10 +10,9 @@ const generateOTP = () => {
     return otp.toString(); 
 };
 
-
 const verifyMobile = async (req, res) => {
-    let { mobileNo } = req.body;
-    
+    let { mobileNo, registerId } = req.body;
+
     if (!mobileNo) {
         return res.status(400).json({ message: "Mobile number is required!" });
     }
@@ -24,33 +23,36 @@ const verifyMobile = async (req, res) => {
 
     try {
         let user;
-        // Check if user exists in Firebase
         try {
             user = await admin.auth().getUserByPhoneNumber(mobileNo);
         } catch (firebaseError) {
-            // If user is not found in Firebase, do not create a new Firebase user
             console.log(`Mobile number not found in Firebase: ${mobileNo}`);
             return res.status(404).json({ message: "Mobile number not found in Firebase." });
         }
 
-        // Check if user exists in your database
         let userRecord = await User.findOne({ where: { mobileNo } });
 
         if (!userRecord) {
-            // Create user in your database if not found
             userRecord = await User.create({
                 mobileNo,
                 email: user.email || null,
                 name: user.displayName || null,
             });
-            console.log("New user created in database!", userRecord);
+            console.log("New user created in the database!", userRecord);
         } else {
-            console.log("User already exists in database!", userRecord);
+            console.log("User already exists in the database!", userRecord);
         }
 
-        // Generate JWT Token
+        const firebaseUID = userRecord.uid || user.uid;
+
+        if (registerId !== firebaseUID) {
+            return res.status(400).json({
+                message: "The provided registerId does not match the Firebase UID.",
+            });
+        }
+
         const token = jwt.sign(
-            { userRecordId: userRecord.id, mobileNo: userRecord.mobileNo },
+            { userRecordId: userRecord.id, mobileNo: userRecord.mobileNo, firebaseUID: firebaseUID },
             process.env.JWT_TOKEN,
         );
 
@@ -58,12 +60,12 @@ const verifyMobile = async (req, res) => {
             message: "Mobile number verified successfully!",
             userRecord,
             token,
+            firebaseUID,  
         });
 
     } catch (error) {
         console.error("Error verifying mobileNo:", error.message);
 
-        // If Firebase throws a user-not-found error, handle it here
         if (error.code === "auth/user-not-found") {
             return res.status(404).json({ message: "Mobile number not registered in Firebase." });
         }
@@ -71,7 +73,6 @@ const verifyMobile = async (req, res) => {
         return res.status(500).json({ message: "Internal server error: " + error.message });
     }
 };
-
 
 // this role details for when user sucessfully logined  and  set their roles at that time send email otp 
 
