@@ -3,6 +3,7 @@ const OrderReports = require("../../Models/ReportsModel/OrderReport.model");
 const Organization = require("../../Models/Organization.model");
 
 
+// Here, we display the total payable bills, active orders, closed orders, received payable amounts, and the order list as well.
 const labOrders = async (req, res) => {
     const { Organization_id } = req.body;
     
@@ -47,7 +48,7 @@ const labOrders = async (req, res) => {
       }));
       const response = {
         activeOrders: orderCounts[0],
-        completedPayableBills: orderCounts[1],
+        totalPayableBills: orderCounts[1],
         totalOrders: orderCounts[2],
         openOrders: orderCounts[3],
         closedOrders: orderCounts[4],

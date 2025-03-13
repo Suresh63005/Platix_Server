@@ -9,4 +9,7 @@ router.get("/order/report/:fromdate?/:todate?",DentistController.orderReport)
 router.get("/order/payment-report/:fromdate?/:todate?",DentistController.PaymentReports)
 router.get("/order/payment-report-getbyid/:id",DentistController.ViewPaymentReportDetails)
 router.get('/order/search/:search', DentistController.orderAndPaymentSearch);
+
+// for labrotory - radiology - material supply dentist screen
+router.get("/organization-details/getbyid/:id",DentistController.getorganizationDetailsById)
 module.exports=router

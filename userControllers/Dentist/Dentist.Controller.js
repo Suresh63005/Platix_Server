@@ -483,4 +483,43 @@ const orderAndPaymentSearch = async (req, res) => {
   }
 };
 
-module.exports = { fromDentist, orderDetails, orderReport, PaymentReports, ViewPaymentReportDetails,orderAndPaymentSearch };
+const getorganizationDetailsById = async (req, res) => {
+  const id = req.params.id;
+
+  try {
+    const orgDetails = await Organization.findByPk(id);
+    if (!orgDetails) {
+      return res.status(404).json({ message: "Organization not found" });
+    }
+
+    const orgServiceDetails = await TblOrganization_Service.findAll({
+      where: { organization_id: id },
+      attributes: ["id", "price", "service_id"],
+      include: [
+        {
+          model: Services, 
+          as: "Service",
+          attributes: ["id", "servicename"],
+        },
+      ],
+    });
+    const services = orgServiceDetails.map(service => ({
+      id: service.service_id,
+      servicename: service.Service ? service.Service.servicename : "Unknown Service",
+      price: service.price,
+    }));
+console.log(services)
+    return res.status(200).json({
+      organization: orgDetails,
+      services: services.length > 0 ? services : "No service data available for this organization",
+    });
+
+  } catch (error) {
+    console.log(error);
+    return res.status(500).json({ message: "Internal server error" });
+  }
+};
+
+
+
+module.exports = { fromDentist, orderDetails, orderReport, PaymentReports, ViewPaymentReportDetails,orderAndPaymentSearch,getorganizationDetailsById };
