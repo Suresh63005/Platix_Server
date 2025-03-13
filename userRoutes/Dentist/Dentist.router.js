@@ -1,6 +1,7 @@
 const express=require("express")
 const router=express.Router();
 const DentistController=require("../../userControllers/Dentist/Dentist.Controller")
+const authMiddleware=require("../../Middlewares/auth")
 
 router.route("/upsert/:cancel?").post(DentistController.fromDentist).put(DentistController.fromDentist);
 router.get("/order/getbyid/:id",DentistController.orderDetails);

@@ -22,7 +22,7 @@ const allOrders = async (req, res) => {
         // console.log("Total Received Amount:", receivedAmounts); // Debugging log
         const response = {
             activeOrders: orderCounts[0], // Processing orders
-            completedPayableBills: orderCounts[1], // Completed orders
+            totalPayableBills: orderCounts[1], // Completed orders
             totalOrders: orderCounts[2], // All orders
             openOrders: orderCounts[3], // Processing + Pending
             closedOrders: orderCounts[4], // Completed + Cancelled
@@ -55,7 +55,7 @@ const all = async (req, res) => {
 
         // Fetch organizations with search filter
         const organizations = await Organization.findAll({
-            attributes: ["id", "name", "address", "organizationType_id"],
+            attributes: ["id", "name", "address", "organizationType_id","file1"],
             include: [
                 {
                     model: TblOrganizationType,

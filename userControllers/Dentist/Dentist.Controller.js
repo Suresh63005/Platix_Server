@@ -18,7 +18,7 @@ const fromDentist = async (req, res) => {
       orderId,
       patientId,
       toOrganization,
-      serviceId,
+      serviceId, // material name in material screen
       requiredDate,
       toothName,
       shades,
@@ -60,7 +60,7 @@ const fromDentist = async (req, res) => {
       console.log(`Updating order ${id}`);
 
       if (cancel) {
-        console.log(`Cancelling order ${id}`);
+        console.log(`Cancelling order ${id}`); 
         await orderReport.update(
           { orderStatus: "cancelled" },
           { transaction }
@@ -187,6 +187,13 @@ const fromDentist = async (req, res) => {
 };
 
 const orderReport = async (req, res) => {
+  // const uid = req.user.id;
+  // if(!uid){
+  //   return res.status(401).json({
+  //     message:"Unauthorized: user not foud"
+  //   })
+  // }
+
   try {
     const { fromdate, todate } = req.params;
 
@@ -194,6 +201,7 @@ const orderReport = async (req, res) => {
       orderStatus: {
         [Op.eq]: "completed",
       },
+      // userUUID:uid
     };
 
     if (fromdate && todate) {
@@ -221,7 +229,7 @@ const orderReport = async (req, res) => {
     return res.status(200).json({
       success: true,
       message: "Order reports fetched successfully.",
-      data: allOrder,
+      dataqweghj: allOrder,
     });
   } catch (error) {
     console.error("Error fetching order reports:", error);
