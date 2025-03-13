@@ -19,7 +19,7 @@ const upsertOrganizations =async (req, res) => {
   
     
     
-
+console.log(req.body)
     const parsedServices = typeof services === "string" ? JSON.parse(services) : services;
     // const parsedAddress = typeof address === "string" ? JSON.parse(address) : address;
     
