@@ -7,7 +7,7 @@ const cors = require("cors");
 const bodyParser = require("body-parser");
 const { connectDB, sequelize } = require("./config/db");
 const logger=require("morgan")
-const PORT = process.env.PORT || 50001
+const PORT = process.env.PORT || 5001
 // const PORT2 = process.env.PORT2 || 8081 
 require("./Models/associations")
 dotenv.config();
@@ -70,6 +70,7 @@ app.use("/login",require("./userRoutes/auth/authRouter"))
 app.use("/dashboard",require("./userRoutes/DashBoard.router"))
 app.use("/profile",require("./userRoutes/Profile.router"))
 app.use("/dentist",require("./userRoutes/Dentist/Dentist.router"))
+app.use("/labrotory",require("./userRoutes/Labrotory/lab.router"))
 app.use("/notifications",require("./userRoutes/Notification.router"))
 
 app.listen(PORT, () => {
