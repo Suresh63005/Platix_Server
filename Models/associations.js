@@ -94,7 +94,7 @@ Services.belongsToMany(TblOrganizationType, {
 
 OrderServices.belongsTo(TblOrganization_Service,{foreignKey:"orgserviceId",as:"orgservice"})
 
-TblOrganization_Service.belongsTo(Services,{foreignKey:"service_id",as:"services"});
+TblOrganization_Service.belongsTo(Services, { foreignKey: "service_id", as: "Service" }); // ✅ Singular alias
 
 Organization.hasMany(TblOrganization_Service, {
   foreignKey: 'organization_id',

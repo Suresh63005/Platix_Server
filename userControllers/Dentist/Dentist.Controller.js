@@ -18,7 +18,7 @@ const fromDentist = async (req, res) => {
       orderId,
       patientId,
       toOrganization,
-      serviceId,
+      serviceId, // material name in material screen
       requiredDate,
       toothName,
       shades,
@@ -60,7 +60,7 @@ const fromDentist = async (req, res) => {
       console.log(`Updating order ${id}`);
 
       if (cancel) {
-        console.log(`Cancelling order ${id}`);
+        console.log(`Cancelling order ${id}`); 
         await orderReport.update(
           { orderStatus: "cancelled" },
           { transaction }
@@ -187,6 +187,13 @@ const fromDentist = async (req, res) => {
 };
 
 const orderReport = async (req, res) => {
+  // const uid = req.user.id;
+  // if(!uid){
+  //   return res.status(401).json({
+  //     message:"Unauthorized: user not foud"
+  //   })
+  // }
+
   try {
     const { fromdate, todate } = req.params;
 
@@ -194,6 +201,7 @@ const orderReport = async (req, res) => {
       orderStatus: {
         [Op.eq]: "completed",
       },
+      // userUUID:uid
     };
 
     if (fromdate && todate) {
@@ -221,7 +229,7 @@ const orderReport = async (req, res) => {
     return res.status(200).json({
       success: true,
       message: "Order reports fetched successfully.",
-      data: allOrder,
+      dataqweghj: allOrder,
     });
   } catch (error) {
     console.error("Error fetching order reports:", error);
@@ -475,4 +483,43 @@ const orderAndPaymentSearch = async (req, res) => {
   }
 };
 
-module.exports = { fromDentist, orderDetails, orderReport, PaymentReports, ViewPaymentReportDetails,orderAndPaymentSearch };
+const getorganizationDetailsById = async (req, res) => {
+  const id = req.params.id;
+
+  try {
+    const orgDetails = await Organization.findByPk(id);
+    if (!orgDetails) {
+      return res.status(404).json({ message: "Organization not found" });
+    }
+
+    const orgServiceDetails = await TblOrganization_Service.findAll({
+      where: { organization_id: id },
+      attributes: ["id", "price", "service_id"],
+      include: [
+        {
+          model: Services, 
+          as: "Service",
+          attributes: ["id", "servicename"],
+        },
+      ],
+    });
+    const services = orgServiceDetails.map(service => ({
+      id: service.service_id,
+      servicename: service.Service ? service.Service.servicename : "Unknown Service",
+      price: service.price,
+    }));
+console.log(services)
+    return res.status(200).json({
+      organization: orgDetails,
+      services: services.length > 0 ? services : "No service data available for this organization",
+    });
+
+  } catch (error) {
+    console.log(error);
+    return res.status(500).json({ message: "Internal server error" });
+  }
+};
+
+
+
+module.exports = { fromDentist, orderDetails, orderReport, PaymentReports, ViewPaymentReportDetails,orderAndPaymentSearch,getorganizationDetailsById };

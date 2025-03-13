@@ -22,7 +22,7 @@ const allOrders = async (req, res) => {
         // console.log("Total Received Amount:", receivedAmounts); // Debugging log
         const response = {
             activeOrders: orderCounts[0], // Processing orders
-            completedPayableBills: orderCounts[1], // Completed orders
+            totalPayableBills: orderCounts[1], // Completed orders
             totalOrders: orderCounts[2], // All orders
             openOrders: orderCounts[3], // Processing + Pending
             closedOrders: orderCounts[4], // Completed + Cancelled
@@ -42,7 +42,6 @@ const all = async (req, res) => {
     const offset = (page - 1) * limit;
 
     try {
-        // Global search condition
         const searchFilter = search
             ? {
                   [Op.or]: [
@@ -53,15 +52,14 @@ const all = async (req, res) => {
               }
             : {};
 
-        // Fetch organizations with search filter
         const organizations = await Organization.findAll({
-            attributes: ["id", "name", "address", "organizationType_id"],
+            attributes: ["id", "name", "address", "organizationType_id", "file1"],
             include: [
                 {
                     model: TblOrganizationType,
                     as: "organizationType",
-                    attributes: ["id", "organizationType", "description", "fromDate", "toDate", "service_id"],
-                    required: true, // Ensures only those organizations that have an organizationType are included
+                    attributes: ["id", "organizationType", "description"],
+                    required: true,
                 },
             ],
             where: searchFilter,
@@ -70,76 +68,69 @@ const all = async (req, res) => {
             limit,
         });
 
-        let allServiceIds = new Set();
-        organizations.forEach((org) => {
-            if (org.organizationType?.service_id) {
-                let serviceIds;
-                if (typeof org.organizationType.service_id === "string") {
-                    try {
-                        serviceIds = JSON.parse(org.organizationType.service_id);
-                    } catch (error) {
-                        console.warn("Invalid JSON in service_id:", org.organizationType.service_id);
-                        serviceIds = [];
-                    }
-                } else if (Array.isArray(org.organizationType.service_id)) {
-                    serviceIds = org.organizationType.service_id;
-                }
+        const orgIds = organizations.map(org => org.id);
 
-                if (Array.isArray(serviceIds)) {
-                    serviceIds.forEach((id) => allServiceIds.add(id));
-                }
-            }
+        // Fetch organization services
+        const organizationServices = await TblOrganization_Service.findAll({
+            where: { organization_id: { [Op.in]: orgIds } },
+            attributes: ["organization_id", "service_id", "price"],
         });
 
-        // Fetch service names based on service IDs
+        const serviceIds = [...new Set(organizationServices.map(service => service.service_id))];
+
+        // Fetch service names from Services table
         let serviceMap = {};
-        if (allServiceIds.size > 0) {
+        if (serviceIds.length > 0) {
             const services = await Services.findAll({
-                where: { id: { [Op.in]: [...allServiceIds] } },
+                where: { id: { [Op.in]: serviceIds } },
                 attributes: ["id", "servicename"],
             });
 
-            services.forEach((service) => {
+            services.forEach(service => {
                 serviceMap[service.id] = service.servicename;
             });
         }
 
+        // Map services to organizations
+        const organizationServiceMap = {};
+        organizationServices.forEach(service => {
+            if (!organizationServiceMap[service.organization_id]) {
+                organizationServiceMap[service.organization_id] = [];
+            }
+            organizationServiceMap[service.organization_id].push({
+                id: service.service_id,
+                servicename: serviceMap[service.service_id] || "Unknown Service",
+                price: service.price,
+            });
+        });
+
         // Format the data
         const formattedOrganizations = organizations.map((org) => {
             const orgData = org.toJSON();
-            if (orgData.organizationType) {
-                orgData.organizationTypeName = orgData.organizationType.organizationType;
-                orgData.description = orgData.organizationType.description;
-                orgData.fromDate = orgData.organizationType.fromDate;
-                orgData.toDate = orgData.organizationType.toDate;
-
-                let serviceIds = [];
-                if (typeof orgData.organizationType.service_id === "string") {
-                    try {
-                        serviceIds = JSON.parse(orgData.organizationType.service_id);
-                    } catch (error) {
-                        console.warn("Invalid JSON in service_id:", orgData.organizationType.service_id);
-                    }
-                } else if (Array.isArray(orgData.organizationType.service_id)) {
-                    serviceIds = orgData.organizationType.service_id;
+            orgData.organizationTypeName = orgData.organizationType?.organizationType || "";
+            orgData.description = orgData.organizationType?.description || "";
+        
+            // Check if the address is a string and format accordingly
+            try {
+                if (typeof orgData.address === 'string') {    // If address is a stringified JSON (array-like), parse it
+                    orgData.address = JSON.parse(orgData.address);   // Try to parse the address as JSON if it looks like an array
                 }
-
-                orgData.services = Array.isArray(serviceIds)
-                    ? serviceIds.map((id) => ({
-                          id,
-                          servicename: serviceMap[id] || "Unknown Service",
-                      }))
-                    : [];
-
-                delete orgData.organizationType;
+            } catch (error) {
+                if (typeof orgData.address === 'string') { // If parsing fails, keep it as a string (address is a single string)
+                    orgData.address = orgData.address; // Address remains a string if not parsable
+                }
             }
+            // Attach services to organization
+            orgData.services = organizationServiceMap[orgData.id] || [];
+        
+            delete orgData.organizationType;
             return orgData;
         });
+        
 
         // Group data by organizationType
         const groupedData = formattedOrganizations.reduce((acc, org) => {
             const { organizationTypeName } = org;
-
             if (!acc[organizationTypeName]) {
                 acc[organizationTypeName] = [];
             }
@@ -153,7 +144,6 @@ const all = async (req, res) => {
         return res.status(500).json({ message: "Internal Server Error" });
     }
 };
-
 
 // status based order shown
 const statusOrder = async (req, res) => {
