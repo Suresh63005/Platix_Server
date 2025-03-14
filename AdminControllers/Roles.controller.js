@@ -2,7 +2,7 @@ const asyncHandler = require("../Middlewares/errorHandler");
 const Roles = require("../Models/TblRoles.model"); // Path to your Roles model
 const { formatDateFields } = require("../helper/formatedDate"); // Import the date helper
 
-// Controller to create a new role
+//  to create a new role for dentist home screen (the selected roles should be  dentist, dental labrortory, radilogy center, material supply)
 const createRole = async (req, res) => {
   const { id, rolename, fromdate, todate } = req.body;
 
@@ -37,17 +37,14 @@ const createRole = async (req, res) => {
   }
 };
 
-
 // Controller to view all roles
 const viewRoles = async (req, res) => {
   try {
-    // Fetch all roles from the database
     const roles = await Roles.findAll();
     if (roles.length === 0) {
       return res.status(404).json({ message: "No roles found" });
     }
 
-    // Format date fields before sending response
     const formattedRoles = formatDateFields(roles.map(role => role.toJSON()), ["fromdate", "todate"]);
 
     res.status(200).json({ formattedRoles });
