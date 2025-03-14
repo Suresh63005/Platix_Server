@@ -39,10 +39,10 @@ OrderReports.belongsTo(User, { foreignKey: "userUUID", as: "user" });
 //   foreignKey: "toOrganization",
 //   as: "toOrg",
 // });
-// OrderReports.belongsTo(Organization, {
-//   foreignKey: "fromOrganization",
-//   as: "fromOrg",
-// });
+OrderReports.belongsTo(Organization, {
+  foreignKey: "fromOrganization",
+  as: "fromOrg",
+});
 
 OrderReports.belongsTo(Organization, {
   foreignKey: "toOrganization",
@@ -51,7 +51,7 @@ OrderReports.belongsTo(Organization, {
 
 // OrderReports.belongsTo(Organization,{foreignKey:'toOrganization',as: "toOrganizationDetails" })
 Organization.hasMany(OrderReports,{foreignKey:'toOrganization'})
-// Organization.hasMany(OrderReports,{foreignKey:'fromOrganization'})
+Organization.hasMany(OrderReports,{foreignKey:'fromOrganization'})
 OrderReports.belongsTo(Services,{foreignKey: "serviceId", as: "service"})
 
 User.belongsTo(TblOrganizationType, {
@@ -119,5 +119,5 @@ TblOrganizationType.belongsToMany(Services, {
 OrderServices.belongsTo(OrderReports,{foreignKey:'orderId'})
 OrderReports.hasMany(OrderServices,{foreignKey:'orderId'})
 
-OrderServices.belongsTo(Services,{foreignKey:'orgserviceId'})
+OrderServices.belongsTo(Services,{foreignKey:'orgserviceId',as:"orderService"})
 Services.hasMany(OrderServices,{foreignKey:'orgserviceId'})
