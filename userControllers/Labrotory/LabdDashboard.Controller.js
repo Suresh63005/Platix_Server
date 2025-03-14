@@ -71,4 +71,52 @@ const assignOrders=async(req,res)=>{
     
   }
 }
-module.exports={labOrders}
+
+const labCreateOrEditOrder=async(req,res)=>{
+  // here userUUID means doctor name
+  const { userUUID,hospital_name,labrotory_name,service_id,order_date,toothname,shade,remarks  } = req.body;
+
+}
+
+// labrotory owner (shown active, closed and  cancelled orders)
+const labAllOrders = async (req, res) => {
+  const { orderStatus } = req.params;
+
+  const allowedStatuses = ["processing", "completed", "cancelled"];
+
+  if (!allowedStatuses.includes(orderStatus)) {
+    return res.status(400).json({ message: "Invalid order status" });
+  }
+
+  try {
+    const allOrders = await OrderReports.findAll({
+      where: { orderStatus },
+      include: [
+        {
+          model: Organization,
+          as: 'fromOrg', 
+          attributes: ['name'], 
+        },
+        
+      ]
+    });
+
+    const response = { [orderStatus]: allOrders.map(order => {
+      return {
+        ...order.toJSON(), 
+        fromOrganizationName: order.fromOrganizationDetails ? order.fromOrganizationDetails.name : null,
+      };
+    })};
+
+    if (allOrders.length === 0) {
+      response[orderStatus] = [];
+    }
+
+    return res.status(200).json(response);
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({ message: "Server error", error: error.message });
+  }
+};
+
+module.exports={labOrders,labAllOrders}
