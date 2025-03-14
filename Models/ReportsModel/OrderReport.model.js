@@ -46,7 +46,7 @@ const OrderReports = sequelize.define(
     },
     fromOrganization: {
       type: DataTypes.UUID,
-      allowNull: false,
+      allowNull: true,
     },
     toOrganization: {
       type: DataTypes.UUID,

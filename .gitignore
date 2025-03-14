@@ -4,4 +4,7 @@ node_modules
 .dockerignore
 Dockerfile
 note.txt
+note2.txt
 dataModel
+addition.js
+__tests__

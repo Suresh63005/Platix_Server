@@ -18,7 +18,7 @@ const fromDentist = async (req, res) => {
       orderId,
       patientId,
       toOrganization,
-      serviceId,
+      serviceId, // material name in material screen
       requiredDate,
       toothName,
       shades,
@@ -60,7 +60,7 @@ const fromDentist = async (req, res) => {
       console.log(`Updating order ${id}`);
 
       if (cancel) {
-        console.log(`Cancelling order ${id}`);
+        console.log(`Cancelling order ${id}`); 
         await orderReport.update(
           { orderStatus: "cancelled" },
           { transaction }
@@ -71,8 +71,8 @@ const fromDentist = async (req, res) => {
           {
             fromOrganization,
             patientName,
-            orderId: orderReport.orderId, // Preserve existing orderId
-            patientId: orderReport.patientId, // Preserve existing patientId
+            orderId: orderReport.orderId,
+            patientId: orderReport.patientId,
             toOrganization,
             requiredDate,
             toothName,
@@ -93,8 +93,8 @@ const fromDentist = async (req, res) => {
       }
     } else {
       // Create a new order if ID is not provided
-      const orderIdValue = await generateUniqueId("#", OrderReports, "orderId");
-      const patientIdValue = await generateUniqueId("#", OrderReports, "patientId");
+      const orderIdValue = await generateUniqueId("ORD", OrderReports, "orderId");
+      const patientIdValue = await generateUniqueId("PN", OrderReports, "patientId");
 
       console.log("Creating a new order");
       orderReport = await OrderReports.create(
@@ -187,6 +187,13 @@ const fromDentist = async (req, res) => {
 };
 
 const orderReport = async (req, res) => {
+  // const uid = req.user.id;
+  // if(!uid){
+  //   return res.status(401).json({
+  //     message:"Unauthorized: user not foud"
+  //   })
+  // }
+
   try {
     const { fromdate, todate } = req.params;
 
@@ -194,6 +201,7 @@ const orderReport = async (req, res) => {
       orderStatus: {
         [Op.eq]: "completed",
       },
+      // userUUID:uid
     };
 
     if (fromdate && todate) {
@@ -221,7 +229,7 @@ const orderReport = async (req, res) => {
     return res.status(200).json({
       success: true,
       message: "Order reports fetched successfully.",
-      data: allOrder,
+      dataqweghj: allOrder,
     });
   } catch (error) {
     console.error("Error fetching order reports:", error);
@@ -235,98 +243,95 @@ const orderReport = async (req, res) => {
 
 const orderDetails = async (req, res) => {
   const { id } = req.params;
-
   try {
-      // Fetch the order report by ID and include associated user details
-      const orderReport = await OrderReports.findByPk(id, {
+    // Fetch the order report by ID and include associated user details
+    const orderReport = await OrderReports.findByPk(id, {
+      include: [
+        {
+          model: User,
+          as: 'user',
+          attributes: ['id', 'firstName', 'email', 'address', 'hospital_name'],
+        },
+      ],
+    });
+
+    if (!orderReport) {
+      return res.status(404).json({
+        success: false,
+        message: "Order Report not found!",
+      });
+    }
+
+    // Fetch order services along with price, quantity, and service details
+    const orderServices = await OrderServices.findAll({
+      where: { orderId: orderReport.id },
+      attributes: ['id', 'orderId', 'price', 'quantity'],  // Include price and quantity
+      include: [
+        {
+          model: TblOrganization_Service,
+          as: 'orgservice',
+          attributes: ['id', 'service_id'],
           include: [
-              {
-                  model: User,
-                  as: 'user',  
-                  attributes: ['id', 'firstName', 'email', 'address', 'hospital_name'], 
-              },
-          ],
+            {
+              model: Services,
+              as: 'services',
+              attributes: ['id', 'servicename'],
+            }
+          ]
+        },
+      ],
+    });
+    if (!orderServices || orderServices.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: "No services found for this order!",
       });
+    }
 
-      if (!orderReport) {
-          return res.status(404).json({
-              success: false,
-              message: "Order Report not found!",
-          });
-      }
-
-      // Fetch order services along with price, quantity, and service details
-      const orderServices = await OrderServices.findAll({
-          where: { orderId: orderReport.id },
-          attributes: ['id', 'orderId', 'price', 'quantity'],  // Include price and quantity
-          include: [
-              {
-                  model: TblOrganization_Service,
-                  as: 'orgservice', 
-                  attributes: ['id', 'service_id'], 
-                  include: [
-                      {
-                          model: Services, 
-                          as: 'services', 
-                          attributes: ['id', 'servicename'], 
-                      }
-                  ]
-              },
-          ],
-      });
-
-      if (!orderServices || orderServices.length === 0) {
-          return res.status(404).json({
-              success: false,
-              message: "No services found for this order!",
-          });
-      }
-
-      // Fetch organization details
-      const toOrganizationDetails = await Organization.findByPk(orderReport.toOrganization, {
-          attributes: ["id", "name"],
-      });
-
-      return res.status(200).json({
-          success: true,
-          message: "Order Report found successfully!",
-          data: {
-              ...orderReport.toJSON(),
-              orderServices,  // Now includes price and quantity
-              toOrganizationDetails, 
-          },
-      });
+    // Fetch organization details
+    const toOrganizationDetails = await Organization.findByPk(orderReport.toOrganization, {
+      attributes: ["id", "name"],
+    });
+    return res.status(200).json({
+      success: true,
+      message: "Order Report found successfully!",
+      data: {
+        ...orderReport.toJSON(),
+        orderServices,  // Now includes price and quantity
+        toOrganizationDetails,
+      },
+    });
   } catch (error) {
-      console.error("Error fetching order report:", error);
-      res.status(500).json({ success: false, message: "Internal Server Error", error: error.message });
+    console.error("Error fetching order report:", error);
+    res.status(500).json({ success: false, message: "Internal Server Error", error: error.message });
   }
 };
 
 
-const PaymentReports = async(req,res)=>{
+const PaymentReports = async (req, res) => {
 
   try {
-    const {fromDate, toDate}=req.query;
-    let whereCondition={
-      orderStatus:{[Op.eq]:"completed"}
+    const { fromDate, toDate } = req.query;
+    let whereCondition = {
+      orderStatus: { [Op.eq]: "completed" }
     }
-    if(fromDate && toDate){
-      whereCondition.createdAt={[Op.between]:[new Date(fromDate),new Date(toDate)]}
+    if (fromDate && toDate) {
+      whereCondition.createdAt = { [Op.between]: [new Date(fromDate), new Date(toDate)] }
     }
-    else if(fromDate){
-      whereCondition.createdAt={[Op.gte]:new Date(fromDate)}
-    }
-    else if(toDate){
-      whereCondition.createdAt={[Op.gte]:new Date(fromDate)}
+    else if (fromDate) {
+      whereCondition.createdAt = { [Op.gte]: new Date(fromDate) }
     }
     else if (toDate) {
-      whereCondition.createdAt ={[Op.lte]: new Date(toDate),};
+      whereCondition.createdAt = { [Op.gte]: new Date(fromDate) }
     }
-    const allOrders = await OrderReports.findAll({where:whereCondition})
+    else if (toDate) {
+      whereCondition.createdAt = { [Op.lte]: new Date(toDate), };
+    }
+    const allOrders = await OrderReports.findAll({ where: whereCondition })
     return res.status(200).json({
-      success:true,
-      message:"Payment Reports Fetched Successfully!",
-      data:allOrders
+      success: true,
+      message: "Payment Reports Fetched Successfully!",
+      data: allOrders
     })
   } catch (error) {
     console.error("Error fetching payment reports:", error);
@@ -338,58 +343,183 @@ const PaymentReports = async(req,res)=>{
   }
 }
 
-const ViewPaymentReportDetails = async(req,res)=>{
-  const {id}=req.params;
+const ViewPaymentReportDetails = async (req, res) => {
+  const { id } = req.params;
   try {
-    const orderDetails=await OrderReports.findByPk(id,{
-      include:[
+    const orderDetails = await OrderReports.findByPk(id, {
+      include: [
         {
-          model:User,
-          as:'user',
-          attributes:['id','firstName']
+          model: User,
+          as: 'user',
+          attributes: ['id', 'firstName']
         },
       ]
     })
-    if(!orderDetails){
+    if (!orderDetails) {
       return res.status(404).json({
-        success:false,
-        message:"Order Details are not found!"
+        success: false,
+        message: "Order Details are not found!"
       })
     }
-    const billDetails=await OrderReports.findByPk(id)
-    if(!billDetails){
-      return res.status(404).json({message:"Bill Details are not found!"})
+    const billDetails = await OrderReports.findByPk(id)
+    if (!billDetails) {
+      return res.status(404).json({ message: "Bill Details are not found!" })
     }
-    const serviceDetails=await TblOrganization_Service.findOne({
-      where:{organization_id:orderDetails.fromOrganization},
-      include:[
+    const serviceDetails = await TblOrganization_Service.findOne({
+      where: { organization_id: orderDetails.fromOrganization },
+      include: [
         {
-          model:Services,
-          as:'service',
-          attributes:["id","servicename",'servicedescription']
+          model: Services,
+          as: 'services',
+          attributes: ["id", "servicename", 'servicedescription']
         }
       ]
     })
-    if(!serviceDetails){
+    if (!serviceDetails) {
       return res.status(404).json({
-        success:false,
-        message:"Service Details are not found!"
+        success: false,
+        message: "Service Details are not found!"
       })
     }
     return res.status(200).json({
-      success:true,
-      message:"Payment Details Fetched Successfully",
-      data:{
+      success: true,
+      message: "Payment Details Fetched Successfully",
+      data: {
         orderDetails,
         billDetails,
         serviceDetails
       }
     })
   } catch (error) {
-    console.error("Error Occurs While Fetching Payment Reports: ",error)
-    res.status(500).json({message:"Interal Server Error",error:error.message})
+    console.error("Error Occurs While Fetching Payment Reports: ", error)
+    res.status(500).json({ message: "Interal Server Error", error: error.message })
   }
 }
 
+const orderAndPaymentSearch = async (req, res) => {
+  const { search } = req.params; // Search term from the request params
+  console.log(search)
+  try {
+    // Search in OrderReports and OrderServices
+    const orderReports = await OrderReports.findAll({
+      where: {
+        [Op.or]: [
+          {
+            orderId: {
+              [Op.like]: `%${search}%`,
+            },
+          },
+          {
+            toothName: {
+              [Op.like]: `%${search}%`,
+            },
+          },
+          {
+            shades: {
+              [Op.like]: `%${search}%`,
+            },
+          },
+          {
+            remarks: {
+              [Op.like]: `%${search}%`,
+            },
+          },
+          {
+            reasonForScan: {
+              [Op.like]: `%${search}%`,
+            },
+          },
+          {
+            mobileNo: {
+              [Op.like]: `%${search}%`,
+            },
+          },
+          {
+            patientName: {
+              [Op.like]: `%${search}%`,
+            },
+          },
+          {
+            patientProblem: {
+              [Op.like]: `%${search}%`,
+            },
+          },
+          {
+            paymentMethod: {
+              [Op.like]: `%${search}%`,
+            },
+          },
+        ],
+      },
+    });
 
-module.exports = { fromDentist,orderDetails,orderReport ,PaymentReports};
+    const orderServices = await OrderServices.findAll({
+      where: {
+        [Op.or]: [
+          {
+            orderId: {
+              [Op.like]: `%${search}%`,
+            },
+          },
+          {
+            orgserviceId: {
+              [Op.like]: `%${search}%`,
+            },
+          },
+        ],
+      },
+    });
+
+    // Send the results back to the client
+    return res.status(200).json({
+      orderReports,
+      orderServices,
+    });
+  } catch (error) {
+    console.error('Error during global search:', error.message);
+    return res.status(500).json({
+      message: 'An error occurred while performing the search',
+    });
+  }
+};
+
+const getorganizationDetailsById = async (req, res) => {
+  const id = req.params.id;
+
+  try {
+    const orgDetails = await Organization.findByPk(id);
+    if (!orgDetails) {
+      return res.status(404).json({ message: "Organization not found" });
+    }
+
+    const orgServiceDetails = await TblOrganization_Service.findAll({
+      where: { organization_id: id },
+      attributes: ["id", "price", "service_id"],
+      include: [
+        {
+          model: Services, 
+          as: "Service",
+          attributes: ["id", "servicename"],
+        },
+      ],
+    });
+    const services = orgServiceDetails.map(service => ({
+      id: service.service_id,
+      servicename: service.Service ? service.Service.servicename : "Unknown Service",
+      price: service.price,
+    }));
+console.log(services)
+    return res.status(200).json({
+      organization: orgDetails,
+      services: services.length > 0 ? services : "No service data available for this organization",
+    });
+
+  } catch (error) {
+    console.log(error);
+    return res.status(500).json({ message: "Internal server error" });
+  }
+};
+
+
+
+module.exports = { fromDentist, orderDetails, orderReport, PaymentReports, ViewPaymentReportDetails,orderAndPaymentSearch,getorganizationDetailsById };

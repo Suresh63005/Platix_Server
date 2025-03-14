@@ -94,7 +94,7 @@ Services.belongsToMany(TblOrganizationType, {
 
 OrderServices.belongsTo(TblOrganization_Service,{foreignKey:"orgserviceId",as:"orgservice"})
 
-TblOrganization_Service.belongsTo(Services,{foreignKey:"service_id",as:"services"});
+TblOrganization_Service.belongsTo(Services, { foreignKey: "service_id", as: "Service" }); // ✅ Singular alias
 
 Organization.hasMany(TblOrganization_Service, {
   foreignKey: 'organization_id',
@@ -106,3 +106,18 @@ TblOrganization_Service.belongsTo(Organization, {
   as: 'organization'
 });
 
+Services.belongsToMany(TblOrganizationType, {
+  through: 'OrganizationTypeServices', // or the actual junction table name
+  foreignKey: 'service_id', // The foreign key in the junction table
+});
+
+TblOrganizationType.belongsToMany(Services, {
+  through: 'OrganizationTypeServices', // or the actual junction table name
+  foreignKey: 'organizationType_id', // The foreign key in the junction table
+});
+
+OrderServices.belongsTo(OrderReports,{foreignKey:'orderId'})
+OrderReports.hasMany(OrderServices,{foreignKey:'orderId'})
+
+OrderServices.belongsTo(Services,{foreignKey:'orgserviceId',as:"orderService"})
+Services.hasMany(OrderServices,{foreignKey:'orgserviceId'})

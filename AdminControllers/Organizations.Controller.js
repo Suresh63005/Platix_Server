@@ -11,18 +11,24 @@ const Services = require("../Models/TblServices.model");
 // Upsert (Create or Update) Organization
 const upsertOrganizations =async (req, res) => {
     const {
-        id, address, businessName, description, designation, email, googleCoordinates,
+        id, addresses, businessName, description, designation, email, googleCoordinates,
         gstNumber, mobile, name, registrationId, organizationType_id, whatsapp, bankName, accountNumber,
         accountHolder, ifscCode, upiId, services,fileextras
     } = req.body;
-    
 
-    const parsedServices = typeof services === "string" ? JSON.parse(services) : services;
+  
     
+    
+console.log(req.body)
+    const parsedServices = typeof services === "string" ? JSON.parse(services) : services;
+    // const parsedAddress = typeof address === "string" ? JSON.parse(address) : address;
     
     if (!Array.isArray(parsedServices)) {
         return res.status(400).json({ error: "Invalid services format" });
     }
+    // if (!Array.isArray(parsedAddress)) {
+    //     return res.status(400).json({ error: "Invalid addres format" });
+    // }
 
     let file1 = null;
     let files = [];
@@ -59,7 +65,7 @@ const upsertOrganizations =async (req, res) => {
             
 
                 await organization.update({
-                    address, businessName, description, designation, email,
+                    address:addresses, businessName, description, designation, email,
                     googleCoordinates: JSON.parse(googleCoordinates),
                     gstNumber, mobile, name, registrationId, organizationType_id, whatsapp, 
                     bankName, accountNumber, accountHolder, ifscCode, upiId,
@@ -79,7 +85,7 @@ const upsertOrganizations =async (req, res) => {
           
                 // Update organization details
                 await organization.update({
-                  address,
+                    address:addresses,
                   businessName,
                   description,
                   designation,
@@ -102,12 +108,6 @@ const upsertOrganizations =async (req, res) => {
 
             }
 
-               
-            
-        
-            // Update organization details
-            
-        
            if (parsedServices.length === 0) {
 
             await TblOrganization_Service.destroy({
@@ -139,9 +139,25 @@ const upsertOrganizations =async (req, res) => {
             return res.status(200).json({ message: "Organization updated successfully", data: organization });
         }
          else {
-            // Create a new organization
+
+            
+
+            const organizationwithname = await Organization.findOne({ where: {name,organizationType_id  } });
+            const organizationwithnumber = await Organization.findOne({ where: {mobile }, transaction });
+
+            if(organizationwithname){
+                
+                return res.status(400).json({ error: "Organization with this name already exists" });
+
+            }
+            else if(organizationwithnumber){
+                return res.status(400).json({ error: "Organization with this number already exists" });
+            }
+            else{
+
+                 // Create a new organization
             organization = await Organization.create({
-                address, businessName, description, designation, email,
+                address: addresses, businessName, description, designation, email,
                 googleCoordinates: JSON.parse(googleCoordinates),
                 gstNumber, mobile, name, registrationId, organizationType_id, whatsapp,
                 bankName, accountNumber, accountHolder, ifscCode, upiId,
@@ -164,6 +180,14 @@ const upsertOrganizations =async (req, res) => {
 
             await transaction.commit();
             return res.status(201).json({ message: "Organization created successfully", data: organization });
+
+            }
+
+
+
+
+
+           
         }
     } catch (error) {
         console.error("Error inserting/updating organization:", error);

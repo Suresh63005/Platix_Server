@@ -7,8 +7,8 @@ const cors = require("cors");
 const bodyParser = require("body-parser");
 const { connectDB, sequelize } = require("./config/db");
 const logger=require("morgan")
-const PORT = process.env.PORT || 5000
-// const PORT2 = process.env.PORT2 || 8081
+const PORT = process.env.PORT || 5001
+// const PORT2 = process.env.PORT2 || 8081 
 require("./Models/associations")
 dotenv.config();
 connectDB();
@@ -37,7 +37,7 @@ const OrderReport = require("./Models/ReportsModel/OrderReport.model");
 // app.use(morgan("dev"));
 app.use(
   cors({
-    origin:[ "http://localhost:3000","https://platix-client.vercel.app"],
+    origin:[ "http://localhost:3000","http://localhost:3001","http://localhost:3002","https://platix-eight.vercel.app"],
     credentials: true,
     methods: "GET,POST,PUT,DELETE", 
     allowedHeaders: "Content-Type,Authorization", 
@@ -70,6 +70,7 @@ app.use("/login",require("./userRoutes/auth/authRouter"))
 app.use("/dashboard",require("./userRoutes/DashBoard.router"))
 app.use("/profile",require("./userRoutes/Profile.router"))
 app.use("/dentist",require("./userRoutes/Dentist/Dentist.router"))
+app.use("/labrotory",require("./userRoutes/Labrotory/lab.router"))
 app.use("/notifications",require("./userRoutes/Notification.router"))
 
 app.listen(PORT, () => {

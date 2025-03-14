@@ -1,6 +1,7 @@
 const { formatDateFields } = require("../helper/formatedDate");
 const asyncHandler = require("../Middlewares/errorHandler");
 const { ServiceDeleteSchema,ServiceSchema } = require("../Middlewares/validation");
+const TblOrganizationType = require("../Models/TblOrganizationType.model");
 const Services = require("../Models/TblServices.model");
 const { Op, Sequelize } = require("sequelize");
 
@@ -73,6 +74,7 @@ const getAllServices = asyncHandler(async (req, res) => {
     if (filter) {
         whereConditions.id = filter;
     }
+
     if (search) {
       whereConditions[Op.or] = [
         { servicename: { [Op.like]: `%${search}%` } },
@@ -90,6 +92,10 @@ const getAllServices = asyncHandler(async (req, res) => {
         )
       ];
     }
+
+    const organizationtype = await TblOrganizationType.findAll({})
+
+
     
     
     const { count, rows: services } = await Services.findAndCountAll({
@@ -100,6 +106,14 @@ const getAllServices = asyncHandler(async (req, res) => {
     });
     
     const formattedServices = formatDateFields(services.map(service => service.toJSON()), ["fromdate", "todate"]);
+
+      let serviceswithOrgType;
+
+      formattedServices.forEach(service => {
+        serviceswithOrgType = organizationtype.filter(org => org.service_id.includes(service.id))
+        service.organizationType = serviceswithOrgType.map(org => org.organizationType);
+
+      })
     
     res.status(200).json({
         services: formattedServices,
@@ -107,26 +121,53 @@ const getAllServices = asyncHandler(async (req, res) => {
         totalCount: count,
     });
 });
-
-const serviceGetByid = asyncHandler(async (req, res) => {
-  const { id } = req.params;
+const getorgAllServices = asyncHandler(async (req, res) => {
   
-  // Find the service by ID
-  const service = await Services.findByPk(id);
+  const currentDate = new Date();
 
-  // If not found, return 404
-  if (!service) {
-    return res.status(404).json({ error: "Service not found" });
-  }
+  const whereConditions = {
+      [Op.or]: [
+          { todate: { [Op.is]: null } },  
+          { todate: { [Op.gte]: currentDate } }  
+      ]
+  };
 
-  // Format the date fields
-  const formattedService = formatDateFields(service.toJSON(), ["fromdate", "todate"]);
-
-  // Send response with formatted service
-  res.status(200).json({
-    message: "Service Retrieved",
-    data: formattedService
+  
+  const services = await Services.findAll({
+      where: whereConditions,
+      order: [['createdAt', 'DESC']],
   });
+
+      return res.status(200).json({ 
+        message: "Service Retrieved",
+        services: services
+       });
+
+
+ 
 });
 
-module.exports = { upsertService, deleteService, getAllServices,serviceGetByid };
+
+const serviceGetByid = async (req, res, next) => {
+  const { id } = req.params;
+
+  try {
+    const service = await Services.findByPk(id);
+
+    if (!service) {
+      return res.status(404).json({ error: "Service not found" });
+    }
+
+    const formattedService = formatDateFields(service.toJSON(), ["fromdate", "todate"]);
+
+    return res.status(200).json({
+      message: "Service Retrieved",
+      data: formattedService,
+    });
+  } catch (error) {
+    // console.error("Error fetching service:", error);
+    next(error); // Ensure the error is passed to the next middleware
+  }
+};
+
+module.exports = { upsertService, deleteService, getAllServices,serviceGetByid,getorgAllServices };

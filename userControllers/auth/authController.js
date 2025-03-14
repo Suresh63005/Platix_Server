@@ -10,10 +10,9 @@ const generateOTP = () => {
     return otp.toString(); 
 };
 
-
 const verifyMobile = async (req, res) => {
-    let { mobileNo } = req.body;
-    
+    let { mobileNo, registerId } = req.body;
+
     if (!mobileNo) {
         return res.status(400).json({ message: "Mobile number is required!" });
     }
@@ -27,41 +26,46 @@ const verifyMobile = async (req, res) => {
         try {
             user = await admin.auth().getUserByPhoneNumber(mobileNo);
         } catch (firebaseError) {
-            console.log(`Mobile number not found in Firebase. Creating new user: ${mobileNo}`);
-
-            user = await admin.auth().createUser({
-                phoneNumber: mobileNo,
-            });
+            console.log(`Mobile number not found in Firebase: ${mobileNo}`);
+            return res.status(404).json({ message: "Mobile number not found in Firebase." });
         }
 
-        let rider = await User.findOne({ where: { mobileNo } });
+        let userRecord = await User.findOne({ where: { mobileNo } });
 
-        if (!rider) {
-            rider = await User.create({
+        if (!userRecord) {
+            userRecord = await User.create({
                 mobileNo,
                 email: user.email || null,
                 name: user.displayName || null,
             });
-            console.log("New user created !", rider);
+            console.log("New user created in the database!", userRecord);
         } else {
-            console.log("user already exists !", rider);
+            console.log("User already exists in the database!", userRecord);
+        }
+
+        const firebaseUID = userRecord.uid || user.uid;
+
+        if (registerId !== firebaseUID) {
+            return res.status(400).json({
+                message: "The provided registerId does not match the Firebase UID.",
+            });
         }
 
         const token = jwt.sign(
-            { riderId: rider.id, mobileNo: rider.mobileNo },
+            { userRecordId: userRecord.id, mobileNo: userRecord.mobileNo, firebaseUID: firebaseUID },
             process.env.JWT_TOKEN,
         );
 
         return res.status(200).json({
-            message: "Mobile number verified and user created successfully!",
-            rider,
+            message: "Mobile number verified successfully!",
+            userRecord,
             token,
+            firebaseUID,  
         });
 
     } catch (error) {
         console.error("Error verifying mobileNo:", error.message);
 
-        // If Firebase throws a user-not-found error, handle it here
         if (error.code === "auth/user-not-found") {
             return res.status(404).json({ message: "Mobile number not registered in Firebase." });
         }
@@ -71,6 +75,7 @@ const verifyMobile = async (req, res) => {
 };
 
 // this role details for when user sucessfully logined  and  set their roles at that time send email otp 
+
 const RoleDetails = async (req, res) => {
     const { firstName, lastName, email, role_id, id } = req.body;
 
@@ -89,16 +94,16 @@ const RoleDetails = async (req, res) => {
             { firstName, lastName, email, role_id },
             { where: { id } }
         );
-        await subscribeUser(email)
+       // await subscribeUser(email)
         // Generate OTP
         const otp = generateOTP();
 
         // Store OTP in memory with expiration time
         otpStore[id] = { otp, expiry: Date.now() + 5 * 60 * 1000 };  // Expiry after 5 minutes
 
-        // Prepare and send OTP email using OneSignal
         const subject = 'Your OTP Code';
         const text = `Your 6-digit OTP code is: ${otp}`;
+        console.log(otp)
         await sendEmail(email, subject, text);
 
         return res.status(200).json({ message: "Role details updated successfully! OTP has been sent to your email." });
@@ -138,5 +143,6 @@ const verifyOtp = (req, res) => {
         return res.status(400).json({ message: "Invalid OTP!" });
     }
 };
+
 
 module.exports = { verifyMobile ,RoleDetails,verifyOtp};
