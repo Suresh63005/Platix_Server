@@ -5,6 +5,7 @@ const { formatDateFields } = require("../helper/formatedDate");
 const Organization = require("../Models/Organization.model");
 const Services = require("../Models/TblServices.model");
 const TblOrganization_Service = require("../Models/tblOrganizationService");
+const OrderServices = require("../Models/ReportsModel/OrderServices.model");
 
 const allOrders = async (req, res) => {
     try {
@@ -148,41 +149,66 @@ const all = async (req, res) => {
 // status based order shown and (toOrganization)  adress
 const statusOrder = async (req, res) => {
     try {
-      const { status, from_organization } = req.params;
-  
-      const whereCondition = {};
-      if (status) whereCondition.orderStatus = status;
-      if (from_organization) whereCondition.from_organization = from_organization;
-  
-      const orderStatus = await OrderReports.findAll({
-        where: whereCondition,
-        include: [
-          {
-            model: Organization,
-            as: "toOrg",
-            attributes: ["address"]
-          }
-        ]
-      });
-  
-      const cleanedOrderStatus = orderStatus.map(order => {
-        if (order.toOrg && typeof order.toOrg.address === 'string') {
-          try {
-            order.toOrg.address = JSON.parse(order.toOrg.address);
-          } catch (error) {
-            order.toOrg.address = order.toOrg.address; 
-          }
-        }
-        return order;
-      });
-  
-      return res.status(200).json(cleanedOrderStatus);
+        const { status, userUUID } = req.params; // here userUUID means user uuid
+
+        const whereCondition = {};
+        if (status) whereCondition.orderStatus = status;
+        if (userUUID) whereCondition.userUUID = userUUID;
+
+        const orderStatus = await OrderReports.findAll({
+            where: whereCondition,
+            include: [
+                {
+                    model: Organization,
+                    as: "toOrg",
+                    attributes: ["name", "address"], // Including organization details
+                },
+                {
+                    model: OrderServices, // Including OrderServices model
+                    include: [
+                        {
+                            model: Services, // Including the related Service data
+                            as: "orderService", // Alias for the association
+                            attributes: ["id", "servicename", "servicedescription"], // Include only required fields
+                        },
+                    ],
+                },
+            ],
+        });
+
+        // Clean the address field if it's in stringified JSON format
+        const cleanedOrderStatus = orderStatus.map(order => {
+            // Parsing the address if it's stringified JSON
+            if (order.toOrg && typeof order.toOrg.address === 'string') {
+                try {
+                    order.toOrg.address = JSON.parse(order.toOrg.address);
+                } catch (error) {
+                    order.toOrg.address = order.toOrg.address;
+                }
+            }
+
+            // Format OrderServices and include service data
+            if (order.OrderServices) {
+                order.OrderServices = order.OrderServices.map(orderService => {
+                    // Extract and format service data
+                    const serviceData = orderService.orderService || {}; // Attach the related service data
+                    return {
+                        ...orderService.toJSON(), // Spread the OrderService data
+                        service: serviceData, // Attach service details
+                    };
+                });
+            }
+
+            return order;
+        });
+
+        // Return the formatted response
+        return res.status(200).json(cleanedOrderStatus);
     } catch (error) {
-      console.error("Error fetching orders by status and organization:", error);
-      return res.status(500).json({ message: "Internal Server Error" });
+        console.error("Error fetching orders by status and organization:", error);
+        return res.status(500).json({ message: "Internal Server Error" });
     }
 };
-  
 
 const searchOrganizations = async (req, res) => {
     try {

@@ -158,7 +158,7 @@ const labOrderAndPaymentReport = async (req, res) => {
 
 const labOrderAndPaymentReportGetById = async (req, res) => {
   const { id, report } = req.params;
-
+  console.log(req.params)
   try {
     const validReports = ["order", "payment"];
     if (!validReports.includes(report)) {
