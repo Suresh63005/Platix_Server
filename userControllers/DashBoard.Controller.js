@@ -150,18 +150,35 @@ const statusOrder = async (req, res) => {
     try {
         const { status, from_organization } = req.params;
 
+        // Step 1: Check if the organization exists
+        const organization = await Organization.findByPk(from_organization);
+        if (!organization) {
+            return res.status(404).json({ message: "Organization not found" });
+        }
+        console.log(organization)
+        // Step 2: Check if the organization type is 'Dentist'
+        const organizationType = await TblOrganizationType.findByPk(organization.organizationType_id);
+        console.log(organizationType)
+        if (!organizationType || organizationType.organizationType !== "Dentist") {
+            return res.status(403).json({ message: "Organization is not a Dentist" });
+        }
+
+        // Step 3: Create the where condition based on the status and organization
         const whereCondition = {};
         if (status) whereCondition.orderStatus = status;
         if (from_organization) whereCondition.from_organization = from_organization;
 
+        // Step 4: Fetch the orders matching the conditions
         const orderStatus = await OrderReports.findAll({ where: whereCondition });
 
+        // Step 5: Return the fetched order status
         return res.status(200).json(orderStatus);
     } catch (error) {
         console.error("Error fetching orders by status and organization:", error);
         return res.status(500).json({ message: "Internal Server Error" });
     }
 };
+
 
 const searchOrganizations = async (req, res) => {
     try {
