@@ -274,7 +274,7 @@ const orderDetails = async (req, res) => {
           include: [
             {
               model: Services,
-              as: 'services',
+              as: 'servicess',
               attributes: ['id', 'servicename'],
             }
           ]
@@ -370,7 +370,7 @@ const ViewPaymentReportDetails = async (req, res) => {
       include: [
         {
           model: Services,
-          as: 'services',
+          as: 'servicess',
           attributes: ["id", "servicename", 'servicedescription']
         }
       ]
@@ -495,13 +495,13 @@ const getorganizationDetailsById = async (req, res) => {
     const orgServiceDetails = await TblOrganization_Service.findAll({
       where: { organization_id: id },
       attributes: ["id", "price", "service_id"],
-      include: [
-        {
-          model: Services, 
-          as: "Service",
-          attributes: ["id", "servicename"],
-        },
-      ],
+      // include: [
+      //   {
+      //     model: Services, 
+      //     as: "Servicess",
+      //     attributes: ["id", "servicename"],
+      //   },
+      // ],
     });
     const services = orgServiceDetails.map(service => ({
       id: service.service_id,
