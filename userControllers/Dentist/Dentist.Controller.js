@@ -127,7 +127,7 @@ const fromDentist = async (req, res) => {
     if (serviceId && serviceId.length > 0) {
       console.log(`Handling services for order ${orderReport.id}`);
 
-      await OrderServices.destroy({ where: { orderId: orderReport.id }, transaction });
+      await OrderServices.destroy({ where: { orderId: orderReport.id }, transaction });   // Remove any existing services linked to the order before adding new ones
 
       await Promise.all(
         serviceId.map(async (item) => {
