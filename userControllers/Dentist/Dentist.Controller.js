@@ -32,6 +32,7 @@ const fromDentist = async (req, res) => {
       total_amount, // Fix: Change to totalAmount
       payment_method, // Fix: Change to paymentMethod
       order_status, // Fix: Change to orderStatus
+      address, // Address field to be updated if provided
     } = req.body;
 
     const { cancel } = req.params;
@@ -123,6 +124,22 @@ const fromDentist = async (req, res) => {
       );
     }
 
+    // Check if address is provided and update the user model
+if (address) {
+  console.log(`Updating address for user ${userUUID}`);
+  
+  // ✅ Corrected column name: Find by `id`, not `userUUID`
+  const user = await User.findOne({ where: { id: userUUID } });
+
+  if (user) {
+      await user.update({ address }, { transaction });
+      console.log(`Address updated for user ${userUUID}`);
+  } else {
+      console.log(`User with ID ${userUUID} not found`);
+  }
+}
+  
+
     // Handle services if provided
     if (serviceId && serviceId.length > 0) {
       console.log(`Handling services for order ${orderReport.id}`);
@@ -185,6 +202,7 @@ const fromDentist = async (req, res) => {
     });
   }
 };
+
 
 const orderReport = async (req, res) => {
   // const uid = req.user.id;
