@@ -149,7 +149,7 @@ const all = async (req, res) => {
 // status based order shown and (toOrganization)  adress
 const statusOrder = async (req, res) => {
     try {
-        const { status, userUUID } = req.params; // here userUUID means user uuid
+        const { status, userUUID } = req.params; // userUUID means user uuid
 
         const whereCondition = {};
         if (status) whereCondition.orderStatus = status;
@@ -161,14 +161,15 @@ const statusOrder = async (req, res) => {
                 {
                     model: Organization,
                     as: "toOrg",
-                    attributes: ["name", "address"], // Including organization details
+                    attributes: ["name", "address"], // Include organization details
                 },
                 {
-                    model: OrderServices, // Including OrderServices model
+                    model: OrderServices, // Include OrderServices model
+                    as: "orderServices",
                     include: [
                         {
-                            model: Services, // Including the related Service data
-                            as: "orderService", // Alias for the association
+                            model: Services, // Include related Service data
+                            as: "serviceDetails", // Fixed alias
                             attributes: ["id", "servicename", "servicedescription"], // Include only required fields
                         },
                     ],
@@ -179,22 +180,20 @@ const statusOrder = async (req, res) => {
         // Clean the address field if it's in stringified JSON format
         const cleanedOrderStatus = orderStatus.map(order => {
             // Parsing the address if it's stringified JSON
-            if (order.toOrg && typeof order.toOrg.address === 'string') {
+            if (order.toOrg && typeof order.toOrg.address === "string") {
                 try {
                     order.toOrg.address = JSON.parse(order.toOrg.address);
                 } catch (error) {
-                    order.toOrg.address = order.toOrg.address;
+                    console.error("Error parsing address:", error);
                 }
             }
 
             // Format OrderServices and include service data
-            if (order.OrderServices) {
-                order.OrderServices = order.OrderServices.map(orderService => {
-                    // Extract and format service data
-                    const serviceData = orderService.orderService || {}; // Attach the related service data
+            if (order.orderServices) { // Ensure correct alias usage
+                order.orderServices = order.orderServices.map(orderService => {
                     return {
                         ...orderService.toJSON(), // Spread the OrderService data
-                        service: serviceData, // Attach service details
+                        service: orderService.serviceDetails || {}, // Attach service details
                     };
                 });
             }
@@ -209,6 +208,7 @@ const statusOrder = async (req, res) => {
         return res.status(500).json({ message: "Internal Server Error" });
     }
 };
+
 
 const searchOrganizations = async (req, res) => {
     try {

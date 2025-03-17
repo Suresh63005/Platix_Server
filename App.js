@@ -8,6 +8,8 @@ const bodyParser = require("body-parser");
 const { connectDB, sequelize } = require("./config/db");
 const logger=require("morgan")
 const PORT = process.env.PORT || 5001
+const swaggerUi = require('swagger-ui-express');
+const swaggerDocument = require("./Swagger/swagger-output.json");
 // const PORT2 = process.env.PORT2 || 8081 
 require("./Models/associations")
 dotenv.config();
@@ -45,6 +47,8 @@ app.use(
 );
 app.use(express.json());  // Use express.json() for parsing JSON requests
 app.use(express.urlencoded({ limit: '10mb', extended: true }));  // Handle URL-encoded data
+
+app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerDocument));
 
 // Routes
 app.use("/admin", adminRoutes);
