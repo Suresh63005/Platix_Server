@@ -161,7 +161,7 @@ const statusOrder = async (req, res) => {
                 {
                     model: Organization,
                     as: "toOrg",
-                    attributes: ["name", "address"], // Include organization details
+                    attributes: ["name", "address","file1"], // Include organization details
                 },
                 {
                     model: OrderServices, // Include OrderServices model
