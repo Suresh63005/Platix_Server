@@ -88,7 +88,12 @@ const User = sequelize.define("User", {
   type: {
     type: DataTypes.STRING,
     allowNull:true
-  }
+  },
+  businessName: {
+    type: DataTypes.STRING,
+    allowNull: true,
+  },
+  
 }, {
   tableName: "User",
   timestamps: true,
