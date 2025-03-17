@@ -18,7 +18,6 @@ const OrderReports = sequelize.define(
       type: DataTypes.STRING,
       allowNull: true,
     },
-
     requiredDate: {
       type: DataTypes.DATE,
       allowNull: true,
@@ -42,7 +41,7 @@ const OrderReports = sequelize.define(
     
     userUUID: {
       type: DataTypes.UUID,
-      allowNull: true,
+      allowNull: false,
     },
     fromOrganization: {
       type: DataTypes.UUID,
@@ -50,7 +49,7 @@ const OrderReports = sequelize.define(
     },
     toOrganization: {
       type: DataTypes.UUID,
-      allowNull: true,
+      allowNull: false,
     },
     orderStatus: {
       type: DataTypes.ENUM( "processing", "completed", "cancelled"),
@@ -104,6 +103,14 @@ const OrderReports = sequelize.define(
       type: DataTypes.STRING,
       allowNull: true,
     },
+    technician:{
+      type: DataTypes.UUID,
+      allowNull:true,
+    },
+    delivery_boy:{
+      type: DataTypes.UUID,
+      allowNull:true,
+    }
   },
   {
     tableName: "OrderReports",
