@@ -68,7 +68,7 @@ const fromDentist = async (req, res) => {
           { transaction }
         );
       } else {
-        // Update existing order
+        
         await orderReport.update(
           {
             fromOrganization,
@@ -106,6 +106,7 @@ const fromDentist = async (req, res) => {
           orderId: orderIdValue,
           patientId,
           toOrganization,
+          
           orderDate,
           requiredDate,
           toothName,
@@ -119,7 +120,7 @@ const fromDentist = async (req, res) => {
           paidAmount: paid_amount,
           totalAmount: total_amount,
           paymentMethod: payment_method,
-          orderStatus: order_status,
+          orderStatus: "processing",
           address
         },
         { transaction }
@@ -233,7 +234,7 @@ const orderReport = async (req, res) => {
     return res.status(200).json({
       success: true,
       message: "Order reports fetched successfully.",
-      dataqweghj: allOrder,
+      data: allOrder,
     });
   } catch (error) {
     console.error("Error fetching order reports:", error);
