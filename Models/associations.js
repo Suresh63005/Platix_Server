@@ -39,10 +39,10 @@ OrderReports.belongsTo(User, { foreignKey: "userUUID", as: "user" });
 //   foreignKey: "toOrganization",
 //   as: "toOrg",
 // });
-// OrderReports.belongsTo(Organization, {
-//   foreignKey: "fromOrganization",
-//   as: "fromOrg",
-// });
+OrderReports.belongsTo(Organization, {
+  foreignKey: "fromOrganization",
+  as: "fromOrg",
+});
 
 OrderReports.belongsTo(Organization, {
   foreignKey: "toOrganization",
@@ -51,7 +51,7 @@ OrderReports.belongsTo(Organization, {
 
 // OrderReports.belongsTo(Organization,{foreignKey:'toOrganization',as: "toOrganizationDetails" })
 Organization.hasMany(OrderReports,{foreignKey:'toOrganization'})
-// Organization.hasMany(OrderReports,{foreignKey:'fromOrganization'})
+Organization.hasMany(OrderReports,{foreignKey:'fromOrganization'})
 OrderReports.belongsTo(Services,{foreignKey: "serviceId", as: "service"})
 
 User.belongsTo(TblOrganizationType, {
@@ -94,7 +94,9 @@ Services.belongsToMany(TblOrganizationType, {
 
 OrderServices.belongsTo(TblOrganization_Service,{foreignKey:"orgserviceId",as:"orgservice"})
 
-TblOrganization_Service.belongsTo(Services, { foreignKey: "service_id", as: "Service" }); // ✅ Singular alias
+TblOrganization_Service.belongsTo(Services, { foreignKey: "service_id", as: "servicess" });
+Services.hasMany(TblOrganization_Service,{foreignKey:"service_id",as: "servicess"});
+ // ✅ Singular alias
 
 Organization.hasMany(TblOrganization_Service, {
   foreignKey: 'organization_id',
@@ -116,8 +118,8 @@ TblOrganizationType.belongsToMany(Services, {
   foreignKey: 'organizationType_id', // The foreign key in the junction table
 });
 
-OrderServices.belongsTo(OrderReports,{foreignKey:'orderId'})
-OrderReports.hasMany(OrderServices,{foreignKey:'orderId'})
+OrderServices.belongsTo(OrderReports,{foreignKey:'orderId',as:"orderReport"})
+OrderReports.hasMany(OrderServices,{foreignKey:'orderId',as: "orderServices",})
 
-OrderServices.belongsTo(Services,{foreignKey:'orgserviceId'})
+OrderServices.belongsTo(Services,{foreignKey:'orgserviceId',as:"serviceDetails"})
 Services.hasMany(OrderServices,{foreignKey:'orgserviceId'})

@@ -171,63 +171,59 @@ const labOrderAndPaymentReportGetById = async (req, res) => {
 
     if (report === "order") {
       reportData = await OrderReports.findOne({
-        where: { id: id },
+        where: { id },
         attributes: [
-          'orderId', 
-          'orderDate', 
-          'fromOrganization',
-          'toOrganization',
-          'patientId',
-          'patientName',
-          // 'paymentStatus'
-          
+          "orderId",
+          "orderDate",
+          "fromOrganization",
+          "toOrganization",
+          "patientId",
+          "patientName",
         ],
-        include:[
+        include: [
           {
-            model:OrderService,
-            where:{orderId:id},
-            attributes:["quantity","price"],
-            include:[
-            {
-              model:Services,
-              where:{id:sequelize.col('OrderServices.orgservice_id')},
-              attributes:["servicename"]
-            }
-            ]
-          }
-        ]
+            model: OrderService,
+            as: "orderServices", // Use the alias from associations
+            attributes: ["quantity", "price"],
+            include: [
+              {
+                model: Services,
+                as: "serviceDetails", 
+                attributes: ["servicename"],
+              },
+            ],
+          },
+        ],
       });
     } else if (report === "payment") {
       reportData = await OrderReports.findOne({
-        where: { id: id },
+        where: { id },
         attributes: [
-          'orderId', 
-          'orderDate', 
-          'fromOrganization',
-          'toOrganization',
-          'patientId',
-          'patientName',
-          // 'paymentStatus',
+          "orderId",
+          "orderDate",
+          "fromOrganization",
+          "toOrganization",
+          "patientId",
+          "patientName",
           "totalAmount",
           "paidAmount",
-          "orderDate",
           "paymentMethod",
-          "remarks"
+          "remarks",
         ],
-        include:[
+        include: [
           {
-            model:OrderService,
-            where:{orderId:id},
-            attributes:["quantity","price"],
-            include:[
+            model: OrderService,
+            as: "orderServices",
+            attributes: ["quantity", "price", "orgserviceId"],
+            include: [
               {
-                model:Services,
-                where:{id:sequelize.col('OrderServices.orgservice_id')},
-                attributes:["servicename"]
-              }
-            ]
-          }
-        ]
+                model: Services,
+                as: "serviceDetails",
+                attributes: ["servicename"],
+              },
+            ],
+          },
+        ],
       });
     }
 

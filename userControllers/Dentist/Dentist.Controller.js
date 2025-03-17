@@ -32,6 +32,7 @@ const fromDentist = async (req, res) => {
       total_amount, // Fix: Change to totalAmount
       payment_method, // Fix: Change to paymentMethod
       order_status, // Fix: Change to orderStatus
+      address, // Address field to be updated if provided
     } = req.body;
 
     const { cancel } = req.params;
@@ -123,11 +124,27 @@ const fromDentist = async (req, res) => {
       );
     }
 
+    // Check if address is provided and update the user model
+if (address) {
+  console.log(`Updating address for user ${userUUID}`);
+  
+  // ✅ Corrected column name: Find by `id`, not `userUUID`
+  const user = await User.findOne({ where: { id: userUUID } });
+
+  if (user) {
+      await user.update({ address }, { transaction });
+      console.log(`Address updated for user ${userUUID}`);
+  } else {
+      console.log(`User with ID ${userUUID} not found`);
+  }
+}
+  
+
     // Handle services if provided
     if (serviceId && serviceId.length > 0) {
       console.log(`Handling services for order ${orderReport.id}`);
 
-      await OrderServices.destroy({ where: { orderId: orderReport.id }, transaction });
+      await OrderServices.destroy({ where: { orderId: orderReport.id }, transaction });   // Remove any existing services linked to the order before adding new ones
 
       await Promise.all(
         serviceId.map(async (item) => {
@@ -185,6 +202,7 @@ const fromDentist = async (req, res) => {
     });
   }
 };
+
 
 const orderReport = async (req, res) => {
   // const uid = req.user.id;
@@ -274,7 +292,7 @@ const orderDetails = async (req, res) => {
           include: [
             {
               model: Services,
-              as: 'services',
+              as: 'servicess',
               attributes: ['id', 'servicename'],
             }
           ]
@@ -370,7 +388,7 @@ const ViewPaymentReportDetails = async (req, res) => {
       include: [
         {
           model: Services,
-          as: 'services',
+          as: 'servicess',
           attributes: ["id", "servicename", 'servicedescription']
         }
       ]
@@ -495,13 +513,13 @@ const getorganizationDetailsById = async (req, res) => {
     const orgServiceDetails = await TblOrganization_Service.findAll({
       where: { organization_id: id },
       attributes: ["id", "price", "service_id"],
-      include: [
-        {
-          model: Services, 
-          as: "Service",
-          attributes: ["id", "servicename"],
-        },
-      ],
+      // include: [
+      //   {
+      //     model: Services, 
+      //     as: "Servicess",
+      //     attributes: ["id", "servicename"],
+      //   },
+      // ],
     });
     const services = orgServiceDetails.map(service => ({
       id: service.service_id,
