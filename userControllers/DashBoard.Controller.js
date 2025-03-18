@@ -234,7 +234,7 @@ const searchOrganizations = async (req, res) => {
                     include: [
                         {
                             model: Services,
-                            as: "services",  // Make sure alias matches the association
+                            as: "servicess",  // Make sure alias matches the association
                             attributes: ["servicename"],
                         },
                     ],

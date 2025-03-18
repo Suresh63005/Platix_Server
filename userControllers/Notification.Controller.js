@@ -18,4 +18,31 @@ const createNotification = async (req, res) => {
     }
   };
 
-  module.exports={createNotification}
+  const getNotification=async(req,res)=>{
+    const { id } = req.user;
+    try {
+      const notifications=await Notification.findAll({
+        where:{uid:id},
+      })
+      return res.status(200).json({success:true,notifications})
+    } catch (error) {
+      console.error("Error fetching notifications:", error);
+      return res.status(500).json({ success: false,  message: "Internal Server Error",  error: error.message });
+    }
+  }
+
+  // for clear notifications 
+  const clearAllNotifications=async(req,res)=>{
+    const  {id}=req.user;
+    try {
+      const notifications=await Notification.destroy({
+        where:{uid:id},
+      })
+      return res.status(200).json({success:true,notifications})
+    } catch (error) {
+      console.error("Error fetching notifications:", error);
+      return res.status(500).json({ success: false,  message: "Internal Server Error",  error: error.message });
+    }
+  }
+
+  module.exports={createNotification,getNotification,clearAllNotifications}
