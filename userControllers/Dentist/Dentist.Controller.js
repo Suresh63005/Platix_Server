@@ -190,7 +190,7 @@ const fromDentist = async (req, res) => {
 };
 
 
-
+// order report search by date and where orders are completed  . it is working for 2 apis
 const orderReport = async (req, res) => {
   // const uid = req.user.id;
   // if(!uid){
@@ -249,7 +249,6 @@ const orderReport = async (req, res) => {
 const orderDetails = async (req, res) => {
   const { id } = req.params;
   try {
-    // Fetch the order report by ID and include associated user details
     const orderReport = await OrderReports.findByPk(id, {
       include: [
         {
@@ -267,10 +266,9 @@ const orderDetails = async (req, res) => {
       });
     }
 
-    // Fetch order services along with price, quantity, and service details
     const orderServices = await OrderServices.findAll({
       where: { orderId: orderReport.id },
-      attributes: ['id', 'orderId', 'price', 'quantity'],  // Include price and quantity
+      attributes: ['id', 'orderId', 'price', 'quantity'],  
       include: [
         {
           model: TblOrganization_Service,
@@ -286,12 +284,12 @@ const orderDetails = async (req, res) => {
         },
       ],
     });
-    if (!orderServices || orderServices.length === 0) {
-      return res.status(404).json({
-        success: false,
-        message: "No services found for this order!",
-      });
-    }
+    // if (!orderServices || orderServices.length === 0) {
+    //   return res.status(404).json({
+    //     success: false,
+    //     message: "No services found for this order!",
+    //   });
+    // }
 
     // Fetch organization details
     const toOrganizationDetails = await Organization.findByPk(orderReport.toOrganization, {
@@ -302,7 +300,7 @@ const orderDetails = async (req, res) => {
       message: "Order Report found successfully!",
       data: {
         ...orderReport.toJSON(),
-        orderServices,  // Now includes price and quantity
+        orderServices, 
         toOrganizationDetails,
       },
     });
@@ -380,12 +378,12 @@ const ViewPaymentReportDetails = async (req, res) => {
         }
       ]
     })
-    if (!serviceDetails) {
-      return res.status(404).json({
-        success: false,
-        message: "Service Details are not found!"
-      })
-    }
+    // if (!serviceDetails) {
+    //   return res.status(404).json({
+    //     success: false,
+    //     message: "Service Details are not found!"
+    //   })
+    // }
     return res.status(200).json({
       success: true,
       message: "Payment Details Fetched Successfully",
@@ -402,10 +400,8 @@ const ViewPaymentReportDetails = async (req, res) => {
 }
 
 const orderAndPaymentSearch = async (req, res) => {
-  const { search } = req.params; // Search term from the request params
-  console.log(search)
+  const { search } = req.params;
   try {
-    // Search in OrderReports and OrderServices
     const orderReports = await OrderReports.findAll({
       where: {
         [Op.or]: [
@@ -475,7 +471,6 @@ const orderAndPaymentSearch = async (req, res) => {
       },
     });
 
-    // Send the results back to the client
     return res.status(200).json({
       orderReports,
       orderServices,
