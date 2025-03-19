@@ -349,6 +349,7 @@ const PaymentReports = async (req, res) => {
 const ViewPaymentReportDetails = async (req, res) => {
   const { id } = req.params;
   try {
+    // Fetch order details
     const orderDetails = await OrderReports.findByPk(id, {
       include: [
         {
@@ -364,10 +365,12 @@ const ViewPaymentReportDetails = async (req, res) => {
         message: "Order Details are not found!"
       })
     }
+
     const billDetails = await OrderReports.findByPk(id)
     if (!billDetails) {
       return res.status(404).json({ message: "Bill Details are not found!" })
     }
+
     const serviceDetails = await TblOrganization_Service.findOne({
       where: { organization_id: orderDetails.fromOrganization },
       include: [
@@ -378,26 +381,35 @@ const ViewPaymentReportDetails = async (req, res) => {
         }
       ]
     })
-    // if (!serviceDetails) {
-    //   return res.status(404).json({
-    //     success: false,
-    //     message: "Service Details are not found!"
-    //   })
-    // }
+
+    let toOrganizationName = null;
+    if (orderDetails.toOrganization) {
+      const toOrganization = await Organization.findByPk(orderDetails.toOrganization, {
+        attributes: ['id', 'name']  
+      });
+      if (toOrganization) {
+        toOrganizationName = toOrganization.name;
+      }
+    }
+
     return res.status(200).json({
       success: true,
       message: "Payment Details Fetched Successfully",
       data: {
-        orderDetails,
+        orderDetails: {
+          ...orderDetails.toJSON(),
+          toOrganizationName  
+        },
         billDetails,
         serviceDetails
       }
     })
   } catch (error) {
     console.error("Error Occurs While Fetching Payment Reports: ", error)
-    res.status(500).json({ message: "Interal Server Error", error: error.message })
+    res.status(500).json({ message: "Internal Server Error", error: error.message })
   }
 }
+
 
 const orderAndPaymentSearch = async (req, res) => {
   const { search } = req.params;

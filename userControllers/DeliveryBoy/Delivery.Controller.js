@@ -3,10 +3,17 @@ const OrderReports = require("../../Models/ReportsModel/OrderReport.model")
 
 
 const getAll = async (req, res) => {
+  const uid = req.user?.id;
+
+  if(!uid){
+    return res.status(401).json({message: "Unauthorized"})
+  }
+
+
   try {
     const [activeOrders, completedOrders] = await Promise.all([
-      OrderReports.count({ where: { orderStatus: "processing" } }),
-      OrderReports.count({ where: { orderStatus: "completed" } })
+      OrderReports.count({ where: { orderStatus: "processing",delivery_boy:uid } }),
+      OrderReports.count({ where: { orderStatus: "completed" , delivery_boy:uid} })
     ]);
 
     const orderList = await OrderReports.findAll({
@@ -17,7 +24,10 @@ const getAll = async (req, res) => {
           as: 'toOrg',
           required: false 
         }
-      ]
+      ],
+      where:{
+        delivery_boy: uid
+      }
     });
 
     const response = {
