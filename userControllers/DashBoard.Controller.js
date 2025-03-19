@@ -215,123 +215,76 @@ const searchOrganizations = async (req, res) => {
         const { search } = req.query;
 
         if (!search) {
-            return res.status(400).json({ message: "Search query is required." });
+            return res.status(400).json({ message: "Search by organization name or organization type name." });
         }
 
-        // Fetch organizations matching the search term
         const organizations = await Organization.findAll({
-            attributes: ["id", "name"],
-            where: {
-                name: {
-                    [Op.like]: `%${search}%`,
-                },
-            },
-            include: [
-                {
-                    model: TblOrganization_Service,
-                    as: "organizationServices",
-                    attributes: ["service_id"],
-                    include: [
-                        {
-                            model: Services,
-                            as: "servicess",  // Make sure alias matches the association
-                            attributes: ["servicename"],
-                        },
-                    ],
-                },
-            ],
-        });
-
-        // Check if organizations found
-        if (organizations.length === 0) {
-            return res.status(404).json({ message: "No organizations found." });
-        }
-
-        // Format the response to include organization names and their service names
-        const result = organizations.map(org => {
-            // Check if the organization has services
-            const services = org.organizationServices.map(os => os.services?.servicename).filter(servicename => servicename);
-
-            const organizationData = {
-                organizationName: org.name,
-                services: services,
-            };
-
-            return organizationData;
-        });
-
-        // Send the result back as JSON
-        return res.status(200).json(result);
-    } catch (error) {
-        console.error("Error fetching organizations:", error);
-        return res.status(500).json({ message: "Internal Server Error" });
-    }
-};
-
-const searchByOrganizationType = async (req, res) => {
-    try {
-        const { search } = req.query;
-
-        if (!search) {
-            return res.status(400).json({ message: "Search query is required." });
-        }
-
-        // Fetch organizations matching the organizationType
-        const organizations = await Organization.findAll({
-            attributes: ["id", "name", "address", "mobile", "email", "description"],
+            attributes: ["id", "name", "address", "mobile", "email", "description","file1"],
             include: [
                 {
                     model: TblOrganizationType,
                     as: "organizationType",
-                    attributes: ["id", "organizationType", "description"],
-                    where: {
-                        organizationType: {
-                            [Op.like]: `%${search}%`, // Filter based on organizationType
-                        },
-                    },
-                    required: true, // Ensure only those organizations that have the matching organizationType are included
+                    attributes: ["organizationType"],
+                    required: false,
                 },
                 {
                     model: TblOrganization_Service,
-                    as: "organizationServices",
-                    attributes: ["service_id"],
+                    as: "organization", 
+                    attributes: ["service_id","price"],
                     include: [
                         {
                             model: Services,
-                            as: "services", // Alias for services
+                            as: "servicess",
                             attributes: ["servicename"],
-                            required: false, // Make optional in case no services are linked
+                            required: false,
                         },
                     ],
-                    required: false, // Make optional in case no services are linked
+                    required: false,
                 },
             ],
+            where: {
+                [Op.or]: [
+                    { name: { [Op.like]: `%${search}%` } }, 
+                    { "$organizationType.organizationType$": { [Op.like]: `%${search}%` } } 
+                ],
+            },
         });
 
-        // Check if organizations are found
+        // console.log(organizations)
         if (organizations.length === 0) {
             return res.status(404).json({ message: "No organizations found." });
         }
 
-        // Format the response to include organization details
         const result = organizations.map(org => {
-            // Handle case where no services are linked
-            const services = org.organizationServices?.map(os => os.services?.servicename).filter(servicename => servicename) || [];
-
-            const organizationData = {
+            let addressList;
+            
+            try {
+                addressList = JSON.parse(org.address);
+                // Ensure it's an array, otherwise wrap it
+                if (!Array.isArray(addressList)) {
+                    addressList = [addressList];
+                }
+            } catch (error) {
+                addressList = [org.address];
+            }
+        
+            const services =
+                org.organization?.map(os => ({
+                    servicename: os.servicess?.servicename,
+                    price: os.price,
+                })).filter(service => service.servicename) || [];
+        
+            return {
                 organizationName: org.name,
-                address: org.address,
+                file1: org.file1,
+                address: addressList, 
                 mobile: org.mobile,
                 email: org.email,
                 description: org.description,
-                organizationType: org.organizationType.organizationType, // Include organizationType
-                services: services, // Empty array if no services are linked
+                organizationType: org.organizationType?.organizationType || "N/A",
+                services: services,
             };
-
-            return organizationData;
         });
-
-        // Send the result back as JSON
         return res.status(200).json(result);
     } catch (error) {
         console.error("Error fetching organizations:", error);
@@ -340,4 +293,4 @@ const searchByOrganizationType = async (req, res) => {
 };
 
 
-module.exports={allOrders,all,statusOrder,searchOrganizations , searchByOrganizationType}
+module.exports={allOrders,all,statusOrder,searchOrganizations }
