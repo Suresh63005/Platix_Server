@@ -25,51 +25,62 @@ const limiter=rateLimit({
 })
 
 // Middleware
-app.use(limiter);
-app.use(logger("dev"));
-app.use(cors({
-  origin: [
-    "http://localhost:3000",
-    "http://localhost:3001",
-    "http://localhost:3002",
-    "https://platix-eight.vercel.app"
-  ],
-  credentials: true,
-  methods: "GET,POST,PUT,DELETE",
-  allowedHeaders: "Content-Type,Authorization"
-}));
-app.use(express.json());
-app.use(express.urlencoded({ limit: "10mb", extended: true }));
 
-// Swagger API Documentation
-app.use("/api-docs", swaggerUi.serve, swaggerUi.setup(require("./Swagger/swagger-output.json")));
+// app.use(morgan("dev"));
+app.use(
+  cors({
+    origin:[ "http://localhost:3000","http://localhost:3001","http://localhost:3002","https://platix-client.vercel.app"],
+    credentials: true,
+    methods: "GET,POST,PUT,DELETE", 
+    allowedHeaders: "Content-Type,Authorization", 
+  })
+);
+app.use(express.json());  // Use express.json() for parsing JSON requests
+app.use(express.urlencoded({ limit: '10mb', extended: true }));  // Handle URL-encoded data
 
-// Admin Routes
-app.use("/admin", require("./AdminRoutes/AdminRoute"));
-app.use("/organization", require("./AdminRoutes/OrganizationType.router"));
-app.use("/api/organization", require("./AdminRoutes/Organizations.router"));
-app.use("/user", require("./AdminRoutes/User.router"));
-app.use("/order", require("./AdminRoutes/ReportUser/Reports"));
+app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerDocument));
 
-// Mobile Routes
-app.use("/login", require("./userRoutes/auth/authRouter"));
-app.use("/dashboard", require("./userRoutes/DashBoard.router"));
-app.use("/profile", require("./userRoutes/Profile.router"));
-app.use("/dentist", require("./userRoutes/Dentist/Dentist.router"));
-app.use("/labrotory", require("./userRoutes/Labrotory/lab.router"));
-app.use("/delivery", require("./userRoutes/Delivery/Delivery.router"));
-app.use("/notifications", require("./userRoutes/Notification.router"));
+// Routes
+app.use("/admin", adminRoutes);
 
-// Test Route
-app.get("/", (req, res) => res.send("Server is running..."));
 
-// 404 Not Found Handler
-app.use("*", (req, res) => res.status(404).json({ message: "Route not found" }));
+// Test route
+app.use(logger("dev"))
+app.get("/", (req, res) => {
+  res.send("Server is running...");
+});
 
-// Start Server
-app.listen(PORT, () => console.log(`🚀 Server running on port ${PORT}`));
+app.use("/organization",organizationtype)
+app.use("/api/organization",organization)
+// app.use("/api/service",organization)
+app.use("/user",UserRouter)
+app.use("/order",OrderRouter)
 
-// Sync Database 
-sequelize.sync()
-  .then(() => console.log("✅ Database & tables created!"))
-  .catch((err) => console.error("❌ Unable to create database:", err));
+
+
+
+// for mobile
+app.use("/login",require("./userRoutes/auth/authRouter"))
+app.use("/dashboard",require("./userRoutes/DashBoard.router"))
+app.use("/profile",require("./userRoutes/Profile.router"))
+app.use("/dentist",require("./userRoutes/Dentist/Dentist.router"))
+app.use("/labrotory",require("./userRoutes/Labrotory/lab.router"))
+app.use("/notifications",require("./userRoutes/Notification.router"))
+
+app.listen(PORT, () => {
+  console.log(`Server running on port ${PORT}`);
+});
+
+// app.listen(PORT2, () => {
+//   console.log(`Server running on port ${PORT2}`);
+// });
+
+sequelize
+  .sync()
+  .then(() => {
+    console.log("Database & tables created!");
+  })
+  .catch((err) => {
+    console.error("Unable to create the database:", err);
+});
+

@@ -160,7 +160,7 @@ const fromDentist = async (req, res) => {
           await OrderServices.create(
             {
               orderId: orderReport?.id,
-              orgserviceId: service?.id,
+              orgserviceId: item.id,
               quantity: item.quantity,
               price: item.quantity * service.price,
             },
