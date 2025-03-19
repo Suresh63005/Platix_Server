@@ -7,36 +7,38 @@ const OrderServices = require("../../Models/ReportsModel/OrderServices.model");
 const User = require("../../Models/ReportsModel/User.model");
 const { sequelize } = require("../../config/db");
 
+
 const fromDentist = async (req, res) => {
-  const transaction = await sequelize.transaction();
+  const transaction = await sequelize.transaction({ autocommit: false });
 
   try {
     const {
-      id, // Optional: If provided, update the existing order
+      id, 
       fromOrganization,
       patientName,
-      orderId,
       patientId,
+      orderDate,
       toOrganization,
-      serviceId, // material name in material screen
+      serviceId = [], 
       requiredDate,
       toothName,
       shades,
       remarks,
       reasonForScan,
       userUUID,
-      sub_total, // Fix: Change to subTotal
-      tax,
-      service_charges, // Fix: Change to serviceCharges
-      paid_amount, // Fix: Change to paidAmount
-      total_amount, // Fix: Change to totalAmount
-      payment_method, // Fix: Change to paymentMethod
-      order_status, // Fix: Change to orderStatus
+      sub_total = 0, 
+      tax = 0,
+      service_charges = 0, 
+      paid_amount = 0, 
+      total_amount = 0, 
+      payment_method, 
+      order_status, 
+      address, 
     } = req.body;
 
     const { cancel } = req.params;
 
-    // Helper function to generate unique IDs
+    // Function to generate a unique ID
     const generateUniqueId = async (prefix, model, field) => {
       let uniqueId;
       let exists;
@@ -50,7 +52,7 @@ const fromDentist = async (req, res) => {
     let orderReport;
 
     if (id) {
-      // Update existing order if ID is provided
+      // Update existing order
       orderReport = await OrderReports.findByPk(id, { transaction });
 
       if (!orderReport) {
@@ -66,13 +68,13 @@ const fromDentist = async (req, res) => {
           { transaction }
         );
       } else {
-        // Update the order while preserving orderId and patientId
+        
         await orderReport.update(
           {
             fromOrganization,
             patientName,
-            orderId: orderReport.orderId,
-            patientId: orderReport.patientId,
+            orderId: orderReport.orderId, 
+            patientId: patientId || orderReport.patientId, 
             toOrganization,
             requiredDate,
             toothName,
@@ -87,14 +89,14 @@ const fromDentist = async (req, res) => {
             totalAmount: total_amount,
             paymentMethod: payment_method,
             orderStatus: order_status,
+            address
           },
           { transaction }
         );
       }
     } else {
-      // Create a new order if ID is not provided
+      // Create new order
       const orderIdValue = await generateUniqueId("ORD", OrderReports, "orderId");
-      const patientIdValue = await generateUniqueId("PN", OrderReports, "patientId");
 
       console.log("Creating a new order");
       orderReport = await OrderReports.create(
@@ -102,9 +104,10 @@ const fromDentist = async (req, res) => {
           fromOrganization,
           patientName,
           orderId: orderIdValue,
-          patientId: patientIdValue,
+          patientId,
           toOrganization,
-          orderDate: new Date(),
+          
+          orderDate,
           requiredDate,
           toothName,
           shades,
@@ -117,14 +120,28 @@ const fromDentist = async (req, res) => {
           paidAmount: paid_amount,
           totalAmount: total_amount,
           paymentMethod: payment_method,
-          orderStatus: order_status,
+          orderStatus: "processing",
+          address
         },
         { transaction }
       );
     }
 
-    // Handle services if provided
-    if (serviceId && serviceId.length > 0) {
+    // Update User Address
+    if (address) {
+      console.log(`Updating address for user ${userUUID}`);
+      const user = await User.findOne({ where: { id: userUUID }, transaction });
+
+      if (user) {
+        await user.update({ address }, { transaction });
+        console.log(`Address updated for user ${userUUID}`);
+      } else {
+        console.log(`User with ID ${userUUID} not found`);
+      }
+    }
+
+    // Handle Services
+    if (serviceId.length > 0) {
       console.log(`Handling services for order ${orderReport.id}`);
 
       await OrderServices.destroy({ where: { orderId: orderReport.id }, transaction });
@@ -134,32 +151,18 @@ const fromDentist = async (req, res) => {
           let service = await TblOrganization_Service.findOne({
             where: {
               service_id: item.id,
-              organization_id: fromOrganization,
+              organization_id: toOrganization,
             },
             transaction,
           });
 
-          if (!service) {
-            console.log(`Service with ID ${item.id} not found. Creating new entry...`);
-            service = await TblOrganization_Service.create(
-              {
-                id: item.id,
-                service_id: item.id,
-                organization_id: fromOrganization,
-                price: 0,
-              },
-              { transaction }
-            );
-          }
-
-          const price = parseFloat(service.price) * parseInt(item.quantity);
-
+          
           await OrderServices.create(
             {
-              orderId: orderReport.id,
-              orgserviceId: service.id,
+              orderId: orderReport?.id,
+              orgserviceId: service?.id,
               quantity: item.quantity,
-              price: price,
+              price: item.quantity * service.price,
             },
             { transaction }
           );
@@ -185,6 +188,8 @@ const fromDentist = async (req, res) => {
     });
   }
 };
+
+
 
 const orderReport = async (req, res) => {
   // const uid = req.user.id;
@@ -229,7 +234,7 @@ const orderReport = async (req, res) => {
     return res.status(200).json({
       success: true,
       message: "Order reports fetched successfully.",
-      dataqweghj: allOrder,
+      data: allOrder,
     });
   } catch (error) {
     console.error("Error fetching order reports:", error);
@@ -274,7 +279,7 @@ const orderDetails = async (req, res) => {
           include: [
             {
               model: Services,
-              as: 'services',
+              as: 'servicess',
               attributes: ['id', 'servicename'],
             }
           ]
@@ -370,7 +375,7 @@ const ViewPaymentReportDetails = async (req, res) => {
       include: [
         {
           model: Services,
-          as: 'services',
+          as: 'servicess',
           attributes: ["id", "servicename", 'servicedescription']
         }
       ]
@@ -495,13 +500,13 @@ const getorganizationDetailsById = async (req, res) => {
     const orgServiceDetails = await TblOrganization_Service.findAll({
       where: { organization_id: id },
       attributes: ["id", "price", "service_id"],
-      include: [
-        {
-          model: Services, 
-          as: "Service",
-          attributes: ["id", "servicename"],
-        },
-      ],
+      // include: [
+      //   {
+      //     model: Services, 
+      //     as: "Servicess",
+      //     attributes: ["id", "servicename"],
+      //   },
+      // ],
     });
     const services = orgServiceDetails.map(service => ({
       id: service.service_id,

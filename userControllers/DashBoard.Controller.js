@@ -6,7 +6,6 @@ const Organization = require("../Models/Organization.model");
 const Services = require("../Models/TblServices.model");
 const TblOrganization_Service = require("../Models/tblOrganizationService");
 const OrderServices = require("../Models/ReportsModel/OrderServices.model");
-const { Sequelize } = require('sequelize');
 
 const allOrders = async (req, res) => {
     try {
@@ -156,96 +155,59 @@ const statusOrder = async (req, res) => {
         if (status) whereCondition.orderStatus = status;
         if (userUUID) whereCondition.userUUID = userUUID;
 
-        // Step 1: Fetch OrderReports with OrderServices
         const orderStatus = await OrderReports.findAll({
             where: whereCondition,
             include: [
                 {
                     model: Organization,
                     as: "toOrg",
-                    attributes: ["name", "address"],
+                    attributes: ["name", "address","file1"], 
                 },
                 {
-                    model: OrderServices,
-                    attributes: ["id", "orderId", "orgserviceId", "quantity", "price"], // Use orgserviceId
+                    model: OrderServices, 
+                    as: "orderServices",
+                    include: [
+                        {
+                            model: Services, 
+                            as: "serviceDetails",
+                            attributes: ["id", "servicename", "servicedescription"],
+                        },
+                    ],
                 },
             ],
         });
 
-        console.log(orderStatus, "Order Status Data");
-
-        // Step 2: Extract orgserviceId values from OrderServices
-        const orgserviceIds = orderStatus
-            .flatMap(order => order.OrderServices)
-            .map(orderService => orderService.orgserviceId); // Use orgserviceId
-
-        console.log(orgserviceIds, "Extracted orgserviceIds");
-
-        // Filter out invalid orgserviceId values
-        const validOrgserviceIds = orgserviceIds.filter(id => id !== null && id !== undefined);
-        console.log(validOrgserviceIds, "Valid orgserviceIds");
-
-        // Step 3: Fetch Services details using validOrgserviceIds
-        const services = await Services.findAll({
-            where: { id: validOrgserviceIds },
-            attributes: ["id", "servicename", "servicedescription"],
-        });
-
-        console.log(services, "Fetched Services");
-
-        // Step 4: Create a map of service details for quick lookup
-        const serviceMap = services.reduce((map, service) => {
-            map[service.id] = service;
-            return map;
-        }, {});
-
-        console.log(serviceMap, "Service Map");
-
-        // Step 5: Combine OrderReports, OrderServices, and Services data
+        // Clean the address field if it's in stringified JSON format
         const cleanedOrderStatus = orderStatus.map(order => {
-            // Parse the address if it's stringified JSON
-            if (order.toOrg && typeof order.toOrg.address === 'string') {
+            // Parsing the address if it's stringified JSON
+            if (order.toOrg && typeof order.toOrg.address === "string") {
                 try {
                     order.toOrg.address = JSON.parse(order.toOrg.address);
                 } catch (error) {
-                    order.toOrg.address = order.toOrg.address;
+                    console.error("Error parsing address:", error);
                 }
             }
 
-            // Attach service details to OrderServices
-            if (order.OrderServices) {
-                console.log(order.OrderServices, "Order Services for Order ID:", order.id);
-
-                order.OrderServices = order.OrderServices.map(orderService => {
-                    const serviceData = serviceMap[orderService.orgserviceId] || null; // Use orgserviceId
-
-                    console.log(serviceData, "Service Data for Order Service ID:", orderService.id);
-
-                    // Add the service data to the OrderServices object
-                    orderService.dataValues.service = serviceData; // Add service data to the Sequelize instance
-
-                    return orderService; // Return the modified OrderServices object
+            // Format OrderServices and include service data
+            if (order.orderServices) { // Ensure correct alias usage
+                order.orderServices = order.orderServices.map(orderService => {
+                    return {
+                        ...orderService.toJSON(), // Spread the OrderService data
+                        service: orderService.serviceDetails || {}, // Attach service details
+                    };
                 });
             }
 
             return order;
         });
 
-        // Step 6: Return the formatted response
+        // Return the formatted response
         return res.status(200).json(cleanedOrderStatus);
     } catch (error) {
         console.error("Error fetching orders by status and organization:", error);
         return res.status(500).json({ message: "Internal Server Error" });
     }
 };
-
-
-
-
-
-
-
-
 
 
 const searchOrganizations = async (req, res) => {
@@ -272,7 +234,7 @@ const searchOrganizations = async (req, res) => {
                     include: [
                         {
                             model: Services,
-                            as: "services",  // Make sure alias matches the association
+                            as: "servicess",  // Make sure alias matches the association
                             attributes: ["servicename"],
                         },
                     ],
