@@ -74,7 +74,8 @@ app.use("/login",require("./userRoutes/auth/authRouter"))
 app.use("/dashboard",require("./userRoutes/DashBoard.router"))
 app.use("/profile",require("./userRoutes/Profile.router"))
 app.use("/dentist",require("./userRoutes/Dentist/Dentist.router"))
-app.use("/labrotory",require("./userRoutes/Labrotory/lab.router"))
+app.use("/labrotory",require("./userRoutes/Labrotory/owner.router"))
+app.use("/technician",require('./userRoutes/Technician/technincian.router'))
 app.use("/notifications",require("./userRoutes/Notification.router"))
 
 app.listen(PORT, () => {

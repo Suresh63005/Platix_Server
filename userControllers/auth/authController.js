@@ -2,6 +2,7 @@ const User = require("../../Models/ReportsModel/User.model");
 const admin = require("../../config/firebase-config");
 const jwt = require("jsonwebtoken");
 const {sendEmail,subscribeUser} = require("../../utils/sendEmail");
+const Roles = require("../../Models/TblRoles.model");
 
 let otpStore={};
 
@@ -144,5 +145,12 @@ const verifyOtp = (req, res) => {
     }
 };
 
+const ListAllUsers = async()=>{
+    const listUsersResult = await admin.auth().listUsers();
+    console.log("All Firebase Users:", listUsersResult.users.map(user => user.phoneNumber));
+    console.log("All Firebase Users Registrating Id:", listUsersResult.users.map(user => user.uid));
+
+  }
+  ListAllUsers();
 
 module.exports = { verifyMobile ,RoleDetails,verifyOtp};

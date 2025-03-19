@@ -6,11 +6,15 @@ const Services=require("../../Models/TblServices.model");
 const { sequelize } = require("../../config/db");
 // Here, we display the total payable bills, active orders, closed orders, received payable amounts, and the order list as well.
 const labOrders = async (req, res) => {
+  const uid = req.user.id;
+  if(!uid){
+    res.status(401).json({message:"Unauthorized: User not found!"})
+  }
     const { Organization_id } = req.body;
     
     try {
       const orders = await OrderReports.findOne({
-        where: { toOrganization: Organization_id },
+        where: { toOrganization: Organization_id,userUUID:uid },
       });
   
       if (!orders) {
@@ -33,7 +37,7 @@ const labOrders = async (req, res) => {
       });
 
       const orderList=await OrderReports.findAll({
-        where:{toOrganization:Organization_id},
+        where:{toOrganization:Organization_id,[Op.or]:[{technician:null},{delivery_boy:null}]},
         include:[
             {
                 model:Organization,

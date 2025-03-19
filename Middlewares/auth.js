@@ -101,4 +101,52 @@ const checkRoleAccess = (requiredRole) => {
   };
 };
 
-module.exports = { generateToken, verifyAdmin , checkRoleAccess};
+const isAuthenticated = async (req, res, next) => {
+  const token = req.headers.authorization?.split(" ")[1];
+  console.log("Received Token", token);
+
+  if (!token) {
+    return res.status(401).json({ error: "Unauthorized: No token provided" });
+  }
+
+  try {
+    const decoded = jwt.verify(token, process.env.JWT_TOKEN);
+    console.log("Decoded Payload:", decoded);
+
+    console.log("Searching for user with ID:", decoded.userRecordId);
+    const user = await User.findByPk(decoded.userRecordId, {
+      include: [
+        {
+          model: Roles,
+          as: 'role',
+          attributes: ["id", "rolename"]
+        }
+      ]
+    });
+
+    console.log("User found:", user ? user.toJSON() : "No user found");
+
+    if (!user) {
+      return res.status(401).json({ error: "Unauthorized: User not found in DB!" });
+    }
+
+    console.log("User role found:", user.role ? user.role.rolename : "No role assigned");
+
+    if (!user.role) {
+      return res.status(403).json({ error: "Forbidden: No role assigned to user" });
+    }
+
+    req.user = {
+      id: user.id,
+      email: user.email,
+      role: user.role.rolename,
+    };
+
+    next();
+  } catch (error) {
+    console.error("Authentication error:", error.message);
+    return res.status(401).json({ error: "Unauthorized: Authentication failed" });
+  }
+};
+
+module.exports = { generateToken, verifyAdmin , checkRoleAccess,isAuthenticated};

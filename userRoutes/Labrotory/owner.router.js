@@ -1,8 +1,9 @@
 const express=require("express")
 const router=express.Router()
-const labrotoryController=require("../../userControllers/Labrotory/LabdDashboard.Controller")
+const labrotoryController=require("../../userControllers/Labrotory/OwnerDashboard.Controller")
+const authController = require('../../Middlewares/auth');
 
-router.get("/getall",labrotoryController.labOrders);
+router.get("/getall",authController.isAuthenticated,labrotoryController.labOrders);
 // get all order status wise (active || close || cancelled)
 router.get("/getall-order/:orderStatus",labrotoryController.labAllOrders)
 
