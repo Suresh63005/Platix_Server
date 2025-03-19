@@ -14,6 +14,10 @@ const OrderReports = sequelize.define(
       type: DataTypes.DATE,
       allowNull: false,
     },
+    paid_date:{
+      type:DataTypes.DATE,
+      allowNull:true
+    },
     orderId: {
       type: DataTypes.STRING,
       allowNull: true,
@@ -54,6 +58,10 @@ const OrderReports = sequelize.define(
     orderStatus: {
       type: DataTypes.ENUM( "processing", "completed", "cancelled"),
       allowNull: true,
+    },
+    payment_status:{
+      type: DataTypes.ENUM("inProgress","paid","unpaid"),
+      allowNull:true
     },
     mobileNo: {
       type: DataTypes.STRING,

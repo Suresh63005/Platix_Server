@@ -1,41 +1,31 @@
-
 const express = require("express");
-const app = express();
 const dotenv = require("dotenv");
-// const morgan = require("morgan");
 const cors = require("cors");
-const bodyParser = require("body-parser");
+const logger = require("morgan");
+const swaggerUi = require("swagger-ui-express");
+const rateLimit = require("express-rate-limit")
+
 const { connectDB, sequelize } = require("./config/db");
-const logger=require("morgan")
-const PORT = process.env.PORT || 5001
-const swaggerUi = require('swagger-ui-express');
-const swaggerDocument = require("./Swagger/swagger-output.json");
-// const PORT2 = process.env.PORT2 || 8081 
-require("./Models/associations")
+require("./Models/associations");
+
 dotenv.config();
+
+// Initialize Express
+const app = express();
+const PORT = process.env.PORT || 5001;
+
+// Connect to Database
 connectDB();
 
-// const UserRouter=require("./AdminRoutes/ReportUser/User.router")
-
-//routes
-const adminRoutes = require("./AdminRoutes/AdminRoute");
-const organizationtype=require("./AdminRoutes/OrganizationType.router")
-const organization=require("./AdminRoutes/Organizations.router")
-// const UserReport=require("./AdminRoutes/ReportUser/Reports")
-const UserRouter=require("./AdminRoutes/User.router")
-const OrderRouter=require("./AdminRoutes/ReportUser/Reports")
-
-
-const Admin = require("./Models/Adminmodel")
-const TblOrganizationType=require("./Models/TblOrganizationType.model")
-const TblRoles = require("./Models/TblRoles.model")
-const TblServices = require("./Models/TblServices.model");
-const Organization = require("./Models/Organization.model");
-const Settings = require("./Models/Settings.model");
-const User = require("./Models/ReportsModel/User.model");
-const OrderReport = require("./Models/ReportsModel/OrderReport.model");
+const limiter=rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 100, 
+  message: { error: "Too many requests, please try again later." },
+  headers: true,
+})
 
 // Middleware
+
 // app.use(morgan("dev"));
 app.use(
   cors({
@@ -93,3 +83,4 @@ sequelize
   .catch((err) => {
     console.error("Unable to create the database:", err);
 });
+
