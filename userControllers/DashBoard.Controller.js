@@ -210,6 +210,7 @@ const statusOrder = async (req, res) => {
 };
 
 
+// search using organization name, organization type name and organization description 
 const searchOrganizations = async (req, res) => {
     try {
         const { search } = req.query;
@@ -224,7 +225,7 @@ const searchOrganizations = async (req, res) => {
                 {
                     model: TblOrganizationType,
                     as: "organizationType",
-                    attributes: ["organizationType"],
+                    attributes: ["id","organizationType"],
                     required: false,
                 },
                 {
@@ -245,6 +246,7 @@ const searchOrganizations = async (req, res) => {
             where: {
                 [Op.or]: [
                     { name: { [Op.like]: `%${search}%` } }, 
+                    { description: { [Op.like]: `%${search}%` } }, 
                     { "$organizationType.organizationType$": { [Op.like]: `%${search}%` } } 
                 ],
             },
@@ -254,7 +256,7 @@ const searchOrganizations = async (req, res) => {
         if (organizations.length === 0) {
             return res.status(404).json({ message: "No organizations found." });
         }
-
+        
         const result = organizations.map(org => {
             let addressList;
             
@@ -275,13 +277,15 @@ const searchOrganizations = async (req, res) => {
                 })).filter(service => service.servicename) || [];
         
             return {
-                organizationName: org.name,
+                id:org.id, //organization id
+                name: org.name, //organization name
                 file1: org.file1,
                 address: addressList, 
                 mobile: org.mobile,
                 email: org.email,
                 description: org.description,
                 organizationType: org.organizationType?.organizationType || "N/A",
+                organizationTypeId:org.organizationType?.id || "N/A",
                 services: services,
             };
         });
@@ -292,5 +296,14 @@ const searchOrganizations = async (req, res) => {
     }
 };
 
+
+const searchByOrganizationType=async(req,res)=>{
+    const {search}=req.query;
+    try {
+        
+    } catch (error) {
+        
+    }
+}
 
 module.exports={allOrders,all,statusOrder,searchOrganizations }
