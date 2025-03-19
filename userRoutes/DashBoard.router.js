@@ -1,6 +1,9 @@
 const express=require("express")
 const router=express.Router();
 const dashBoardController=require("../userControllers/DashBoard.Controller")
+const authMiddleWare=require("../Middlewares/auth")
+
+
 
 router.get("/all-orders",dashBoardController.allOrders)
 router.get("/all",dashBoardController.all)
