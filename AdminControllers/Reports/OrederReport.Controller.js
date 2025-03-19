@@ -138,8 +138,7 @@ const getAllOrderReports = asyncHandler(async (req, res) => {
       return {
         ...formatDateFields(reportJson, ["orderDate"]), 
         Username: reportJson.user ? reportJson.user.firstName : null, 
-        FromOrganization: reportJson.fromOrg ? reportJson.fromOrg.organizationType : null, // Extract from organization
-        // ToOrganization: reportJson.toOrg ? reportJson.toOrg.organizationType : null, // Extract to organization
+        FromOrganization: reportJson.fromOrg ? reportJson.fromOrg.organizationType : null,
       };
     });
 
@@ -152,43 +151,48 @@ const getAllOrderReports = asyncHandler(async (req, res) => {
 
 const filterByOrderDate = async (req, res) => {
   try {
-      const { fromDate, toDate } = req.params;
-      console.log(req.params);
+    const { fromDate, toDate } = req.params;
 
-      if (!fromDate || !toDate) {
-          return res.status(400).json({ message: "Both fromDate and toDate are required." });
-      }
-      const from = new Date(fromDate);
-      const to = new Date(toDate);
+    // Check if both fromDate and toDate are provided
+    if (!fromDate || !toDate) {
+      return res.status(400).json({ message: "Both fromDate and toDate are required." });
+    }
 
-      if (isNaN(from.getTime()) || isNaN(to.getTime())) {
-          return res.status(400).json({ message: "Invalid date format." });
-      }
-      to.setHours(23, 59, 59, 999); // h-m-s-ms
-      const orders = await OrderReports.findAll({
-          where: {
-              createdAt: {
-                  [Op.gte]: from, 
-                  [Op.lte]: to    
-              }
-          },
-          include: [
-            { model: UserReports, as: "user", attributes: ["firstName"] },
-            { model: Organization, as: "fromOrg", attributes: ["id", "name"] },
-            { model: Organization, as: "toOrg", attributes: ["id", "name"] },
-          ],
-         
-      });
+    // Check if the dates are valid
+    const from = new Date(fromDate);
+    const to = new Date(toDate);
 
+    // Validate date format
+    if (isNaN(from.getTime()) || isNaN(to.getTime())) {
+      return res.status(400).json({ message: "Invalid date format." });
+    }
 
+    // Set the time for the "to" date to the end of the day
+    to.setHours(23, 59, 59, 999); // h-m-s-ms
 
-      res.json({ data: orders });
+    // Fetch the orders based on the date range
+    const orders = await OrderReports.findAll({
+      where: {
+        createdAt: {
+          [Op.gte]: from,  // Greater than or equal to 'from' date
+          [Op.lte]: to     // Less than or equal to 'to' date
+        }
+      },
+      include: [
+        { model: UserReports, as: "user", attributes: ["firstName"] },
+        { model: Organization, as: "fromOrg", attributes: ["id", "name"] },
+        { model: Organization, as: "toOrg", attributes: ["id", "name"] },
+      ]
+    });
+
+    res.json({ data: orders });
 
   } catch (error) {
-      console.error("Error fetching users by date:", error);
-      res.status(500).json({ message: "Server error", error: error.message });
+    console.error("Error fetching users by date:", error);
+    res.status(500).json({ message: "Server error", error: error.message });
   }
 };
+
 
 module.exports = {
   upsertOrderReport,

@@ -1,95 +1,81 @@
-
 const express = require("express");
-const app = express();
 const dotenv = require("dotenv");
-// const morgan = require("morgan");
 const cors = require("cors");
-const bodyParser = require("body-parser");
+const logger = require("morgan");
+const swaggerUi = require("swagger-ui-express");
+const rateLimit = require("express-rate-limit")
+
 const { connectDB, sequelize } = require("./config/db");
+
 const logger=require("morgan")
 const PORT = process.env.PORT || 5000
 const swaggerUi = require('swagger-ui-express');
 const swaggerDocument = require("./Swagger/swagger-output.json");
 // const PORT2 = process.env.PORT2 || 8081 
 require("./Models/associations")
+
 dotenv.config();
+
+// Initialize Express
+const app = express();
+
+
+// Connect to Database
 connectDB();
 
-// const UserRouter=require("./AdminRoutes/ReportUser/User.router")
-
-//routes
-const adminRoutes = require("./AdminRoutes/AdminRoute");
-const organizationtype=require("./AdminRoutes/OrganizationType.router")
-const organization=require("./AdminRoutes/Organizations.router")
-// const UserReport=require("./AdminRoutes/ReportUser/Reports")
-const UserRouter=require("./AdminRoutes/User.router")
-const OrderRouter=require("./AdminRoutes/ReportUser/Reports")
-
-
-const Admin = require("./Models/Adminmodel")
-const TblOrganizationType=require("./Models/TblOrganizationType.model")
-const TblRoles = require("./Models/TblRoles.model")
-const TblServices = require("./Models/TblServices.model");
-const Organization = require("./Models/Organization.model");
-const Settings = require("./Models/Settings.model");
-const User = require("./Models/ReportsModel/User.model");
-const OrderReport = require("./Models/ReportsModel/OrderReport.model");
+const limiter=rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 100, 
+  message: { error: "Too many requests, please try again later." },
+  headers: true,
+})
 
 // Middleware
-// app.use(morgan("dev"));
-app.use(
-  cors({
-    origin:[ "http://localhost:3000","http://localhost:3001","http://localhost:3002","https://platix-eight.vercel.app"],
-    credentials: true,
-    methods: "GET,POST,PUT,DELETE", 
-    allowedHeaders: "Content-Type,Authorization", 
-  })
-);
-app.use(express.json());  // Use express.json() for parsing JSON requests
-app.use(express.urlencoded({ limit: '10mb', extended: true }));  // Handle URL-encoded data
+app.use(limiter);
+app.use(logger("dev"));
+app.use(cors({
+  origin: [
+    "http://localhost:3000",
+    "http://localhost:3001",
+    "http://localhost:3002",
+    "https://platix-eight.vercel.app"
+  ],
+  credentials: true,
+  methods: "GET,POST,PUT,DELETE",
+  allowedHeaders: "Content-Type,Authorization"
+}));
+app.use(express.json());
+app.use(express.urlencoded({ limit: "10mb", extended: true }));
 
-app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerDocument));
+// Swagger API Documentation
+app.use("/api-docs", swaggerUi.serve, swaggerUi.setup(require("./Swagger/swagger-output.json")));
 
-// Routes
-app.use("/admin", adminRoutes);
+// Admin Routes
+app.use("/admin", require("./AdminRoutes/AdminRoute"));
+app.use("/organization", require("./AdminRoutes/OrganizationType.router"));
+app.use("/api/organization", require("./AdminRoutes/Organizations.router"));
+app.use("/user", require("./AdminRoutes/User.router"));
+app.use("/order", require("./AdminRoutes/ReportUser/Reports"));
 
+// Mobile Routes
+app.use("/login", require("./userRoutes/auth/authRouter"));
+app.use("/dashboard", require("./userRoutes/DashBoard.router"));
+app.use("/profile", require("./userRoutes/Profile.router"));
+app.use("/dentist", require("./userRoutes/Dentist/Dentist.router"));
+app.use("/labrotory", require("./userRoutes/Labrotory/lab.router"));
+app.use("/delivery", require("./userRoutes/Delivery/Delivery.router"));
+app.use("/notifications", require("./userRoutes/Notification.router"));
 
-// Test route
-app.use(logger("dev"))
-app.get("/", (req, res) => {
-  res.send("Server is running...");
-});
+// Test Route
+app.get("/", (req, res) => res.send("Server is running..."));
 
-app.use("/organization",organizationtype)
-app.use("/api/organization",organization)
-// app.use("/api/service",organization)
-app.use("/user",UserRouter)
-app.use("/order",OrderRouter)
+// 404 Not Found Handler
+app.use("*", (req, res) => res.status(404).json({ message: "Route not found" }));
 
+// Start Server
+app.listen(PORT, () => console.log(`🚀 Server running on port ${PORT}`));
 
-
-
-// for mobile
-app.use("/login",require("./userRoutes/auth/authRouter"))
-app.use("/dashboard",require("./userRoutes/DashBoard.router"))
-app.use("/profile",require("./userRoutes/Profile.router"))
-app.use("/dentist",require("./userRoutes/Dentist/Dentist.router"))
-app.use("/labrotory",require("./userRoutes/Labrotory/lab.router"))
-app.use("/notifications",require("./userRoutes/Notification.router"))
-
-app.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
-});
-
-// app.listen(PORT2, () => {
-//   console.log(`Server running on port ${PORT2}`);
-// });
-
-sequelize
-  .sync()
-  .then(() => {
-    console.log("Database & tables created!");
-  })
-  .catch((err) => {
-    console.error("Unable to create the database:", err);
-});
+// Sync Database 
+sequelize.sync()
+  .then(() => console.log("✅ Database & tables created!"))
+  .catch((err) => console.error("❌ Unable to create database:", err));

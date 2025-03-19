@@ -1,8 +1,10 @@
 
 
 const formatDate = (date) => {
-    return date ? new Date(date).toISOString().split('T')[0] : null;
+    const parsedDate = new Date(date);
+    return !isNaN(parsedDate.getTime()) ? parsedDate.toISOString().split('T')[0] : null;
 };
+
 
 // Format specific fields in an object globally
 const formatDateFields = (data, fields = []) => {
