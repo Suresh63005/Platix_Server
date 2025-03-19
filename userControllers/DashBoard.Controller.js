@@ -256,7 +256,7 @@ const searchOrganizations = async (req, res) => {
         if (organizations.length === 0) {
             return res.status(404).json({ message: "No organizations found." });
         }
-        
+
         const result = organizations.map(org => {
             let addressList;
             
@@ -300,10 +300,13 @@ const searchOrganizations = async (req, res) => {
 const searchByOrganizationType=async(req,res)=>{
     const {search}=req.query;
     try {
-        
+        const organizationType=await TblOrganizationType.findAll({
+
+        })
+        return res.status(200).json(organizationType);
     } catch (error) {
         
     }
 }
 
-module.exports={allOrders,all,statusOrder,searchOrganizations }
+module.exports={allOrders,all,statusOrder,searchOrganizations,searchByOrganizationType }

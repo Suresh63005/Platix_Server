@@ -106,7 +106,6 @@ const fromDentist = async (req, res) => {
           orderId: orderIdValue,
           patientId,
           toOrganization,
-          
           orderDate,
           requiredDate,
           toothName,
@@ -121,7 +120,8 @@ const fromDentist = async (req, res) => {
           totalAmount: total_amount,
           paymentMethod: payment_method,
           orderStatus: "processing",
-          address
+          address,
+          payment_status:"inProgress"
         },
         { transaction }
       );
