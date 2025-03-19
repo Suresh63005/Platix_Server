@@ -149,7 +149,7 @@ const all = async (req, res) => {
 // status based order shown and (toOrganization)  adress
 const statusOrder = async (req, res) => {
     try {
-        const { status, userUUID } = req.params; // userUUID means user uuid
+        const { status, userUUID } = req.params;
 
         const whereCondition = {};
         if (status) whereCondition.orderStatus = status;
@@ -161,16 +161,16 @@ const statusOrder = async (req, res) => {
                 {
                     model: Organization,
                     as: "toOrg",
-                    attributes: ["name", "address","file1"], // Include organization details
+                    attributes: ["name", "address","file1"], 
                 },
                 {
-                    model: OrderServices, // Include OrderServices model
+                    model: OrderServices, 
                     as: "orderServices",
                     include: [
                         {
-                            model: Services, // Include related Service data
-                            as: "serviceDetails", // Fixed alias
-                            attributes: ["id", "servicename", "servicedescription"], // Include only required fields
+                            model: Services, 
+                            as: "serviceDetails",
+                            attributes: ["id", "servicename", "servicedescription"],
                         },
                     ],
                 },

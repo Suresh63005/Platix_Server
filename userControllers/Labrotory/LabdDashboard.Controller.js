@@ -21,7 +21,7 @@ const labOrders = async (req, res) => {
     ]);
 
     const receivedAmounts = await OrderReports.sum("paidAmount", { where: { orderStatus: { [Op.in]: ["completed", "cancelled", "processing"] }, toOrganization: Organization_id } }) || 0;
-
+ 
     const orderList = await OrderReports.findAll({
       where: { toOrganization: Organization_id },
       include: [{ model: Organization, as: "fromOrg", attributes: ["name"] }]

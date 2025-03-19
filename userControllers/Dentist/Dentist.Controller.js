@@ -265,10 +265,9 @@ const orderDetails = async (req, res) => {
       });
     }
 
-    // Fetch order services along with price, quantity, and service details
     const orderServices = await OrderServices.findAll({
       where: { orderId: orderReport.id },
-      attributes: ['id', 'orderId', 'price', 'quantity'],  // Include price and quantity
+      attributes: ['id', 'orderId', 'price', 'quantity'],  
       include: [
         {
           model: TblOrganization_Service,
@@ -300,7 +299,7 @@ const orderDetails = async (req, res) => {
       message: "Order Report found successfully!",
       data: {
         ...orderReport.toJSON(),
-        orderServices,  // Now includes price and quantity
+        orderServices, 
         toOrganizationDetails,
       },
     });
@@ -378,12 +377,12 @@ const ViewPaymentReportDetails = async (req, res) => {
         }
       ]
     })
-    if (!serviceDetails) {
-      return res.status(404).json({
-        success: false,
-        message: "Service Details are not found!"
-      })
-    }
+    // if (!serviceDetails) {
+    //   return res.status(404).json({
+    //     success: false,
+    //     message: "Service Details are not found!"
+    //   })
+    // }
     return res.status(200).json({
       success: true,
       message: "Payment Details Fetched Successfully",
@@ -400,10 +399,8 @@ const ViewPaymentReportDetails = async (req, res) => {
 }
 
 const orderAndPaymentSearch = async (req, res) => {
-  const { search } = req.params; // Search term from the request params
-  console.log(search)
+  const { search } = req.params;
   try {
-    // Search in OrderReports and OrderServices
     const orderReports = await OrderReports.findAll({
       where: {
         [Op.or]: [
@@ -473,7 +470,6 @@ const orderAndPaymentSearch = async (req, res) => {
       },
     });
 
-    // Send the results back to the client
     return res.status(200).json({
       orderReports,
       orderServices,
