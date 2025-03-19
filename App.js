@@ -69,7 +69,7 @@ app.use("*", (req, res) => res.status(404).json({ message: "Route not found" }))
 // Start Server
 app.listen(PORT, () => console.log(`🚀 Server running on port ${PORT}`));
 
-// Sync Database
+// Sync Database 
 sequelize.sync()
   .then(() => console.log("✅ Database & tables created!"))
   .catch((err) => console.error("❌ Unable to create database:", err));
