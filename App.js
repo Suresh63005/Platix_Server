@@ -39,7 +39,7 @@ const OrderReport = require("./Models/ReportsModel/OrderReport.model");
 // app.use(morgan("dev"));
 app.use(
   cors({
-    origin:[ "http://localhost:3000","http://localhost:3001","http://localhost:3002","https://platix-eight.vercel.app"],
+    origin:[ "http://localhost:3000","http://localhost:3001","http://localhost:3002","https://platix-client.vercel.app"],
     credentials: true,
     methods: "GET,POST,PUT,DELETE", 
     allowedHeaders: "Content-Type,Authorization", 
