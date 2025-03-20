@@ -1,4 +1,4 @@
-const { Op, where } = require("sequelize");
+const { Op, where, literal } = require("sequelize");
 const Organization = require("../../Models/Organization.model");
 const OrderReports = require("../../Models/ReportsModel/OrderReport.model");
 const Services = require("../../Models/TblServices.model");
@@ -6,7 +6,7 @@ const TblOrganization_Service = require("../../Models/tblOrganizationService");
 const OrderServices = require("../../Models/ReportsModel/OrderServices.model");
 const User = require("../../Models/ReportsModel/User.model");
 const { sequelize } = require("../../config/db");
-
+const moment=require("moment")
 
 const fromDentist = async (req, res) => {
   const transaction = await sequelize.transaction({ autocommit: false });
@@ -413,87 +413,43 @@ const ViewPaymentReportDetails = async (req, res) => {
 
 const orderAndPaymentSearch = async (req, res) => {
   const { search } = req.params;
+
   try {
     const orderReports = await OrderReports.findAll({
       where: {
+        orderStatus: "completed", // Ensure only completed orders are fetched
         [Op.or]: [
-          {
-            orderId: {
-              [Op.like]: `%${search}%`,
-            },
-          },
-          {
-            toothName: {
-              [Op.like]: `%${search}%`,
-            },
-          },
-          {
-            shades: {
-              [Op.like]: `%${search}%`,
-            },
-          },
-          {
-            remarks: {
-              [Op.like]: `%${search}%`,
-            },
-          },
-          {
-            reasonForScan: {
-              [Op.like]: `%${search}%`,
-            },
-          },
-          {
-            mobileNo: {
-              [Op.like]: `%${search}%`,
-            },
-          },
-          {
-            patientName: {
-              [Op.like]: `%${search}%`,
-            },
-          },
-          {
-            patientProblem: {
-              [Op.like]: `%${search}%`,
-            },
-          },
-          {
-            paymentMethod: {
-              [Op.like]: `%${search}%`,
-            },
-          },
+          { orderId: { [Op.like]: `%${search}%` } },
+          { toothName: { [Op.like]: `%${search}%` } },
+          { shades: { [Op.like]: `%${search}%` } },
+          { remarks: { [Op.like]: `%${search}%` } },
+          { reasonForScan: { [Op.like]: `%${search}%` } },
+          { mobileNo: { [Op.like]: `%${search}%` } },
+          { patientName: { [Op.like]: `%${search}%` } },
+          { patientProblem: { [Op.like]: `%${search}%` } },
+          { paymentMethod: { [Op.like]: `%${search}%` } },
+          literal(`toOrg.name LIKE '%${search}%'`) 
         ],
       },
+      include: [
+        {
+          model: Organization,
+          as: "toOrg",
+          attributes: ["id", "name"],
+          required: false,
+        },
+      ],
     });
 
-    const orderServices = await OrderServices.findAll({
-      where: {
-        [Op.or]: [
-          {
-            orderId: {
-              [Op.like]: `%${search}%`,
-            },
-          },
-          {
-            orgserviceId: {
-              [Op.like]: `%${search}%`,
-            },
-          },
-        ],
-      },
-    });
-
-    return res.status(200).json({
-      orderReports,
-      orderServices,
-    });
+    return res.status(200).json({ orderReports });
   } catch (error) {
-    console.error('Error during global search:', error.message);
+    console.error("Error during global search:", error.message);
     return res.status(500).json({
-      message: 'An error occurred while performing the search',
+      message: "An error occurred while performing the search",
     });
   }
 };
+
 
 const getorganizationDetailsById = async (req, res) => {
   const id = req.params.id;
