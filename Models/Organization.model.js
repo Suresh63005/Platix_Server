@@ -93,18 +93,6 @@ const Organization = sequelize.define("Organization", {
     type: DataTypes.STRING,
     allowNull: false,
   },
-  fromOrganization: {
-    type: DataTypes.UUID,
-    allowNull: true,
-  },
-  toOrganization: {
-    type: DataTypes.UUID,
-    allowNull: true,
-  },
-  organization_id: {
-    type: DataTypes.UUID,
-    allowNull: true,
-  },
   // New columns
   admin_id: {
     type: DataTypes.UUID,
