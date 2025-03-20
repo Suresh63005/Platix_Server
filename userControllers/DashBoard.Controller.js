@@ -161,7 +161,7 @@ const statusOrder = async (req, res) => {
                 {
                     model: Organization,
                     as: "toOrg",
-                    attributes: ["name", "address","file1"], 
+                    attributes: ["name", "address", "file1"], 
                 },
                 {
                     model: OrderServices, 
@@ -179,12 +179,18 @@ const statusOrder = async (req, res) => {
 
         // Clean the address field if it's in stringified JSON format
         const cleanedOrderStatus = orderStatus.map(order => {
-            // Parsing the address if it's stringified JSON
-            if (order.toOrg && typeof order.toOrg.address === "string") {
+            if (order.toOrg && order.toOrg.address) { // Handle the address field based on its type (string or JSON string)
                 try {
-                    order.toOrg.address = JSON.parse(order.toOrg.address);
+                    // If the address is a valid JSON string, parse it
+                    if (typeof order.toOrg.address === "string" && (order.toOrg.address.trim().startsWith("[") || order.toOrg.address.trim().startsWith("{"))) {
+                        order.toOrg.address = JSON.parse(order.toOrg.address);
+                    } else {
+                        // If it's not JSON, it's just a regular string, so no parsing is needed
+                        order.toOrg.address = [order.toOrg.address]; 
+                    }
                 } catch (error) {
                     console.error("Error parsing address:", error);
+                    order.toOrg.address = [order.toOrg.address];
                 }
             }
 
