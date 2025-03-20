@@ -1,6 +1,6 @@
 const asyncHandler = require("../Middlewares/errorHandler");
-const Roles = require("../Models/TblRoles.model"); // Path to your Roles model
-const { formatDateFields } = require("../helper/formatedDate"); // Import the date helper
+const Roles = require("../Models/TblRoles.model"); 
+const { formatDateFields } = require("../helper/formatedDate"); 
 
 //  to create a new role for dentist home screen (the selected roles should be  dentist, dental labrortory, radilogy center, material supply)
 const createRole = async (req, res) => {
@@ -8,7 +8,6 @@ const createRole = async (req, res) => {
 
   try {
     if (id) {
-      // Update role if ID exists
       const existingRole = await Roles.findByPk(id);
       if (!existingRole) {
         return res.status(404).json({ message: "Role not found" });
@@ -19,13 +18,11 @@ const createRole = async (req, res) => {
       return res.status(200).json({ message: "Role updated successfully", role: formattedRole });
     }
 
-    // Check if the role with the same name already exists
     const duplicateRole = await Roles.findOne({ where: { rolename } });
     if (duplicateRole) {
       return res.status(400).json({ message: "Role already exists" });
     }
 
-    // Create new role if ID is not provided
     const newRole = await Roles.create({ rolename, fromdate, todate });
     const formattedRole = formatDateFields(newRole.toJSON(), ["fromdate", "todate"]);
 
@@ -81,4 +78,4 @@ const deleteRole=asyncHandler(async(req,res)=>{
     return res.status(200).json({message:"Role soft-deleted successfully!"})
   }
 })
-module.exports = { createRole, viewRoles };
+module.exports = { createRole, viewRoles,getById,deleteRole };

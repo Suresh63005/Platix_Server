@@ -116,4 +116,44 @@ const checkRoleAccess = (requiredRole) => {
   };
 };
 
-module.exports = { generateToken, verifyAdmin ,verifyUser, checkRoleAccess};
+
+const isAuthenticated = async(req,res,next)=>{
+  const token = req.headers.authorization?.split(" ")[1];
+  
+  // console.log(token,"token from headers");
+
+  if(!token){
+    return res.status(401).json({message:"Access denied. No token provided."});
+  }
+
+  try {
+
+    const decode = jwt.verify(token, process.env.JWT_TOKEN);
+
+    // console.log(decode ,"decode from token");
+
+    const user = await User.findByPk(decode?.userId);
+
+    // console.log(user, "user from decode");
+
+    if(!user){
+      return res.status(401).json({message:"Access denied. User not found."});
+    }
+
+    req.user = user;
+
+    next();
+    
+
+  } catch (error) {
+    console.log(error);
+    if(error.name === "TokenExpiredError"){
+      return res.status(403).json({message:"Token expired."})
+    }
+    return res.status(403).json({message:"Invalid or Token Expired"})
+    
+  }
+
+}
+
+module.exports = { generateToken, verifyAdmin ,verifyUser, checkRoleAccess,isAuthenticated};

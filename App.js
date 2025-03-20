@@ -4,6 +4,7 @@ const cors = require("cors");
 const logger = require("morgan");
 const swaggerUi = require("swagger-ui-express");
 const rateLimit = require("express-rate-limit")
+const helmet=require("helmet")
 
 const { connectDB, sequelize } = require("./config/db");
 require("./Models/associations");
@@ -19,12 +20,13 @@ connectDB();
 
 const limiter=rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 100, 
+  max: 10, 
   message: { error: "Too many requests, please try again later." },
   headers: true,
 })
 
 // Middleware
+app.use(helmet())
 app.use(limiter);
 app.use(logger("dev"));
 app.use(cors({
@@ -56,7 +58,7 @@ app.use("/login", require("./userRoutes/auth/authRouter"));
 app.use("/dashboard", require("./userRoutes/DashBoard.router"));
 app.use("/profile", require("./userRoutes/Profile.router"));
 app.use("/dentist", require("./userRoutes/Dentist/Dentist.router"));
-app.use("/labrotory", require("./userRoutes/Labrotory/lab.router"));
+app.use("/owner", require("./userRoutes/Owner/Owner.router"));
 app.use("/delivery", require("./userRoutes/Delivery/Delivery.router"));
 app.use("/notifications", require("./userRoutes/Notification.router"));
 
