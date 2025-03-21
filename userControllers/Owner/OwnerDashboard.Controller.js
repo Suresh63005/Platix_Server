@@ -85,18 +85,15 @@ const labAllOrders = async (req, res) => {
     const { organization_id } = req.user;
     const { orderStatus } = req.params;
 
-    // Validate orderStatus
     if (!["completed", "processing", "cancelled"].includes(orderStatus)) {
       return res.status(400).json({ message: "Invalid order status" });
     }
 
-    // Fetch orders with correct aliasing
     const allOrders = await OrderReports.findAll({
       where: { orderStatus, toOrganization: organization_id },
       include: [{ model: Organization, as: "toOrg", attributes: ["name"] }],
     });
 
-    // Map response
     return res.status(200).json({
       [orderStatus]: allOrders.map(order => ({
         ...order.toJSON(),
@@ -113,11 +110,13 @@ const labAllOrders = async (req, res) => {
 
 // Retrieve order or payment reports
 const labOrderAndPaymentReport = async (req, res) => {
+  const { organization_id } = req.user;
+  console.log(organization_id)
   const { report } = req.params;
   if (!["order", "payment"].includes(report)) return res.status(400).json({ message: "Invalid report type" });
 
   try {
-    const reportData = await OrderReports.findAll();
+    const reportData = await OrderReports.findAll({organization_id});
     if (!reportData.length) return res.status(404).json({ message: `No ${report} reports found.` });
 
     return res.status(200).json({ message: `${report} reports retrieved successfully`, data: reportData });
