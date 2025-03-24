@@ -1,6 +1,7 @@
 const swaggerAutogen = require('swagger-autogen')();
 
 const outputFile ="../Swagger/swagger-output.json"; 
+const isProduction = process.env.NODE_ENV === "production";
 const endpointsFiles = [
   '../AdminRoutes/AdminRoute',
   '../AdminRoutes/OrganizationType.router',
@@ -19,25 +20,23 @@ const endpointsFiles = [
 ];
 
 const doc = {
-  swagger: '2.0', // Ensuring Swagger 2.0 format
+  swagger: "2.0",
   info: {
-    title: 'Platix API',
-    description: 'API documentation for Platix Server',
-    version: '1.0.0',
+    title: "Platix API",
+    description: "API documentation for Platix Server",
+    version: "1.0.0",
   },
   servers: [
     {
-      url: 'https://platix-server.vercel.app',
-      description: 'Production Server',
-    },
-    {
-      url: 'http://localhost:5001',
-      description: 'Local Development Server',
+      url: isProduction
+        ? "https://platix-server.vercel.app"
+        : "http://localhost:5001",
+      description: isProduction ? "Production Server" : "Local Development Server",
     },
   ],
-  basePath: '/',
-  schemes: ['http', 'https'],
-  paths: {}, // This will be filled automatically
+  basePath: "/",
+  schemes: isProduction ? ["https"] : ["http"],
+  paths: {}, // Auto-generated
 };
 
 swaggerAutogen(outputFile, endpointsFiles, doc)
