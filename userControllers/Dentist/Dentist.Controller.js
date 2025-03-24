@@ -13,7 +13,7 @@ const fromDentist = async (req, res) => {
 
   const userUUID = req.user.id;
 
-  console.log(userUUID,"jjjjjjjjjjjjjjjjjjjjjjjjjj")
+
 
   try {
     const {
