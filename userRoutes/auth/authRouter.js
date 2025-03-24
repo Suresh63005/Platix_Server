@@ -9,4 +9,5 @@ router.post("/create-role",authMiddleware.isAuthenticated,authController.RoleDet
 router.post('/verify-otp',authMiddleware.isAuthenticated, authController.verifyOtp);
 // this route for all owner,technician and delivery boy
 router.post('/login-mobile', authController.loginwithnumber);
+
 module.exports=router

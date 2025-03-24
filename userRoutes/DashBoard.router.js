@@ -1,7 +1,7 @@
 const express=require("express")
 const router=express.Router();
 const dashBoardController=require("../userControllers/DashBoard.Controller")
-const authMiddleWare=require("../Middlewares/auth")
+const authMiddleware=require("../Middlewares/auth")
 
 
 
