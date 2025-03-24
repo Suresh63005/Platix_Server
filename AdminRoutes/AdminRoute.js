@@ -11,34 +11,34 @@ const { verifyAdmin } = require("../Middlewares/auth");
 
 const router = express.Router();
 
-router.post("/register", registerAdmin);
-router.post("/login", loginAdmin);
-router.get("/profile",verifyAdmin, getAdminProfile);
-router.put("/profile/update",verifyAdmin,upload.single('profileImage'), updateAdminProfile);
+router.post("/admin/register", registerAdmin);
+router.post("/admin/login", loginAdmin);
+router.get("/admin/profile",verifyAdmin, getAdminProfile);
+router.put("/admin/profile/update",verifyAdmin,upload.single('profileImage'), updateAdminProfile);
 
-router.post('/forgotpassword', forgotPassword);
-router.post('/createnewpass/:token', resetPassword);
+router.post('/admin/forgotpassword', forgotPassword);
+router.post('/admin/createnewpass/:token', resetPassword);
 
-router.post("/createrole" , createRole)
-router.get("/viewrole", viewRoles)
-router.post("/createservice", upsertService);
-router.get("/getbyid/:id", serviceGetByid);
+router.post("/admin/createrole" , createRole)
+router.get("/admin/viewrole", viewRoles)
+router.post("/admin/createservice", upsertService);
+router.get("/admin/getbyid/:id", serviceGetByid);
 
 // Get All Services
-router.get("/allservices", getAllServices);
-router.get("/allorgservices", getorgAllServices);
-router.post("/assign-service",OrganizationTypeController.assignServiceToOrganization)
-router.get("/getorgservices",  OrganizationTypeController.getOrganizationService)
+router.get("/admin/allservices", getAllServices);
+router.get("/admin/allorgservices", getorgAllServices);
+router.post("/admin/assign-service",OrganizationTypeController.assignServiceToOrganization)
+router.get("/admin/getorgservices",  OrganizationTypeController.getOrganizationService)
 
 // Delete a Service (Soft or Permanent)
-router.delete("/deleteservice/:id", deleteService);
+router.delete("/admin/deleteservice/:id", deleteService);
 
 // for order
-router.get("/getallorder" ,OrderReport.getAllOrderReports)
+router.get("/admin/getallorder" ,OrderReport.getAllOrderReports)
 
 
-router.get("/getsettings",  FetchSettings);
-router.get("/getbyid",  FetchSettingsById);
-router.put("/updatesettings", upload.single("websiteImage"), createOrUpdateSettings);
+router.get("/admin/getsettings",  FetchSettings);
+router.get("/admin/getbyid",  FetchSettingsById);
+router.put("/admin/updatesettings", upload.single("websiteImage"), createOrUpdateSettings);
 
 module.exports = router;

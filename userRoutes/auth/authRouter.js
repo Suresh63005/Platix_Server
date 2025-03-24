@@ -4,10 +4,10 @@ const authController=require("../../userControllers/auth/authController")
 const authMiddleware=require("../../Middlewares/auth")
 
 // this route for dentist screen
-router.post("/verify-mobile",authController.verifyMobile)
-router.post("/create-role",authMiddleware.isAuthenticated,authController.RoleDetails)
-router.post('/verify-otp',authMiddleware.isAuthenticated, authController.verifyOtp);
+router.post("/login/verify-mobile",authController.verifyMobile) //1
+router.post("/login/create-role",authMiddleware.verifyUser,authController.RoleDetails) //1
+router.post('/login/verify-otp',authMiddleware.verifyUser, authController.verifyOtp);//1
 // this route for all owner,technician and delivery boy
-router.post('/login-mobile', authController.loginwithnumber);
+router.post('/login/login-mobile', authController.loginwithnumber);
 
 module.exports=router
