@@ -12,6 +12,10 @@
       "dest": "/App.js"
     },
     {
+      "src": "/api/(.*)",
+      "dest": "/App.js"
+    },
+    {
       "src": "/(.*)",
       "dest": "/App.js"
     }
