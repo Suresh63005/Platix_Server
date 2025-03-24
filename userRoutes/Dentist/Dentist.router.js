@@ -12,4 +12,5 @@ router.get('/dentist/order/search/:search',authMiddleware.verifyUser, DentistCon
 
 // for labrotory - radiology - material supply dentist screen
 router.get("/organization-details/getbyid/:id",authMiddleware.verifyUser,DentistController.getorganizationDetailsById)
+
 module.exports=router

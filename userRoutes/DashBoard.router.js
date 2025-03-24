@@ -1,3 +1,4 @@
+
 const express=require("express")
 const router=express.Router();
 const dashBoardController=require("../userControllers/DashBoard.Controller")
@@ -10,5 +11,6 @@ router.get("/dashboard/all",dashBoardController.all)
 router.get("/dashboard/all/organizations/search", dashBoardController.searchOrganizations);
 router.get("/dashboard/all/organizationstype/search", dashBoardController.searchByOrganizationType);
 router.get("/dashboard/status/:status/:userUUID",dashBoardController.statusOrder)
+
 
 module.exports=router
