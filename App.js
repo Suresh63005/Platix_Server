@@ -70,21 +70,21 @@ app.use(
   express.static(path.join(__dirname, "node_modules/swagger-ui-dist"))
 );
 
-// ✅ Correctly Define Routes with Base Paths
-app.use("/admin", require("./AdminRoutes/AdminRoute"));
-app.use("/organization", require("./AdminRoutes/OrganizationType.router"));
-app.use("/api/organization", require("./AdminRoutes/Organizations.router"));
-app.use("/user", require("./AdminRoutes/User.router"));
-app.use("/order", require("./AdminRoutes/ReportUser/Reports"));
+/// Admin Routes
+app.use( require("./AdminRoutes/AdminRoute"));
+app.use( require("./AdminRoutes/OrganizationType.router"));
+app.use( require("./AdminRoutes/Organizations.router"));
+app.use( require("./AdminRoutes/User.router"));
+app.use( require("./AdminRoutes/ReportUser/Reports"));
 
-app.use("/auth", require("./userRoutes/auth/authRouter"));
-app.use("/dashboard", require("./userRoutes/DashBoard.router"));
-app.use("/profile", require("./userRoutes/Profile.router"));
-app.use("/dentist", require("./userRoutes/Dentist/Dentist.router"));
-app.use("/owner", require("./userRoutes/Owner/Owner.router"));
-app.use("/delivery", require("./userRoutes/Delivery/Delivery.router"));
-app.use("/notifications", require("./userRoutes/Notification.router"));
-
+// Mobile Routes
+app.use( require("./userRoutes/auth/authRouter"));
+app.use( require("./userRoutes/DashBoard.router"));
+app.use( require("./userRoutes/Profile.router"));
+app.use( require("./userRoutes/Dentist/Dentist.router"));
+app.use( require("./userRoutes/Owner/Owner.router"));
+app.use( require("./userRoutes/Delivery/Delivery.router"));
+app.use( require("./userRoutes/Notification.router"));
 // ✅ Test Route
 app.get("/", (req, res) => res.send("Server is running..."));
 
