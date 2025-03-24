@@ -4,8 +4,8 @@ const OrderReportController=require("../../AdminControllers/Reports/OrederReport
 const { verifyAdmin } = require('../../Middlewares/auth');
 
 // ordered report
-router.post("/upsertorder", OrderReportController.upsertOrderReport);
-router.get("/getallorderedreport", OrderReportController.getAllOrderReports)
-router.get("/getbyorderdate/:fromDate/:toDate",OrderReportController.filterByOrderDate)
+router.post("/order/upsertorder", OrderReportController.upsertOrderReport);
+router.get("/order/getallorderedreport", OrderReportController.getAllOrderReports)
+router.get("/order/getbyorderdate/:fromDate/:toDate",OrderReportController.filterByOrderDate)
 
 module.exports=router
