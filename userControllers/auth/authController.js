@@ -52,9 +52,11 @@ const verifyMobile = async (req, res) => {
         }
 
         const token = jwt.sign(
-            { userRecordId: userRecord.id, mobileNo: userRecord.mobileNo, firebaseUID: firebaseUID },
+            { userId: userRecord.id, mobileNo: userRecord.mobileNo, firebaseUID: firebaseUID },
             process.env.JWT_TOKEN,
         );
+
+       
 
         return res.status(200).json({
             message: "Mobile number verified successfully!",

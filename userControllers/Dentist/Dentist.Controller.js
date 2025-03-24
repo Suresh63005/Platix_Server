@@ -11,6 +11,10 @@ const moment=require("moment")
 const fromDentist = async (req, res) => {
   const transaction = await sequelize.transaction({ autocommit: false });
 
+  const userUUID = req.user.id;
+
+  console.log(userUUID,"jjjjjjjjjjjjjjjjjjjjjjjjjj")
+
   try {
     const {
       id, 
@@ -25,7 +29,7 @@ const fromDentist = async (req, res) => {
       shades,
       remarks,
       reasonForScan,
-      userUUID,
+      // userUUID,
       sub_total = 0, 
       tax = 0,
       service_charges = 0, 
@@ -78,6 +82,7 @@ const fromDentist = async (req, res) => {
             toOrganization,
             requiredDate,
             toothName,
+            orderDate:orderReport.orderDate,
             shades,
             remarks,
             reasonForScan,
@@ -106,7 +111,7 @@ const fromDentist = async (req, res) => {
           orderId: orderIdValue,
           patientId,
           toOrganization,
-          orderDate,
+          orderDate:new Date(),
           requiredDate,
           toothName,
           shades,
