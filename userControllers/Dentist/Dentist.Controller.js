@@ -197,13 +197,11 @@ const fromDentist = async (req, res) => {
 
 // order report search by date and where orders are completed  . it is working for 2 apis
 const orderReport = async (req, res) => {
-  // const uid = req.user.id;
-  // if(!uid){
-  //   return res.status(401).json({
-  //     message:"Unauthorized: user not foud"
-  //   })
-  // }
-
+  const uid=req.user?.id;
+  if(!uid){
+    return res.status(401).json({message: "Unauthorized"});
+  }
+  console.log(uid)
   try {
     const { fromdate, todate } = req.params;
 
