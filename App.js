@@ -2,12 +2,12 @@ const express = require("express");
 const dotenv = require("dotenv");
 const cors = require("cors");
 const logger = require("morgan");
-const swaggerUi = require("swagger-ui-express");
+
 const rateLimit = require("express-rate-limit")
 
 const { connectDB, sequelize } = require("./config/db");
 
-const logger=require("morgan")
+
 const PORT = process.env.PORT || 5000
 const swaggerUi = require('swagger-ui-express');
 const swaggerDocument = require("./Swagger/swagger-output.json");
