@@ -1754,10 +1754,10 @@
               "type": "object",
               "properties": {
                 "mobileNo": {
-                  "example": "any"
+                  "example": "+917095399332"
                 },
                 "registerId": {
-                  "example": "any"
+                  "example": "ZsodUkftGUd4fnVbcWNdU1GOuqJ2"
                 }
               }
             }

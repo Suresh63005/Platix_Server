@@ -9,9 +9,9 @@ router.get("/owner/getall-order/:orderStatus",authMiddleware.isAuthenticated,own
 // it shown all order reports(order report and payment report) // this report should be order or payment
 router.get("/owner/report/:report",authMiddleware.isAuthenticated,ownerController.labOrderAndPaymentReport)
 // retrieve id of order and payment report along with their specific details
-router.get("/owner/order/report/:id/:report",authMiddleware.verifyUser, ownerController.labOrderAndPaymentReportGetById)
-router.get("/owner/order/dashboard/search-orders",authMiddleware.verifyUser, ownerController.searchOrders);
+router.get("/owner/order/report/:id/:report",authMiddleware.isAuthenticated, ownerController.labOrderAndPaymentReportGetById)
+router.get("/owner/order/dashboard/search-orders",authMiddleware.isAuthenticated, ownerController.searchOrders);
 // this will work for both order and payment reports
-router.get("/owner/order/payment/search-orders",authMiddleware.verifyUser,ownerController.searchOrders);
+router.get("/owner/order/payment/search-orders",authMiddleware.isAuthenticated,ownerController.searchOrders);
 
 module.exports=router
