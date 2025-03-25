@@ -10,4 +10,4 @@ router.get("/api/organization/all",organizationsController.getAll,)
 router.delete("/api/organization/delete/:id",organizationsController.deleteOrganization,)
 router.get("/api/organization/getby/:id",organizationsController.organizationGetByid)
 
-module.exports=router
+module.exports=router;
