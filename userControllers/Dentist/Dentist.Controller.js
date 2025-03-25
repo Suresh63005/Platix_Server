@@ -6,14 +6,13 @@ const TblOrganization_Service = require("../../Models/tblOrganizationService");
 const OrderServices = require("../../Models/ReportsModel/OrderServices.model");
 const User = require("../../Models/ReportsModel/User.model");
 const { sequelize } = require("../../config/db");
-const moment=require("moment")
+const moment=require("moment");
+const TblOrganizationType = require("../../Models/TblOrganizationType.model");
 
 const fromDentist = async (req, res) => {
   const transaction = await sequelize.transaction({ autocommit: false });
 
   const userUUID = req.user.id;
-
-
 
   try {
     const {
@@ -297,6 +296,13 @@ const orderDetails = async (req, res) => {
     // Fetch organization details
     const toOrganizationDetails = await Organization.findByPk(orderReport.toOrganization, {
       attributes: ["id", "name"],
+      include: [
+        {
+          model: TblOrganizationType,
+          as: 'organizationType',
+          attributes: ["id", "organizationType"],
+        }
+      ]
     });
     return res.status(200).json({
       success: true,
