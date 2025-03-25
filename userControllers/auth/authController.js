@@ -52,9 +52,11 @@ const verifyMobile = async (req, res) => {
         }
 
         const token = jwt.sign(
-            { userRecordId: userRecord.id, mobileNo: userRecord.mobileNo, firebaseUID: firebaseUID },
+            { userId: userRecord.id, mobileNo: userRecord.mobileNo, firebaseUID: firebaseUID },
             process.env.JWT_TOKEN,
         );
+
+       
 
         return res.status(200).json({
             message: "Mobile number verified successfully!",
@@ -144,5 +146,66 @@ const verifyOtp = (req, res) => {
     }
 };
 
+// delivery boy , owner, technician  login controller
 
-module.exports = { verifyMobile ,RoleDetails,verifyOtp};
+const loginwithnumber = async (req, res) => {
+    let { mobileNo, registerId } = req.body;
+
+    if (!mobileNo || !registerId) {
+        return res.status(400).json({ message: "Mobile number and Register ID are required!" });
+    }
+
+    if (!mobileNo.startsWith("+")) {
+        mobileNo = `+${mobileNo}`;
+    }
+
+    try {
+        // Check if the user exists in Firebase
+        let firebaseUser;
+        try {
+            firebaseUser = await admin.auth().getUserByPhoneNumber(mobileNo);
+        } catch (firebaseError) {
+            console.log(`Mobile number not found in Firebase: ${mobileNo}`);
+            return res.status(404).json({ message: "Mobile number not found in Firebase." });
+        }
+
+        // Check if the user exists in the local database
+        const userRecord = await User.findOne({ where: { mobileNo } });
+
+        if (!userRecord) {
+            return res.status(404).json({ message: "User not found in the database." });
+        }
+
+        // Extract UID from Firebase or Database
+        const firebaseUID = userRecord.uid || firebaseUser.uid;
+
+        if (registerId !== firebaseUID) {
+            return res.status(400).json({ message: "Invalid register ID. It does not match the Firebase UID." });
+        }
+
+        // Generate JWT Token
+        const token = jwt.sign(
+            { userId: userRecord.id, mobileNo: userRecord.mobileNo, firebaseUID },
+            process.env.JWT_TOKEN, 
+            { expiresIn: "7d" } // Set an expiration time
+        );
+
+        return res.status(200).json({
+            message: "Login successful!",
+            user: userRecord,
+            token,
+        });
+
+    } catch (error) {
+        console.error("Error during login:", error.message);
+
+        if (error.code === "auth/user-not-found") {
+            return res.status(404).json({ message: "Mobile number not registered in Firebase." });
+        }
+
+        return res.status(500).json({ message: "Internal server error: " + error.message });
+    }
+};
+
+
+module.exports = { verifyMobile ,RoleDetails,verifyOtp,loginwithnumber};

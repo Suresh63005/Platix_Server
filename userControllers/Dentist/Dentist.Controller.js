@@ -1,4 +1,4 @@
-const { Op, where } = require("sequelize");
+const { Op, where, literal } = require("sequelize");
 const Organization = require("../../Models/Organization.model");
 const OrderReports = require("../../Models/ReportsModel/OrderReport.model");
 const Services = require("../../Models/TblServices.model");
@@ -6,10 +6,14 @@ const TblOrganization_Service = require("../../Models/tblOrganizationService");
 const OrderServices = require("../../Models/ReportsModel/OrderServices.model");
 const User = require("../../Models/ReportsModel/User.model");
 const { sequelize } = require("../../config/db");
-
+const moment=require("moment")
 
 const fromDentist = async (req, res) => {
   const transaction = await sequelize.transaction({ autocommit: false });
+
+  const userUUID = req.user.id;
+
+
 
   try {
     const {
@@ -25,7 +29,7 @@ const fromDentist = async (req, res) => {
       shades,
       remarks,
       reasonForScan,
-      userUUID,
+      // userUUID,
       sub_total = 0, 
       tax = 0,
       service_charges = 0, 
@@ -78,6 +82,7 @@ const fromDentist = async (req, res) => {
             toOrganization,
             requiredDate,
             toothName,
+            orderDate:orderReport.orderDate,
             shades,
             remarks,
             reasonForScan,
@@ -106,8 +111,7 @@ const fromDentist = async (req, res) => {
           orderId: orderIdValue,
           patientId,
           toOrganization,
-          
-          orderDate,
+          orderDate:new Date(),
           requiredDate,
           toothName,
           shades,
@@ -121,7 +125,8 @@ const fromDentist = async (req, res) => {
           totalAmount: total_amount,
           paymentMethod: payment_method,
           orderStatus: "processing",
-          address
+          address,
+          payment_status:"inProgress"
         },
         { transaction }
       );
@@ -160,7 +165,7 @@ const fromDentist = async (req, res) => {
           await OrderServices.create(
             {
               orderId: orderReport?.id,
-              orgserviceId: service?.id,
+              orgserviceId: item.id,
               quantity: item.quantity,
               price: item.quantity * service.price,
             },
@@ -192,13 +197,11 @@ const fromDentist = async (req, res) => {
 
 // order report search by date and where orders are completed  . it is working for 2 apis
 const orderReport = async (req, res) => {
-  // const uid = req.user.id;
-  // if(!uid){
-  //   return res.status(401).json({
-  //     message:"Unauthorized: user not foud"
-  //   })
-  // }
-
+  const uid=req.user?.id;
+  if(!uid){
+    return res.status(401).json({message: "Unauthorized"});
+  }
+  console.log(uid)
   try {
     const { fromdate, todate } = req.params;
 
@@ -349,6 +352,7 @@ const PaymentReports = async (req, res) => {
 const ViewPaymentReportDetails = async (req, res) => {
   const { id } = req.params;
   try {
+    // Fetch order details
     const orderDetails = await OrderReports.findByPk(id, {
       include: [
         {
@@ -364,10 +368,12 @@ const ViewPaymentReportDetails = async (req, res) => {
         message: "Order Details are not found!"
       })
     }
+
     const billDetails = await OrderReports.findByPk(id)
     if (!billDetails) {
       return res.status(404).json({ message: "Bill Details are not found!" })
     }
+
     const serviceDetails = await TblOrganization_Service.findOne({
       where: { organization_id: orderDetails.fromOrganization },
       include: [
@@ -378,110 +384,75 @@ const ViewPaymentReportDetails = async (req, res) => {
         }
       ]
     })
-    // if (!serviceDetails) {
-    //   return res.status(404).json({
-    //     success: false,
-    //     message: "Service Details are not found!"
-    //   })
-    // }
+
+    let toOrganizationName = null;
+    if (orderDetails.toOrganization) {
+      const toOrganization = await Organization.findByPk(orderDetails.toOrganization, {
+        attributes: ['id', 'name']  
+      });
+      if (toOrganization) {
+        toOrganizationName = toOrganization.name;
+      }
+    }
+
     return res.status(200).json({
       success: true,
       message: "Payment Details Fetched Successfully",
       data: {
-        orderDetails,
+        orderDetails: {
+          ...orderDetails.toJSON(),
+          toOrganizationName  
+        },
         billDetails,
         serviceDetails
       }
     })
   } catch (error) {
     console.error("Error Occurs While Fetching Payment Reports: ", error)
-    res.status(500).json({ message: "Interal Server Error", error: error.message })
+    res.status(500).json({ message: "Internal Server Error", error: error.message })
   }
 }
 
+
 const orderAndPaymentSearch = async (req, res) => {
   const { search } = req.params;
+
   try {
     const orderReports = await OrderReports.findAll({
       where: {
+        orderStatus: "completed", // Ensure only completed orders are fetched
         [Op.or]: [
-          {
-            orderId: {
-              [Op.like]: `%${search}%`,
-            },
-          },
-          {
-            toothName: {
-              [Op.like]: `%${search}%`,
-            },
-          },
-          {
-            shades: {
-              [Op.like]: `%${search}%`,
-            },
-          },
-          {
-            remarks: {
-              [Op.like]: `%${search}%`,
-            },
-          },
-          {
-            reasonForScan: {
-              [Op.like]: `%${search}%`,
-            },
-          },
-          {
-            mobileNo: {
-              [Op.like]: `%${search}%`,
-            },
-          },
-          {
-            patientName: {
-              [Op.like]: `%${search}%`,
-            },
-          },
-          {
-            patientProblem: {
-              [Op.like]: `%${search}%`,
-            },
-          },
-          {
-            paymentMethod: {
-              [Op.like]: `%${search}%`,
-            },
-          },
+          { orderId: { [Op.like]: `%${search}%` } },
+          { toothName: { [Op.like]: `%${search}%` } },
+          { shades: { [Op.like]: `%${search}%` } },
+          { remarks: { [Op.like]: `%${search}%` } },
+          { reasonForScan: { [Op.like]: `%${search}%` } },
+          { mobileNo: { [Op.like]: `%${search}%` } },
+          { patientName: { [Op.like]: `%${search}%` } },
+          { patientProblem: { [Op.like]: `%${search}%` } },
+          { paymentMethod: { [Op.like]: `%${search}%` } },
+          literal(`toOrg.name LIKE '%${search}%'`) 
         ],
       },
+      include: [
+        {
+          model: Organization,
+          as: "toOrg",
+          attributes: ["id", "name"],
+          required: false,
+        },
+      ],
     });
 
-    const orderServices = await OrderServices.findAll({
-      where: {
-        [Op.or]: [
-          {
-            orderId: {
-              [Op.like]: `%${search}%`,
-            },
-          },
-          {
-            orgserviceId: {
-              [Op.like]: `%${search}%`,
-            },
-          },
-        ],
-      },
-    });
-
-    return res.status(200).json({
-      orderReports,
-      orderServices,
-    });
+    return res.status(200).json({ orderReports });
   } catch (error) {
-    console.error('Error during global search:', error.message);
+    console.error("Error during global search:", error.message);
     return res.status(500).json({
-      message: 'An error occurred while performing the search',
+      message: "An error occurred while performing the search",
     });
   }
 };
+
 
 const getorganizationDetailsById = async (req, res) => {
   const id = req.params.id;
