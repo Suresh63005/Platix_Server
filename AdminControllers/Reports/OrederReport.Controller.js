@@ -122,10 +122,11 @@ const upsertOrderReport = asyncHandler(async (req, res) => {
 
 // ✅ Get All Order Reports (with Pagination & Associations)
 const getAllOrderReports = asyncHandler(async (req, res) => {
+ 
   try {
     const orderReports = await OrderReports.findAll({
       include: [
-        { model: UserReports, as: "user", attributes: ["firstName"] },
+        { model: UserReports, as: "userDetails",attributes:["firstName","mobileNo"] },
         { model: Organization, as: "fromOrg", attributes: ["id", "name"] },
         { model: Organization, as: "toOrg", attributes: ["id", "name"] },
       ],

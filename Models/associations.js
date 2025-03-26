@@ -18,27 +18,20 @@ TblOrganizationType.hasMany(Organization, {
   onDelete:"CASCADE",
 });
 
-User.hasMany(OrderReports, { foreignKey: "userUUID", as: "orders" }); 
-OrderReports.belongsTo(User, { foreignKey: "userUUID", as: "user" });
 
-// OrderReports.belongsTo(TblOrganizationType, {
-//   foreignKey: "fromOrganization",
-//   as: "fromOrg",
-// });
-// Organization.hasMany(OrderReports, {
-//   foreignKey: "fromOrganization",
-//   as: "fromOrders",
-// });
+
+
+Organization.hasMany(OrderReports, {
+  foreignKey: "fromOrganization",
+  as: "fromOrders",
+});
 
 // Organization.hasMany(OrderReports, {
 //   foreignKey: "toOrganization",
 //   as: "toOrders",
 // });
 
-// OrderReports.belongsTo(TblOrganizationType, {
-//   foreignKey: "toOrganization",
-//   as: "toOrg",
-// });
+
 OrderReports.belongsTo(Organization, {
   foreignKey: "fromOrganization",
   as: "fromOrg",
@@ -125,3 +118,6 @@ OrderReports.hasMany(OrderServices,{foreignKey:'orderId',as: "orderServices",})
 
 OrderServices.belongsTo(Services,{foreignKey:'orgserviceId',as:"serviceDetails"})
 Services.hasMany(OrderServices,{foreignKey:'orgserviceId'})
+
+OrderReports.belongsTo(User,{foreignKey:"userUUID",as:"userDetails"})
+User.hasMany(OrderReports,{foreignKey:"userUUID"})

@@ -1,6 +1,6 @@
 const Admin = require("../Models/Adminmodel");
 const jwt = require('jsonwebtoken');
-const sendEmail = require('../utils/sendEmail'); 
+const {sendEmail} = require('../utils/sendEmail'); 
 const { generateToken } = require('../Middlewares/auth');
 const uploadToS3 = require("../config/fileUpload.aws");
 const registerSchema = require("../Middlewares/validation")
@@ -140,9 +140,12 @@ const forgotPassword = async (req, res) => {
 
       
       const resetLink = `https://platix-client.vercel.app/createnewpass/${token}`;
+      const subject = 'Reset Password';
+      const text = `Click here to reset: ${resetLink}`;
 
       
-      await sendEmail(email, "Reset Password", `Click here to reset: ${resetLink}`);
+      await sendEmail(email,subject,text);
+      
 
       res.json({ message: "Reset link sent to your email" });
   } catch (error) {
