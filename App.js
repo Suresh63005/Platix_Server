@@ -100,3 +100,4 @@ sequelize
   .sync()
   .then(() => console.log("✅ Database & tables created!"))
   .catch((err) => console.error("❌ Unable to create database:", err));
+
