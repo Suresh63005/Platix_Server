@@ -22,7 +22,7 @@ const createNotification = async (req, res) => {
     const { id } = req.user;
     try {
       const notifications=await Notification.findAll({
-        where:{uid:id},
+        where:{uid:id,deletedAt: null},
       })
       return res.status(200).json({success:true,notifications})
     } catch (error) {

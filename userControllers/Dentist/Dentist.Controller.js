@@ -313,7 +313,6 @@ const orderDetails = async (req, res) => {
   }
 };
 
-
 const PaymentReports = async (req, res) => {
 
   try {
@@ -412,7 +411,6 @@ const ViewPaymentReportDetails = async (req, res) => {
     res.status(500).json({ message: "Internal Server Error", error: error.message })
   }
 }
-
 
 const orderAndPaymentSearch = async (req, res) => {
   const { search } = req.params;

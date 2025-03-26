@@ -4,7 +4,7 @@ const TblOrganizationType = require("../Models/TblOrganizationType.model");
 const { formatDateFields } = require("../helper/formatedDate");
 const Organization = require("../Models/Organization.model");
 const Services = require("../Models/TblServices.model");
-const TblOrganization_Service = require("../Models/tblOrganizationService");
+const TblOrganization_Service = require("../Models/tblOrganizationService"); //76a91dba-948d-4098-ad1e-26ceaa10a74d
 const OrderServices = require("../Models/ReportsModel/OrderServices.model");
 
 const allOrders = async (req, res) => {
@@ -68,9 +68,9 @@ const all = async (req, res) => {
             offset,
             limit,
         });
-
+        console.log(organizations)
         const orgIds = organizations.map(org => org.id);
-
+        // console.log(orgIds)
         // Fetch organization services
         const organizationServices = await TblOrganization_Service.findAll({
             where: { organization_id: { [Op.in]: orgIds } },
@@ -111,14 +111,13 @@ const all = async (req, res) => {
             orgData.organizationTypeName = orgData.organizationType?.organizationType || "";
             orgData.description = orgData.organizationType?.description || "";
         
-            // Check if the address is a string and format accordingly
             try {
-                if (typeof orgData.address === 'string') {    // If address is a stringified JSON (array-like), parse it
-                    orgData.address = JSON.parse(orgData.address);   // Try to parse the address as JSON if it looks like an array
+                if (typeof orgData.address === 'string') {    
+                    orgData.address = JSON.parse(orgData.address);  
                 }
             } catch (error) {
-                if (typeof orgData.address === 'string') { // If parsing fails, keep it as a string (address is a single string)
-                    orgData.address = orgData.address; // Address remains a string if not parsable
+                if (typeof orgData.address === 'string') { 
+                    orgData.address = orgData.address; 
                 }
             }
             // Attach services to organization
@@ -128,7 +127,6 @@ const all = async (req, res) => {
             return orgData;
         });
         
-
         // Group data by organizationType
         const groupedData = formattedOrganizations.reduce((acc, org) => {
             const { organizationTypeName } = org;
@@ -138,7 +136,6 @@ const all = async (req, res) => {
             acc[organizationTypeName].push(org);
             return acc;
         }, {});
-
         return res.status(200).json(groupedData);
     } catch (error) {
         console.error("Error fetching organizations:", error);
