@@ -255,7 +255,7 @@ const orderDetails = async (req, res) => {
       include: [
         {
           model: User,
-          as: 'user',
+          as: 'userDetails',
           attributes: ['id', 'firstName', 'email', 'address', 'hospital_name'],
         },
       ],
@@ -362,7 +362,7 @@ const ViewPaymentReportDetails = async (req, res) => {
       include: [
         {
           model: User,
-          as: 'user',
+          as: 'userDetails',
           attributes: ['id', 'firstName']
         },
       ]
