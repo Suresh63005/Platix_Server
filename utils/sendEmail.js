@@ -1,4 +1,4 @@
-const nodemailer = require('nodemailer');
+// const nodemailer = require('nodemailer');
 
 // const sendEmail = async (to, subject, text) => {
 //     const transporter = nodemailer.createTransport({
@@ -89,6 +89,8 @@ SibApiV3Sdk.ApiClient.instance.authentications["api-key"].apiKey = apiKey;    //
 
 const sendEmail = async (toEmail, subject, htmlContent) => {
 
+
+
     const tranEmailApi = new SibApiV3Sdk.TransactionalEmailsApi();      // Initialize the Transactional Email API
 
     // Define the sender (must be verified in Brevo)
@@ -96,6 +98,7 @@ const sendEmail = async (toEmail, subject, htmlContent) => {
         email: process.env.SENDER_EMAIL, // Replace with your verified Brevo sender email
         name: process.env.SENDER_NAME // Change this to match your app's branding
     };
+    
 
     // Define the recipient(s)
     const receivers = [{ email: toEmail }];
