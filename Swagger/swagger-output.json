@@ -5,7 +5,7 @@
     "description": "API documentation for Platix Server",
     "version": "1.0.0"
   },
-  "host": "localhost:5001",
+  "host": "https://platix-server.vercel.app",
   "servers": [
     {
       "url": "https://platix-server.vercel.app",
@@ -18,8 +18,8 @@
   ],
   "basePath": "/",
   "schemes": [
-    "http",
-    "https"
+    "https",
+    "http"
   ],
   "paths": {
     "/admin/register": {
