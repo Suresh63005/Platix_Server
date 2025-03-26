@@ -121,7 +121,7 @@ const ViewOrderDetails = async (req, res) => {
                 },
                 {
                     model: User,
-                    as: "user",
+                    as: "userDetails",
                     attributes: ["id", "firstName"]
                 },
                 {

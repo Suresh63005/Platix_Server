@@ -255,7 +255,7 @@ const orderDetails = async (req, res) => {
       include: [
         {
           model: User,
-          as: 'user',
+          as: 'userDetails',
           attributes: ['id', 'firstName', 'email', 'address', 'hospital_name'],
         },
       ],
@@ -319,7 +319,6 @@ const orderDetails = async (req, res) => {
   }
 };
 
-
 const PaymentReports = async (req, res) => {
 
   try {
@@ -363,7 +362,7 @@ const ViewPaymentReportDetails = async (req, res) => {
       include: [
         {
           model: User,
-          as: 'user',
+          as: 'userDetails',
           attributes: ['id', 'firstName']
         },
       ]
@@ -418,7 +417,6 @@ const ViewPaymentReportDetails = async (req, res) => {
     res.status(500).json({ message: "Internal Server Error", error: error.message })
   }
 }
-
 
 const orderAndPaymentSearch = async (req, res) => {
   const { search } = req.params;
