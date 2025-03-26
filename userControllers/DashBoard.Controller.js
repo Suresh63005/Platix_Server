@@ -39,19 +39,19 @@ const allOrders = async (req, res) => {
 
 // dashboard data shown
 const all = async (req, res) => {
-    const { search, page = 1, limit = 10 } = req.query;
-    const offset = (page - 1) * limit;
+    // const { search, page = 1, limit = 10 } = req.query;
+    // const offset = (page - 1) * limit;
 
     try {
-        const searchFilter = search
-            ? {
-                  [Op.or]: [
-                      { "$organizationType.organizationType$": { [Op.like]: `%${search}%` } }, 
-                      { name: { [Op.like]: `%${search}%` } }, 
-                      { address: { [Op.like]: `%${search}%` } },
-                  ],
-              }
-            : {};
+        // const searchFilter = search
+        //     ? {
+        //           [Op.or]: [
+        //               { "$organizationType.organizationType$": { [Op.like]: `%${search}%` } }, 
+        //               { name: { [Op.like]: `%${search}%` } }, 
+        //               { address: { [Op.like]: `%${search}%` } },
+        //           ],
+        //       }
+        //     : {};
 
         const organizations = await Organization.findAll({
             attributes: ["id", "name", "address", "organizationType_id", "file1"],
@@ -63,12 +63,12 @@ const all = async (req, res) => {
                     required: true,
                 },
             ],
-            where: searchFilter,
+            // where: searchFilter,
             order: [["createdAt", "DESC"]],
-            offset,
-            limit,
+            // offset,
+            // limit,
         });
-        console.log(organizations)
+        
         const orgIds = organizations.map(org => org.id);
         // console.log(orgIds)
         // Fetch organization services
