@@ -1,6 +1,7 @@
 const express=require("express")
 const router=express.Router()
 const ownerController=require("../../userControllers/Owner/OwnerDashboard.Controller")
+const dentistController=require("../../userControllers/Dentist/Dentist.Controller")
 const authMiddleware=require("../../Middlewares/auth")
 
 router.get("/owner/dashboard",authMiddleware.isAuthenticated,ownerController.labOrders);
@@ -13,5 +14,11 @@ router.get("/owner/order/report/:id/:report",authMiddleware.isAuthenticated, own
 router.get("/owner/order/dashboard/search-orders",authMiddleware.isAuthenticated, ownerController.searchOrders);
 // this will work for both order and payment reports
 router.get("/owner/order/payment/search-orders",authMiddleware.isAuthenticated,ownerController.searchOrders);
+
+// for labrotory owner create order searching doctor
+router.get("/owner/order/search",authMiddleware.isAuthenticated,ownerController.searchDoctor);
+
+// create order
+router.post("/owner/upsert",authMiddleware.isAuthenticated,dentistController.fromDentist);
 
 module.exports=router

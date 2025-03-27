@@ -9,10 +9,11 @@ const { sequelize } = require("../../config/db");
 const moment=require("moment");
 const TblOrganizationType = require("../../Models/TblOrganizationType.model");
 
+// If I pass only the userUUID, it means the request is coming from the owner. If I pass both the userUUID and delivery_boy, it means the request is coming from the delivery boy. If I do not pass the delivery_boy and userUUID, it means the request is coming from the dentist.
 const fromDentist = async (req, res) => {
   const transaction = await sequelize.transaction({ autocommit: false });
 
-  const userUUID = req.user.id;
+  const userId = req.user.id;
 
   try {
     const {
@@ -21,6 +22,8 @@ const fromDentist = async (req, res) => {
       patientName,
       patientId,
       orderDate,
+      delivery_boy,
+      userUUID,   //doctor id
       toOrganization,
       serviceId = [], 
       requiredDate,
@@ -28,7 +31,7 @@ const fromDentist = async (req, res) => {
       shades,
       remarks,
       reasonForScan,
-      // userUUID,
+    
       sub_total = 0, 
       tax = 0,
       service_charges = 0, 
@@ -85,7 +88,7 @@ const fromDentist = async (req, res) => {
             shades,
             remarks,
             reasonForScan,
-            userUUID,
+            userUUID : userUUID || orderReport.userUUID,
             subTotal: sub_total,
             tax,
             serviceCharges: service_charges,
@@ -113,10 +116,11 @@ const fromDentist = async (req, res) => {
           orderDate:new Date(),
           requiredDate,
           toothName,
+          delivery_boy,
           shades,
           remarks,
           reasonForScan,
-          userUUID,
+          userUUID : userUUID || userId,
           subTotal: sub_total,
           tax,
           serviceCharges: service_charges,
@@ -133,14 +137,14 @@ const fromDentist = async (req, res) => {
 
     // Update User Address
     if (address) {
-      console.log(`Updating address for user ${userUUID}`);
-      const user = await User.findOne({ where: { id: userUUID }, transaction });
+      console.log(`Updating address for user ${userUUID || userId}`);
+      const user = await User.findOne({ where: { id:userUUID || userId }, transaction });
 
       if (user) {
         await user.update({ address }, { transaction });
         console.log(`Address updated for user ${userUUID}`);
       } else {
-        console.log(`User with ID ${userUUID} not found`);
+        console.log(`User with ID ${userId||userUUID} not found`);
       }
     }
 
@@ -159,6 +163,13 @@ const fromDentist = async (req, res) => {
             },
             transaction,
           });
+
+          if(!service){
+            return res.status(404).json({
+              message: "Service not found",
+              success : false,
+            })
+          }
 
           
           await OrderServices.create(
@@ -470,31 +481,30 @@ const getorganizationDetailsById = async (req, res) => {
     const orgServiceDetails = await TblOrganization_Service.findAll({
       where: { organization_id: id },
       attributes: ["id", "price", "service_id"],
-      // include: [
-      //   {
-      //     model: Services, 
-      //     as: "Servicess",
-      //     attributes: ["id", "servicename"],
-      //   },
-      // ],
+      include: [
+        {
+          model: Services,
+          as: "servicess", 
+          attributes: ["id", "servicename"],
+        },
+      ],
     });
     const services = orgServiceDetails.map(service => ({
       id: service.service_id,
-      servicename: service.Service ? service.Service.servicename : "Unknown Service",
-      price: service.price,
+      servicename: service.servicess ? service.servicess.servicename : "Unknown Service",
     }));
-console.log(services)
+
+    console.log(services);
+
     return res.status(200).json({
       organization: orgDetails,
       services: services.length > 0 ? services : "No service data available for this organization",
     });
-
   } catch (error) {
     console.log(error);
     return res.status(500).json({ message: "Internal server error" });
   }
 };
-
 
 
 module.exports = { fromDentist, orderDetails, orderReport, PaymentReports, ViewPaymentReportDetails,orderAndPaymentSearch,getorganizationDetailsById };
