@@ -86,6 +86,7 @@ app.use( require("./userRoutes/Owner/Owner.router"));
 app.use( require("./userRoutes/Delivery/Delivery.router"));
 app.use( require("./userRoutes/Notification.router"));
 app.use(require('./userRoutes/Technician/technincian.router'));
+app.use(require('./userRoutes/Payments/cashfree'));
 // ✅ Test Route
 app.get("/", (req, res) => res.send("Server is running..."));
 
