@@ -5,6 +5,7 @@ const OrderService = require("../../Models/ReportsModel/OrderServices.model");
 const Services = require("../../Models/TblServices.model");
 const { sequelize } = require("../../config/db");
 const User = require("../../Models/ReportsModel/User.model");
+const OrderServices = require("../../Models/ReportsModel/OrderServices.model");
 
 // Fetch total payable bills, active orders, closed orders, received payments, and order list
 const labOrders = async (req, res) => {
@@ -162,4 +163,97 @@ const searchOrders = async (req, res) => {
   }
 };
 
-module.exports = { labOrders, labAllOrders, labOrderAndPaymentReport, labOrderAndPaymentReportGetById, searchOrders };
+const searchDoctor = async (req, res) => {
+  const uid = req.user?.id;
+  const { search } = req.query;
+
+  try {
+    const results = await User.findAll({
+      where: {
+        [Op.or]: [{ firstName: { [Op.like]: `%${search}%` } }, { lastName: { [Op.like]: `%${search}%` } }]
+      },
+      include:[
+        {
+          model:Organization,
+          as:'organization',
+          attributes:['id','name'],
+        }
+      ]
+    });
+    return res.status(200).json({ success: true, results });
+  } catch (error) {
+    console.error("Error searching for doctors:", error);
+    return res.status(500).json({ message: "Internal Server Error" });
+  }
+};
+
+const upsertOrder = async (req, res) => {
+  const uid = req.user?.id;  
+  const { id, userUUID, fromOrganization, toOrganization, service_id, orderDate, toothName, shades, remarks } = req.body;
+
+  try {
+    if (id) {
+      const order = await OrderReports.findByPk(id);
+
+      if (!order) {
+        return res.status(404).json({ message: "Order not found." });
+      }
+
+      await order.update({
+        userUUID,
+        fromOrganization,
+        toOrganization,
+        orderDate,
+        toothName,
+        shades,
+        remarks
+      });
+
+      if (service_id) {
+        const serviceIds = Array.isArray(service_id) ? service_id : [service_id];
+
+        await OrderService.destroy({
+          where: { orderId: order.id }
+        });
+
+        const orderServices = serviceIds.map(service_id => ({
+          orderId: order.id,
+          service_id
+        }));
+
+        await OrderServices.bulkCreate(orderServices);
+      }
+
+      return res.status(200).json({ success: true, message: "Order updated successfully."});
+
+    } else {
+      const newOrder = await OrderReports.create({
+        userUUID,
+        fromOrganization,
+        toOrganization,
+        orderDate,
+        toothName,
+        shades,
+        remarks,
+      });
+
+      if (service_id) {
+        const serviceIds = Array.isArray(service_id) ? service_id : [service_id];
+
+        const orderServices = serviceIds.map(service_id => ({
+          orderId: newOrder.id,
+          service_id
+        }));
+
+        await OrderServices.bulkCreate(orderServices);
+      }
+
+      return res.status(201).json({ success: true, message: "Order created successfully." });
+    }
+  } catch (error) {
+    console.error("Error in upserting order:", error);
+    return res.status(500).json({ message: "Internal Server Error", error: error.message });
+  }
+};
+
+module.exports = { labOrders, labAllOrders, labOrderAndPaymentReport, labOrderAndPaymentReportGetById, searchOrders ,searchDoctor,upsertOrder };

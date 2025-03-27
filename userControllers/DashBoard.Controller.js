@@ -128,14 +128,7 @@ const all = async (req, res) => {
         });
         
         // Group data by organizationType
-        const groupedData = formattedOrganizations.reduce((acc, org) => {
-            const { organizationTypeName } = org;
-            if (!acc[organizationTypeName]) {
-                acc[organizationTypeName] = [];
-            }
-            acc[organizationTypeName].push(org);
-            return acc;
-        }, {});
+        const groupedData = Object.groupBy(formattedOrganizations, org => org.organizationTypeName);
         return res.status(200).json(groupedData);
     } catch (error) {
         console.error("Error fetching organizations:", error);
