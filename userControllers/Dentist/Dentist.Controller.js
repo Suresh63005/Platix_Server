@@ -492,6 +492,7 @@ const getorganizationDetailsById = async (req, res) => {
     const services = orgServiceDetails.map(service => ({
       id: service.service_id,
       servicename: service.servicess ? service.servicess.servicename : "Unknown Service",
+      price: service.price,
     }));
 
     console.log(services);
