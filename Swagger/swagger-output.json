@@ -1631,11 +1631,6 @@
         "description": "",
         "parameters": [
           {
-            "name": "slice(7",
-            "in": "header",
-            "type": "string"
-          },
-          {
             "name": "Authorization",
             "in": "header",
             "type": "string"

@@ -8,7 +8,6 @@ const User = require("../../Models/ReportsModel/User.model");
 
 // Fetch total payable bills, active orders, closed orders, received payments, and order list
 const labOrders = async (req, res) => {
-  console.log(1)
   try {
     // console.log(req.user);
     const { organization_id, id, role_id } = req.user;
