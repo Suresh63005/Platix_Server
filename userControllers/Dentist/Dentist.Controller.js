@@ -6,7 +6,7 @@ const TblOrganization_Service = require("../../Models/tblOrganizationService");
 const OrderServices = require("../../Models/ReportsModel/OrderServices.model");
 const User = require("../../Models/ReportsModel/User.model");
 const { sequelize } = require("../../config/db");
-const moment=require("moment");
+const moment=require("moment-timezone");
 const TblOrganizationType = require("../../Models/TblOrganizationType.model");
 
 // If I pass only the userUUID, it means the request is coming from the owner. If I pass both the userUUID and delivery_boy, it means the request is coming from the delivery boy. If I do not pass the delivery_boy and userUUID, it means the request is coming from the dentist.
@@ -24,6 +24,7 @@ const fromDentist = async (req, res) => {
       orderDate,
       delivery_boy,
       userUUID,   //doctor id
+      
       toOrganization,
       serviceId = [], 
       requiredDate,
@@ -198,50 +199,76 @@ const fromDentist = async (req, res) => {
 
 
 // order report search by date and where orders are completed  . it is working for 2 apis
-const orderReport = async (req, res) => {
-  const uid=req.user?.id;
-  if(!uid){
-    return res.status(401).json({message: "Unauthorized"});
+const getReportsByFromDateToDate = async (req, res) => {
+  const uid = req.user?.id;
+  if (!uid) {
+    return res.status(401).json({ message: "Unauthorized" });
   }
-  console.log(uid)
+
   try {
     const { fromdate, todate } = req.params;
+    const { reportType } = req.body; 
+    const userTimezone = req.query.timezone || 'Asia/Kolkata'; 
+
+    if (!reportType) {
+      return res.status(400).json({
+        success: false,
+        message: "Report type is required. Please specify 'order' or 'payment'."
+      });
+    }
 
     let whereCondition = {
       orderStatus: {
-        [Op.eq]: "completed",
+        [Op.eq]: "completed", 
       },
     };
 
+    // Handle both fromdate and todate
     if (fromdate && todate) {
-      // Ensure the dates are correctly parsed and compare only the date part
+      const startOfDayUTC = moment.tz(fromdate, "YYYY-MM-DD", userTimezone).startOf('day').utc().toDate();
+      const endOfDayUTC = moment.tz(todate, "YYYY-MM-DD", userTimezone).endOf('day').utc().toDate();
+
+      console.log("Start of day in UTC:", startOfDayUTC);
+      console.log("End of day in UTC:", endOfDayUTC);
+
       whereCondition.createdAt = {
-        [Op.between]: [
-          new Date(fromdate + 'T00:00:00.000Z'),
-          new Date(todate + 'T23:59:59.999Z'),
-        ],
+        [Op.between]: [startOfDayUTC, endOfDayUTC],
       };
     } else if (fromdate) {
+      const startOfDayUTC = moment.tz(fromdate, "YYYY-MM-DD", userTimezone).startOf('day').utc().toDate();
       whereCondition.createdAt = {
-        [Op.gte]: new Date(fromdate + 'T00:00:00.000Z'),
+        [Op.gte]: startOfDayUTC,
       };
     } else if (todate) {
+      const endOfDayUTC = moment.tz(todate, "YYYY-MM-DD", userTimezone).endOf('day').utc().toDate();
       whereCondition.createdAt = {
-        [Op.lte]: new Date(todate + 'T23:59:59.999Z'),
+        [Op.lte]: endOfDayUTC,
       };
     }
 
-    const allOrder = await OrderReports.findAll({
-      where: whereCondition,
-    });
+    let reports;
+    if (reportType === "payment") {
+      reports = await OrderReports.findAll({
+        where: whereCondition,
+      });
+    } else if (reportType === "order") {
+      reports = await OrderReports.findAll({
+        where: whereCondition,
+      });
+    } else {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid report type. Please specify either 'order' or 'payment'."
+      });
+    }
 
     return res.status(200).json({
       success: true,
-      message: "Order reports fetched successfully.",
-      data: allOrder,
+      message: `${reportType.charAt(0).toUpperCase() + reportType.slice(1)} reports fetched successfully.`,
+      data: reports,
     });
   } catch (error) {
-    console.error("Error fetching order reports:", error);
+    console.error("Error fetching reports:", error);
     return res.status(500).json({
       success: false,
       message: "Internal Server Error",
@@ -320,41 +347,6 @@ const orderDetails = async (req, res) => {
     res.status(500).json({ success: false, message: "Internal Server Error", error: error.message });
   }
 };
-
-const PaymentReports = async (req, res) => {
-
-  try {
-    const { fromDate, toDate } = req.query;
-    let whereCondition = {
-      orderStatus: { [Op.eq]: "completed" }
-    }
-    if (fromDate && toDate) {
-      whereCondition.createdAt = { [Op.between]: [new Date(fromDate), new Date(toDate)] }
-    }
-    else if (fromDate) {
-      whereCondition.createdAt = { [Op.gte]: new Date(fromDate) }
-    }
-    else if (toDate) {
-      whereCondition.createdAt = { [Op.gte]: new Date(fromDate) }
-    }
-    else if (toDate) {
-      whereCondition.createdAt = { [Op.lte]: new Date(toDate), };
-    }
-    const allOrders = await OrderReports.findAll({ where: whereCondition })
-    return res.status(200).json({
-      success: true,
-      message: "Payment Reports Fetched Successfully!",
-      data: allOrders
-    })
-  } catch (error) {
-    console.error("Error fetching payment reports:", error);
-    return res.status(500).json({
-      success: false,
-      message: "Internal Server Error",
-      error: error.message,
-    });
-  }
-}
 
 const ViewPaymentReportDetails = async (req, res) => {
   const { id } = req.params;
@@ -493,4 +485,4 @@ const getorganizationDetailsById = async (req, res) => {
 };
 
 
-module.exports = { fromDentist, orderDetails, orderReport, PaymentReports, ViewPaymentReportDetails,orderAndPaymentSearch,getorganizationDetailsById };
+module.exports = { fromDentist, orderDetails,  getReportsByFromDateToDate, ViewPaymentReportDetails,orderAndPaymentSearch,getorganizationDetailsById };
