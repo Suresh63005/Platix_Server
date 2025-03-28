@@ -166,11 +166,18 @@ const statusOrder = async (req, res) => {
                     as: "orderServices",
                     include: [
                         {
-                            model: Services, 
-                            as: "serviceDetails",
-                            attributes: ["id", "servicename", "servicedescription"],
+                          model: TblOrganization_Service,
+                          as: 'orgservice',
+                          attributes: ['id'],
+                          include: [
+                            {
+                              model: Services,
+                              as: 'servicess',
+                              attributes: ['id', 'servicename'],
+                            }
+                          ]
                         },
-                    ],
+                      ],
                 },
             ],
         });
