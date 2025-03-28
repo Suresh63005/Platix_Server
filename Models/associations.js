@@ -113,7 +113,7 @@ TblOrganizationType.belongsToMany(Services, {
   foreignKey: 'organizationType_id', // The foreign key in the junction table
 });
 
-OrderServices.belongsTo(OrderReports,{foreignKey:'orderId',as:"orderReport"})
+OrderServices.belongsTo(OrderReports,{foreignKey:'orderId',as:"orderServices"})
 OrderReports.hasMany(OrderServices,{foreignKey:'orderId',as: "orderServices",})
 
 // OrderServices.belongsTo(Services,{foreignKey:'orgserviceId',as:"serviceDetails"})

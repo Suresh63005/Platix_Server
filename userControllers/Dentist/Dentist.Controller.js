@@ -259,7 +259,32 @@ const orderDetails = async (req, res) => {
           model: User,
           as: 'userDetails',
           attributes: ['id', 'firstName', 'email', 'address', 'hospital_name'],
+          
         },
+        {
+          model:OrderServices,
+          as: 'orderServices',
+          attributes: [ "quantity" ],
+          include: [
+            {
+              model: TblOrganization_Service,
+              as: 'orgservice',
+              attributes: ['id','price'],
+              include: [
+                {
+                  model: Services,
+                  as: 'servicess',
+                  attributes: [ 'servicename'],
+                }
+              ]
+            },
+          ],
+
+
+        
+        
+        }
+        
       ],
     });
 
@@ -270,49 +295,15 @@ const orderDetails = async (req, res) => {
       });
     }
 
-    const orderServices = await OrderServices.findAll({
-      where: { orderId: orderReport.id },
-      attributes: ['id', 'orderId', 'price', 'quantity'],  
-      include: [
-        {
-          model: TblOrganization_Service,
-          as: 'orgservice',
-          attributes: ['id'],
-          include: [
-            {
-              model: Services,
-              as: 'servicess',
-              attributes: ['id', 'servicename'],
-            }
-          ]
-        },
-      ],
-    });
-    // if (!orderServices || orderServices.length === 0) {
-    //   return res.status(404).json({
-    //     success: false,
-    //     message: "No services found for this order!",
-    //   });
-    // }
-
-    // Fetch organization details
-    const toOrganizationDetails = await Organization.findByPk(orderReport.toOrganization, {
-      attributes: ["id", "name"],
-      include: [
-        {
-          model: TblOrganizationType,
-          as: 'organizationType',
-          attributes: ["id", "organizationType"],
-        }
-      ]
-    });
+    
+  
     return res.status(200).json({
       success: true,
       message: "Order Report found successfully!",
       data: {
         ...orderReport.toJSON(),
-        orderServices, 
-        toOrganizationDetails,
+        
+        
       },
     });
   } catch (error) {
