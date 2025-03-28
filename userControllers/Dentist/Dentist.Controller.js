@@ -31,7 +31,6 @@ const fromDentist = async (req, res) => {
       shades,
       remarks,
       reasonForScan,
-    
       sub_total = 0, 
       tax = 0,
       service_charges = 0, 
@@ -156,22 +155,15 @@ const fromDentist = async (req, res) => {
 
       await Promise.all(
         serviceId.map(async (item) => {
-          let service = await TblOrganization_Service.findOne({
-            where: {
-              service_id: item.id,
-              organization_id: toOrganization,
-            },
-            transaction,
-          });
 
+          const service = await TblOrganization_Service.findOne({ where: { id: item.id }, transaction });
+          
           if(!service){
             return res.status(404).json({
-              message: "Service not found",
-              success : false,
+              message: "orgnizationService not found",
+              status: false
             })
           }
-
-          
           await OrderServices.create(
             {
               orderId: orderReport?.id,
@@ -219,7 +211,6 @@ const orderReport = async (req, res) => {
       orderStatus: {
         [Op.eq]: "completed",
       },
-      // userUUID:uid
     };
 
     if (fromdate && todate) {
@@ -286,7 +277,7 @@ const orderDetails = async (req, res) => {
         {
           model: TblOrganization_Service,
           as: 'orgservice',
-          attributes: ['id', 'service_id'],
+          attributes: ['id'],
           include: [
             {
               model: Services,
@@ -480,26 +471,20 @@ const getorganizationDetailsById = async (req, res) => {
 
     const orgServiceDetails = await TblOrganization_Service.findAll({
       where: { organization_id: id },
-      attributes: ["id", "price", "service_id"],
+      attributes: ["id", "price",],
       include: [
         {
           model: Services,
           as: "servicess", 
-          attributes: ["id", "servicename"],
+          attributes: ["servicename"],
         },
       ],
     });
-    const services = orgServiceDetails.map(service => ({
-      id: service.service_id,
-      servicename: service.servicess ? service.servicess.servicename : "Unknown Service",
-      price: service.price,
-    }));
-
-    console.log(services);
+    
 
     return res.status(200).json({
       organization: orgDetails,
-      services: services.length > 0 ? services : "No service data available for this organization",
+      services:orgServiceDetails
     });
   } catch (error) {
     console.log(error);
