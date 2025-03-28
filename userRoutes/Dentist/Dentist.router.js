@@ -12,6 +12,6 @@ router.get("/dentist/order/payment-report-getbyid/:id",authMiddleware.isAuthenti
 router.get("/dentist/order/search/:search",authMiddleware.isAuthenticated, DentistController.orderAndPaymentSearch);//1
 router.get("/dentist/organization-details/getbyid/:id",authMiddleware.isAuthenticated,DentistController.getorganizationDetailsById);
 // cancelled order destroy
-router.delete("/dentist/delete",authMiddleware.isAuthenticated,DentistController.cancelledAndDestroyOrder)
+router.delete("/dentist/delete/:status",authMiddleware.isAuthenticated,DentistController.cancelledAndDestroyOrder)
 
 module.exports=router
