@@ -95,12 +95,12 @@ Services.hasMany(TblOrganization_Service,{foreignKey:"service_id"});
 
 TblOrganization_Service.belongsTo(Organization, {
   foreignKey: 'organization_id',
-  as: 'organization'
+  as: 'organization_service'
 });
 
 Organization.hasMany(TblOrganization_Service, {
   foreignKey: 'organization_id',
-  as: 'organization'
+  as: 'organization_service'
 });
 
 Services.belongsToMany(TblOrganizationType, {

@@ -492,5 +492,35 @@ const getorganizationDetailsById = async (req, res) => {
   }
 };
 
+const cancelledAndDestroyOrder = async (req, res) => {
 
-module.exports = { fromDentist, orderDetails, orderReport, PaymentReports, ViewPaymentReportDetails,orderAndPaymentSearch,getorganizationDetailsById };
+  try {
+    const cancelledOrders = await OrderReports.findAll({
+      where: {
+        orderStatus: "cancelled",
+      },
+    }); 
+    if (cancelledOrders.length === 0) {
+      return res.status(404).json({ message: "No cancelled orders found to delete." });
+    }
+    const deletedCount = await OrderReports.destroy({
+      where: {
+        orderStatus: "cancelled",
+      },
+    });
+
+    return res.status(200).json({
+      success: true,
+      message: `${deletedCount} cancelled orders have been deleted successfully.`,
+    });
+  } catch (error) {
+    console.error("Error deleting cancelled orders:", error.message);
+    return res.status(500).json({
+      success: false,
+      message: "An error occurred while deleting cancelled orders.",
+    });
+  }
+};
+
+
+module.exports = { fromDentist, orderDetails, orderReport, PaymentReports, ViewPaymentReportDetails,orderAndPaymentSearch,getorganizationDetailsById ,cancelledAndDestroyOrder };
