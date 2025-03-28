@@ -288,12 +288,25 @@ const orderDetails = async (req, res) => {
       ],
     });
 
+    
+
     if (!orderReport) {
       return res.status(404).json({
         success: false,
         message: "Order Report not found!",
       });
     }
+
+    const toOrganizationDetails = await Organization.findByPk(orderReport.toOrganization, {
+      attributes: ["id", "name"],
+      include: [
+        {
+          model: TblOrganizationType,
+          as: 'organizationType',
+          attributes: ["id", "organizationType"],
+        }
+      ]
+    });
 
     
   
@@ -302,6 +315,7 @@ const orderDetails = async (req, res) => {
       message: "Order Report found successfully!",
       data: {
         ...orderReport.toJSON(),
+        toOrganizationDetails
         
         
       },
