@@ -494,10 +494,16 @@ const getorganizationDetailsById = async (req, res) => {
 
 const cancelledAndDestroyOrder = async (req, res) => {
 
+  const{status}=req.params;
+
+  const userUUID  = req.user?.id;
+
+
   try {
     const cancelledOrders = await OrderReports.findAll({
       where: {
-        orderStatus: "cancelled",
+        orderStatus: status,
+        userUUID
       },
     }); 
     if (cancelledOrders.length === 0) {
@@ -505,13 +511,14 @@ const cancelledAndDestroyOrder = async (req, res) => {
     }
     const deletedCount = await OrderReports.destroy({
       where: {
-        orderStatus: "cancelled",
+        orderStatus: status,
+        userUUID
       },
     });
 
     return res.status(200).json({
       success: true,
-      message: `${deletedCount} cancelled orders have been deleted successfully.`,
+      message: `${deletedCount}  ${status} orders have been deleted successfully.`,
     });
   } catch (error) {
     console.error("Error deleting cancelled orders:", error.message);
