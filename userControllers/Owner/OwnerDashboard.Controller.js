@@ -9,10 +9,12 @@ const OrderServices = require("../../Models/ReportsModel/OrderServices.model");
 
 // Fetch total payable bills, active orders, closed orders, received payments, and order list
 const labOrders = async (req, res) => {
+  
   try {
     // console.log(req.user);
     const { organization_id, id, role_id } = req.user;
-    // console.log(req.user,"userrrrrrrrrrrrrrrrrrrrrrrrrrrrr");
+   
+   
 
     // Check if user exists
     const user = await User.findOne({
@@ -117,7 +119,7 @@ const labOrderAndPaymentReport = async (req, res) => {
   if (!["order", "payment"].includes(report)) return res.status(400).json({ message: "Invalid report type" });
 
   try {
-    const reportData = await OrderReports.findAll({organization_id});
+    const reportData = await OrderReports.findAll({where:{toOrganization:organization_id}});
     if (!reportData.length) return res.status(404).json({ message: `No ${report} reports found.` });
 
     return res.status(200).json({ message: `${report} reports retrieved successfully`, data: reportData });
@@ -150,10 +152,20 @@ const labOrderAndPaymentReportGetById=async(req,res)=>{
 }
 // Search orders by order ID or organization name
 const searchOrders = async (req, res) => {
+ 
+  const {organization_id, id, role_id} =req.user;
+
+
+
+
   const { search } = req.query;
+
+  
   try {
     const orders = await OrderReports.findAll({
-      where: { [Op.or]: [{ orderId: { [Op.like]: `%${search}%` } }, { "$toOrg.name$": { [Op.like]: `%${search}%` } }] },
+      where: { toOrganization:organization_id, orderStatus: "processing",
+        delivery_boy: { [Op.is]: null },
+        technician: { [Op.is]: null },[Op.or]: [{ orderId: { [Op.like]: `%${search}%` } }, { "$toOrg.name$": { [Op.like]: `%${search}%` } }] },
       include: [{ model: Organization, as: "toOrg", attributes: ["name"] }]
     });
     return res.status(200).json({ success: true, orders });
