@@ -10,7 +10,7 @@ router.get("/dentist/order/report/:fromdate?/:todate?",authMiddleware.isAuthenti
 router.get("/dentist/order/payment-report/:fromdate?/:todate?",authMiddleware.isAuthenticated,DentistController.PaymentReports)//1
 router.get("/dentist/order/payment-report-getbyid/:id",authMiddleware.isAuthenticated,DentistController.ViewPaymentReportDetails)//1
 router.get("/dentist/order/search/:search",authMiddleware.isAuthenticated, DentistController.orderAndPaymentSearch);//1
-router.get("/dentist/organization-details/getbyid/:id",authMiddleware.isAuthenticated,DentistController.getorganizationDetailsById);
+router.get("/dentist/organization-details/getbyid/:id",authMiddleware.isAuthenticated,DentistController.getorganizationDetailsById); 
 
 
 module.exports=router
