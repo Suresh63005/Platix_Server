@@ -116,17 +116,19 @@ const RoleDetails = async (req, res) => {
     }
 };
 
-const verifyOtp = (req, res) => {
+const verifyOtp = async(req, res) => {
     const { id, otp } = req.body;
 
     if (!id || !otp) {
         return res.status(400).json({ message: "User ID and OTP are required!" });
     }
 
+    const user = await User.findOne({ where: { id } });
+
     const otpData = otpStore[id];
 
     if (!otpData) {
-        return res.status(400).json({ message: "OTP not found or expired!" });
+        return res.status(400).json({ message: "OTP not found or expired!", });
     }
 
     const { otp: storedOtp, expiry } = otpData;
@@ -140,7 +142,7 @@ const verifyOtp = (req, res) => {
     // Verify OTP
     if (storedOtp === otp) {
         delete otpStore[id];  // Clear OTP after successful verification
-        return res.status(200).json({ message: "OTP verified successfully!" });
+        return res.status(200).json({ message: "OTP verified successfully!",user });
     } else {
         return res.status(400).json({ message: "Invalid OTP!" });
     }
