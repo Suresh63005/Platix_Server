@@ -20,18 +20,6 @@ TblOrganizationType.hasMany(Organization, {
 
 
 
-
-Organization.hasMany(OrderReports, {
-  foreignKey: "fromOrganization",
-  as: "fromOrders",
-});
-
-// Organization.hasMany(OrderReports, {
-//   foreignKey: "toOrganization",
-//   as: "toOrders",
-// });
-
-
 OrderReports.belongsTo(Organization, {
   foreignKey: "fromOrganization",
   as: "fromOrg",
@@ -42,7 +30,7 @@ OrderReports.belongsTo(Organization, {
   as: "toOrg",
 });
 
-// OrderReports.belongsTo(Organization,{foreignKey:'toOrganization',as: "toOrganizationDetails" })
+
 Organization.hasMany(OrderReports,{foreignKey:'toOrganization'})
 Organization.hasMany(OrderReports,{foreignKey:'fromOrganization'})
 OrderReports.belongsTo(Services,{foreignKey: "serviceId", as: "service"})

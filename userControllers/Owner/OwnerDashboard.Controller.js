@@ -13,10 +13,7 @@ const labOrders = async (req, res) => {
   try {
     // console.log(req.user);
     const { organization_id, id, role_id } = req.user;
-   
-   
 
-    // Check if user exists
     const user = await User.findOne({
       where: { id, role_id },
     });
@@ -114,7 +111,6 @@ const labAllOrders = async (req, res) => {
 // Retrieve order or payment reports
 const labOrderAndPaymentReport = async (req, res) => {
   const { organization_id } = req.user;
-  console.log(organization_id)
   const { report } = req.params;
   if (!["order", "payment"].includes(report)) return res.status(400).json({ message: "Invalid report type" });
 
@@ -170,12 +166,12 @@ const searchOrders = async (req, res) => {
 };
 
 const searchDoctor = async (req, res) => {
-  const uid = req.user?.id;
+  const {organization_id, id, role_id} =req.user;
   const { search } = req.query;
 
   try {
     const results = await User.findAll({
-      where: {
+      where: {toOrganization:organization_id,
         [Op.or]: [{ firstName: { [Op.like]: `%${search}%` } }, { lastName: { [Op.like]: `%${search}%` } }]
       },
       include:[
@@ -193,79 +189,12 @@ const searchDoctor = async (req, res) => {
   }
 };
 
-const upsertOrder = async (req, res) => {
-  const uid = req.user?.id;  
-  const { id, userUUID, fromOrganization, toOrganization, service_id, orderDate, toothName, shades, remarks } = req.body;
 
-  try {
-    if (id) {
-      const order = await OrderReports.findByPk(id);
-
-      if (!order) {
-        return res.status(404).json({ message: "Order not found." });
-      }
-
-      await order.update({
-        userUUID,
-        fromOrganization,
-        toOrganization,
-        orderDate,
-        toothName,
-        shades,
-        remarks
-      });
-
-      if (service_id) {
-        const serviceIds = Array.isArray(service_id) ? service_id : [service_id];
-
-        await OrderService.destroy({
-          where: { orderId: order.id }
-        });
-
-        const orderServices = serviceIds.map(service_id => ({
-          orderId: order.id,
-          service_id
-        }));
-
-        await OrderServices.bulkCreate(orderServices);
-      }
-
-      return res.status(200).json({ success: true, message: "Order updated successfully."});
-
-    } else {
-      const newOrder = await OrderReports.create({
-        userUUID,
-        fromOrganization,
-        toOrganization,
-        orderDate,
-        toothName,
-        shades,
-        remarks,
-      });
-
-      if (service_id) {
-        const serviceIds = Array.isArray(service_id) ? service_id : [service_id];
-
-        const orderServices = serviceIds.map(service_id => ({
-          orderId: newOrder.id,
-          service_id
-        }));
-
-        await OrderServices.bulkCreate(orderServices);
-      }
-
-      return res.status(201).json({ success: true, message: "Order created successfully." });
-    }
-  } catch (error) {
-    console.error("Error in upserting order:", error);
-    return res.status(500).json({ message: "Internal Server Error", error: error.message });
-  }
-};
 
 const searchOrdersGetByDate = async (req, res) => {
   try {
     const { organization_id, id, role_id } = req.user;
-    console.log(req.user,"iufefeufufeufehu")
+    console.log(req.user, "iufefeufufeufehu");
     const { orderOrPayment, fromdate, todate } = req.params;
 
     if (!['order', 'payment'].includes(orderOrPayment)) {
@@ -299,16 +228,19 @@ const searchOrdersGetByDate = async (req, res) => {
       whereCondition = { ...whereCondition, ...dateFilter };
     }
 
-    if (orderOrPayment === 'order') {
-      whereCondition.orderStatus = { [Op.in]: ['completed'] };  
-    }
+    whereCondition.payment_status = { [Op.in]: ['paid'] };  
+    whereCondition.orderStatus = { [Op.in]: ['completed'] };  
+    whereCondition.toOrganization = organization_id;
 
-    if (orderOrPayment === 'payment') {
-      whereCondition.paymentStatus = { [Op.in]: ['paid'] };  
-    }
-
-    const reportData = await (orderOrPayment === 'order' ? OrderReports : PaymentReports).findAll({
+    const reportData = await (orderOrPayment === 'order' ? OrderReports : OrderReports).findAll({
       where: whereCondition,
+      include: [
+        {
+          model: Organization,
+          as: 'toOrg',
+          attributes: ['id', 'name'],
+        },
+      ],
     });
 
     return res.status(200).json({
@@ -325,4 +257,5 @@ const searchOrdersGetByDate = async (req, res) => {
     });
   }
 };
-module.exports = { labOrders, labAllOrders, labOrderAndPaymentReport, labOrderAndPaymentReportGetById, searchOrders ,searchDoctor,upsertOrder ,searchOrdersGetByDate};
+
+module.exports = { labOrders, labAllOrders, labOrderAndPaymentReport, labOrderAndPaymentReportGetById, searchOrders ,searchDoctor ,searchOrdersGetByDate};
