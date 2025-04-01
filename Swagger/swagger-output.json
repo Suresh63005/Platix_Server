@@ -5,12 +5,8 @@
     "description": "API documentation for Platix Server",
     "version": "1.0.0"
   },
-  "host": "platix-server.vercel.app",
+  "host": "localhost:3000",
   "servers": [
-    {
-      "url": "https://platix-server.vercel.app",
-      "description": "Production Server"
-    },
     {
       "url": "http://localhost:5001",
       "description": "Local Development Server"
@@ -18,7 +14,6 @@
   ],
   "basePath": "/",
   "schemes": [
-    "https",
     "http"
   ],
   "paths": {
@@ -96,6 +91,11 @@
         "description": "",
         "parameters": [
           {
+            "name": "slice(7",
+            "in": "header",
+            "type": "string"
+          },
+          {
             "name": "Authorization",
             "in": "header",
             "type": "string"
@@ -124,6 +124,11 @@
       "put": {
         "description": "",
         "parameters": [
+          {
+            "name": "slice(7",
+            "in": "header",
+            "type": "string"
+          },
           {
             "name": "Authorization",
             "in": "header",
@@ -1263,23 +1268,6 @@
     "/dashboard/all": {
       "get": {
         "description": "",
-        "parameters": [
-          {
-            "name": "search",
-            "in": "query",
-            "type": "string"
-          },
-          {
-            "name": "page",
-            "in": "query",
-            "type": "string"
-          },
-          {
-            "name": "limit",
-            "in": "query",
-            "type": "string"
-          }
-        ],
         "responses": {
           "200": {
             "description": "OK"
@@ -1374,6 +1362,22 @@
         }
       }
     },
+    "/settings": {
+      "get": {
+        "description": "",
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "404": {
+            "description": "Not Found"
+          },
+          "500": {
+            "description": "Internal Server Error"
+          }
+        }
+      }
+    },
     "/notifications/upsert": {
       "post": {
         "description": "",
@@ -1415,12 +1419,7 @@
         "description": "",
         "parameters": [
           {
-            "name": "slice(7",
-            "in": "header",
-            "type": "string"
-          },
-          {
-            "name": "Authorization",
+            "name": "authorization",
             "in": "header",
             "type": "string"
           }
@@ -1446,12 +1445,7 @@
         "description": "",
         "parameters": [
           {
-            "name": "slice(7",
-            "in": "header",
-            "type": "string"
-          },
-          {
-            "name": "Authorization",
+            "name": "authorization",
             "in": "header",
             "type": "string"
           }
@@ -1631,7 +1625,7 @@
         "description": "",
         "parameters": [
           {
-            "name": "Authorization",
+            "name": "authorization",
             "in": "header",
             "type": "string"
           },
@@ -1687,12 +1681,7 @@
         "description": "",
         "parameters": [
           {
-            "name": "slice(7",
-            "in": "header",
-            "type": "string"
-          },
-          {
-            "name": "Authorization",
+            "name": "authorization",
             "in": "header",
             "type": "string"
           },
@@ -1739,10 +1728,10 @@
               "type": "object",
               "properties": {
                 "mobileNo": {
-                  "example": "+917095399332"
+                  "example": "any"
                 },
                 "registerId": {
-                  "example": "ZsodUkftGUd4fnVbcWNdU1GOuqJ2"
+                  "example": "any"
                 }
               }
             }
@@ -1775,12 +1764,7 @@
             "type": "string"
           },
           {
-            "name": "slice(7",
-            "in": "header",
-            "type": "string"
-          },
-          {
-            "name": "Authorization",
+            "name": "authorization",
             "in": "header",
             "type": "string"
           },
@@ -1805,6 +1789,12 @@
                 "orderDate": {
                   "example": "any"
                 },
+                "delivery_boy": {
+                  "example": "any"
+                },
+                "userUUID": {
+                  "example": "any"
+                },
                 "toOrganization": {
                   "example": "any"
                 },
@@ -1824,9 +1814,6 @@
                   "example": "any"
                 },
                 "reasonForScan": {
-                  "example": "any"
-                },
-                "userUUID": {
                   "example": "any"
                 },
                 "sub_total": {
@@ -1885,12 +1872,7 @@
             "type": "string"
           },
           {
-            "name": "slice(7",
-            "in": "header",
-            "type": "string"
-          },
-          {
-            "name": "Authorization",
+            "name": "authorization",
             "in": "header",
             "type": "string"
           },
@@ -1915,6 +1897,12 @@
                 "orderDate": {
                   "example": "any"
                 },
+                "delivery_boy": {
+                  "example": "any"
+                },
+                "userUUID": {
+                  "example": "any"
+                },
                 "toOrganization": {
                   "example": "any"
                 },
@@ -1934,9 +1922,6 @@
                   "example": "any"
                 },
                 "reasonForScan": {
-                  "example": "any"
-                },
-                "userUUID": {
                   "example": "any"
                 },
                 "sub_total": {
@@ -1997,12 +1982,7 @@
             "type": "string"
           },
           {
-            "name": "slice(7",
-            "in": "header",
-            "type": "string"
-          },
-          {
-            "name": "Authorization",
+            "name": "authorization",
             "in": "header",
             "type": "string"
           }
@@ -2043,12 +2023,7 @@
             "type": "string"
           },
           {
-            "name": "slice(7",
-            "in": "header",
-            "type": "string"
-          },
-          {
-            "name": "Authorization",
+            "name": "authorization",
             "in": "header",
             "type": "string"
           }
@@ -2086,12 +2061,7 @@
             "type": "string"
           },
           {
-            "name": "slice(7",
-            "in": "header",
-            "type": "string"
-          },
-          {
-            "name": "Authorization",
+            "name": "authorization",
             "in": "header",
             "type": "string"
           },
@@ -2122,7 +2092,7 @@
         }
       }
     },
-    "/organization-details/getbyid/{id}": {
+    "/dentist/organization-details/getbyid/{id}": {
       "get": {
         "description": "",
         "parameters": [
@@ -2133,12 +2103,42 @@
             "type": "string"
           },
           {
-            "name": "slice(7",
+            "name": "authorization",
             "in": "header",
+            "type": "string"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          },
+          "404": {
+            "description": "Not Found"
+          },
+          "500": {
+            "description": "Internal Server Error"
+          }
+        }
+      }
+    },
+    "/dentist/delete/{status}": {
+      "delete": {
+        "description": "",
+        "parameters": [
+          {
+            "name": "status",
+            "in": "path",
+            "required": true,
             "type": "string"
           },
           {
-            "name": "Authorization",
+            "name": "authorization",
             "in": "header",
             "type": "string"
           }
@@ -2298,7 +2298,7 @@
         }
       }
     },
-    "/delivery/order/upsert": {
+    "/delivery/upsert": {
       "post": {
         "description": "",
         "parameters": [
@@ -2316,13 +2316,31 @@
                 "id": {
                   "example": "any"
                 },
-                "userUUID": {
-                  "example": "any"
-                },
                 "fromOrganization": {
                   "example": "any"
                 },
+                "patientName": {
+                  "example": "any"
+                },
+                "patientId": {
+                  "example": "any"
+                },
+                "orderDate": {
+                  "example": "any"
+                },
+                "delivery_boy": {
+                  "example": "any"
+                },
+                "userUUID": {
+                  "example": "any"
+                },
                 "toOrganization": {
+                  "example": "any"
+                },
+                "serviceId": {
+                  "example": "any"
+                },
+                "requiredDate": {
                   "example": "any"
                 },
                 "toothName": {
@@ -2334,7 +2352,31 @@
                 "remarks": {
                   "example": "any"
                 },
-                "services": {
+                "reasonForScan": {
+                  "example": "any"
+                },
+                "sub_total": {
+                  "example": "any"
+                },
+                "tax": {
+                  "example": "any"
+                },
+                "service_charges": {
+                  "example": "any"
+                },
+                "paid_amount": {
+                  "example": "any"
+                },
+                "total_amount": {
+                  "example": "any"
+                },
+                "payment_method": {
+                  "example": "any"
+                },
+                "order_status": {
+                  "example": "any"
+                },
+                "address": {
                   "example": "any"
                 }
               }
@@ -2344,9 +2386,6 @@
         "responses": {
           "200": {
             "description": "OK"
-          },
-          "201": {
-            "description": "Created"
           },
           "401": {
             "description": "Unauthorized"
@@ -2368,12 +2407,7 @@
         "description": "",
         "parameters": [
           {
-            "name": "slice(7",
-            "in": "header",
-            "type": "string"
-          },
-          {
-            "name": "Authorization",
+            "name": "authorization",
             "in": "header",
             "type": "string"
           }
@@ -2408,12 +2442,7 @@
             "type": "string"
           },
           {
-            "name": "slice(7",
-            "in": "header",
-            "type": "string"
-          },
-          {
-            "name": "Authorization",
+            "name": "authorization",
             "in": "header",
             "type": "string"
           }
@@ -2448,12 +2477,7 @@
             "type": "string"
           },
           {
-            "name": "slice(7",
-            "in": "header",
-            "type": "string"
-          },
-          {
-            "name": "Authorization",
+            "name": "authorization",
             "in": "header",
             "type": "string"
           }
@@ -2497,12 +2521,7 @@
             "type": "string"
           },
           {
-            "name": "slice(7",
-            "in": "header",
-            "type": "string"
-          },
-          {
-            "name": "Authorization",
+            "name": "authorization",
             "in": "header",
             "type": "string"
           }
@@ -2534,12 +2553,7 @@
         "description": "",
         "parameters": [
           {
-            "name": "slice(7",
-            "in": "header",
-            "type": "string"
-          },
-          {
-            "name": "Authorization",
+            "name": "authorization",
             "in": "header",
             "type": "string"
           },
@@ -2570,12 +2584,7 @@
         "description": "",
         "parameters": [
           {
-            "name": "slice(7",
-            "in": "header",
-            "type": "string"
-          },
-          {
-            "name": "Authorization",
+            "name": "authorization",
             "in": "header",
             "type": "string"
           },
@@ -2720,12 +2729,7 @@
             "type": "string"
           },
           {
-            "name": "slice(7",
-            "in": "header",
-            "type": "string"
-          },
-          {
-            "name": "Authorization",
+            "name": "authorization",
             "in": "header",
             "type": "string"
           }
@@ -2757,12 +2761,7 @@
         "description": "",
         "parameters": [
           {
-            "name": "slice(7",
-            "in": "header",
-            "type": "string"
-          },
-          {
-            "name": "Authorization",
+            "name": "authorization",
             "in": "header",
             "type": "string"
           },
@@ -2793,12 +2792,7 @@
         "description": "",
         "parameters": [
           {
-            "name": "slice(7",
-            "in": "header",
-            "type": "string"
-          },
-          {
-            "name": "Authorization",
+            "name": "authorization",
             "in": "header",
             "type": "string"
           },
@@ -2817,6 +2811,406 @@
           },
           "403": {
             "description": "Forbidden"
+          },
+          "500": {
+            "description": "Internal Server Error"
+          }
+        }
+      }
+    },
+    "/owner/report/{orderOrPayment}/{fromdate?}/{todate?}": {
+      "get": {
+        "description": "",
+        "parameters": [
+          {
+            "name": "orderOrPayment",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "fromdate?",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "todate?",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "authorization",
+            "in": "header",
+            "type": "string"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "400": {
+            "description": "Bad Request"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          },
+          "500": {
+            "description": "Internal Server Error"
+          }
+        }
+      }
+    },
+    "/owner/order/search": {
+      "get": {
+        "description": "",
+        "parameters": [
+          {
+            "name": "authorization",
+            "in": "header",
+            "type": "string"
+          },
+          {
+            "name": "search",
+            "in": "query",
+            "type": "string"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          },
+          "500": {
+            "description": "Internal Server Error"
+          }
+        }
+      }
+    },
+    "/owner/upsert": {
+      "post": {
+        "description": "",
+        "parameters": [
+          {
+            "name": "authorization",
+            "in": "header",
+            "type": "string"
+          },
+          {
+            "name": "body",
+            "in": "body",
+            "schema": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "example": "any"
+                },
+                "fromOrganization": {
+                  "example": "any"
+                },
+                "patientName": {
+                  "example": "any"
+                },
+                "patientId": {
+                  "example": "any"
+                },
+                "orderDate": {
+                  "example": "any"
+                },
+                "delivery_boy": {
+                  "example": "any"
+                },
+                "userUUID": {
+                  "example": "any"
+                },
+                "toOrganization": {
+                  "example": "any"
+                },
+                "serviceId": {
+                  "example": "any"
+                },
+                "requiredDate": {
+                  "example": "any"
+                },
+                "toothName": {
+                  "example": "any"
+                },
+                "shades": {
+                  "example": "any"
+                },
+                "remarks": {
+                  "example": "any"
+                },
+                "reasonForScan": {
+                  "example": "any"
+                },
+                "sub_total": {
+                  "example": "any"
+                },
+                "tax": {
+                  "example": "any"
+                },
+                "service_charges": {
+                  "example": "any"
+                },
+                "paid_amount": {
+                  "example": "any"
+                },
+                "total_amount": {
+                  "example": "any"
+                },
+                "payment_method": {
+                  "example": "any"
+                },
+                "order_status": {
+                  "example": "any"
+                },
+                "address": {
+                  "example": "any"
+                }
+              }
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          },
+          "404": {
+            "description": "Not Found"
+          },
+          "500": {
+            "description": "Internal Server Error"
+          }
+        }
+      }
+    },
+    "/owner/upsert/{cancel?}": {
+      "post": {
+        "description": "",
+        "parameters": [
+          {
+            "name": "cancel?",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "authorization",
+            "in": "header",
+            "type": "string"
+          },
+          {
+            "name": "body",
+            "in": "body",
+            "schema": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "example": "any"
+                },
+                "fromOrganization": {
+                  "example": "any"
+                },
+                "patientName": {
+                  "example": "any"
+                },
+                "patientId": {
+                  "example": "any"
+                },
+                "orderDate": {
+                  "example": "any"
+                },
+                "delivery_boy": {
+                  "example": "any"
+                },
+                "userUUID": {
+                  "example": "any"
+                },
+                "toOrganization": {
+                  "example": "any"
+                },
+                "serviceId": {
+                  "example": "any"
+                },
+                "requiredDate": {
+                  "example": "any"
+                },
+                "toothName": {
+                  "example": "any"
+                },
+                "shades": {
+                  "example": "any"
+                },
+                "remarks": {
+                  "example": "any"
+                },
+                "reasonForScan": {
+                  "example": "any"
+                },
+                "sub_total": {
+                  "example": "any"
+                },
+                "tax": {
+                  "example": "any"
+                },
+                "service_charges": {
+                  "example": "any"
+                },
+                "paid_amount": {
+                  "example": "any"
+                },
+                "total_amount": {
+                  "example": "any"
+                },
+                "payment_method": {
+                  "example": "any"
+                },
+                "order_status": {
+                  "example": "any"
+                },
+                "address": {
+                  "example": "any"
+                }
+              }
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          },
+          "404": {
+            "description": "Not Found"
+          },
+          "500": {
+            "description": "Internal Server Error"
+          }
+        }
+      },
+      "put": {
+        "description": "",
+        "parameters": [
+          {
+            "name": "cancel?",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "authorization",
+            "in": "header",
+            "type": "string"
+          },
+          {
+            "name": "body",
+            "in": "body",
+            "schema": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "example": "any"
+                },
+                "fromOrganization": {
+                  "example": "any"
+                },
+                "patientName": {
+                  "example": "any"
+                },
+                "patientId": {
+                  "example": "any"
+                },
+                "orderDate": {
+                  "example": "any"
+                },
+                "delivery_boy": {
+                  "example": "any"
+                },
+                "userUUID": {
+                  "example": "any"
+                },
+                "toOrganization": {
+                  "example": "any"
+                },
+                "serviceId": {
+                  "example": "any"
+                },
+                "requiredDate": {
+                  "example": "any"
+                },
+                "toothName": {
+                  "example": "any"
+                },
+                "shades": {
+                  "example": "any"
+                },
+                "remarks": {
+                  "example": "any"
+                },
+                "reasonForScan": {
+                  "example": "any"
+                },
+                "sub_total": {
+                  "example": "any"
+                },
+                "tax": {
+                  "example": "any"
+                },
+                "service_charges": {
+                  "example": "any"
+                },
+                "paid_amount": {
+                  "example": "any"
+                },
+                "total_amount": {
+                  "example": "any"
+                },
+                "payment_method": {
+                  "example": "any"
+                },
+                "order_status": {
+                  "example": "any"
+                },
+                "address": {
+                  "example": "any"
+                }
+              }
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          },
+          "404": {
+            "description": "Not Found"
           },
           "500": {
             "description": "Internal Server Error"

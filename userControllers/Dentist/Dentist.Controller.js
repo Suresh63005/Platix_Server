@@ -377,7 +377,7 @@ const PaymentReports = async (req, res) => {
 // payment details get by id
 const paymenDetailsGetById = async (req, res) => {
   const uid=req.user?.id;
-  if(uid){
+  if(!uid){
     return res.status(401).json({ message: "Unauthorized!" });
   }
   const { id } = req.params;
