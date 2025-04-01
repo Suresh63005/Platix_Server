@@ -6,6 +6,7 @@ const Organization = require("../Models/Organization.model");
 const Services = require("../Models/TblServices.model");
 const TblOrganization_Service = require("../Models/tblOrganizationService"); //76a91dba-948d-4098-ad1e-26ceaa10a74d
 const OrderServices = require("../Models/ReportsModel/OrderServices.model");
+const Settings = require("../Models/TblSettings.model");
 
 const allOrders = async (req, res) => {
     try {
@@ -43,15 +44,7 @@ const all = async (req, res) => {
     // const offset = (page - 1) * limit;
 
     try {
-        // const searchFilter = search
-        //     ? {
-        //           [Op.or]: [
-        //               { "$organizationType.organizationType$": { [Op.like]: `%${search}%` } }, 
-        //               { name: { [Op.like]: `%${search}%` } }, 
-        //               { address: { [Op.like]: `%${search}%` } },
-        //           ],
-        //       }
-        //     : {};
+       
 
         const organizations = await Organization.findAll({
             attributes: ["id", "name", "address", "organizationType_id", "file1"],
@@ -74,7 +67,7 @@ const all = async (req, res) => {
         // Fetch organization services
         const organizationServices = await TblOrganization_Service.findAll({
             where: { organization_id: { [Op.in]: orgIds } },
-            attributes: ["organization_id", "service_id", "price"],
+            attributes: ["id","organization_id", "service_id", "price"],
         });
 
         const serviceIds = [...new Set(organizationServices.map(service => service.service_id))];
@@ -99,7 +92,7 @@ const all = async (req, res) => {
                 organizationServiceMap[service.organization_id] = [];
             }
             organizationServiceMap[service.organization_id].push({
-                id: service.service_id,
+                id: service.id, //organization_service id
                 servicename: serviceMap[service.service_id] || "Unknown Service",
                 price: service.price,
             });
@@ -424,4 +417,21 @@ const searchByOrganizationType = async (req, res) => {
     }
 };
 
-module.exports={allOrders,all,statusOrder,searchOrganizations,searchByOrganizationType }
+const termAndConditions = async (req, res) => {
+    try {
+        const settings = await Settings.findOne({
+            attributes: ["termsAndConditions", "privacyPolicy"]
+        });
+
+        if (!settings) {
+            return res.status(404).json({ success: false, message: "Settings not found" });
+        }
+
+        return res.status(200).json({ success: true, settings });
+    } catch (error) {
+        console.error(error);
+        return res.status(500).json({ success: false, message: "Internal Server Error" });
+    }
+};
+
+module.exports={allOrders,all,statusOrder,searchOrganizations,searchByOrganizationType,termAndConditions }

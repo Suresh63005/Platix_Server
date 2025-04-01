@@ -9,12 +9,11 @@ const OrderServices = require("../../Models/ReportsModel/OrderServices.model");
 
 // Fetch total payable bills, active orders, closed orders, received payments, and order list
 const labOrders = async (req, res) => {
+  
   try {
     // console.log(req.user);
     const { organization_id, id, role_id } = req.user;
-    // console.log(req.user,"userrrrrrrrrrrrrrrrrrrrrrrrrrrrr");
 
-    // Check if user exists
     const user = await User.findOne({
       where: { id, role_id },
     });
@@ -112,12 +111,11 @@ const labAllOrders = async (req, res) => {
 // Retrieve order or payment reports
 const labOrderAndPaymentReport = async (req, res) => {
   const { organization_id } = req.user;
-  console.log(organization_id)
   const { report } = req.params;
   if (!["order", "payment"].includes(report)) return res.status(400).json({ message: "Invalid report type" });
 
   try {
-    const reportData = await OrderReports.findAll({organization_id});
+    const reportData = await OrderReports.findAll({where:{toOrganization:organization_id}});
     if (!reportData.length) return res.status(404).json({ message: `No ${report} reports found.` });
 
     return res.status(200).json({ message: `${report} reports retrieved successfully`, data: reportData });
@@ -150,10 +148,14 @@ const labOrderAndPaymentReportGetById=async(req,res)=>{
 }
 // Search orders by order ID or organization name
 const searchOrders = async (req, res) => {
+  const {organization_id, id, role_id} =req.user;
   const { search } = req.query;
+  
   try {
     const orders = await OrderReports.findAll({
-      where: { [Op.or]: [{ orderId: { [Op.like]: `%${search}%` } }, { "$toOrg.name$": { [Op.like]: `%${search}%` } }] },
+      where: { toOrganization:organization_id, orderStatus: "processing",
+        delivery_boy: { [Op.is]: null },
+        technician: { [Op.is]: null },[Op.or]: [{ orderId: { [Op.like]: `%${search}%` } }, { "$toOrg.name$": { [Op.like]: `%${search}%` } }] },
       include: [{ model: Organization, as: "toOrg", attributes: ["name"] }]
     });
     return res.status(200).json({ success: true, orders });
@@ -164,12 +166,12 @@ const searchOrders = async (req, res) => {
 };
 
 const searchDoctor = async (req, res) => {
-  const uid = req.user?.id;
+  const {organization_id, id, role_id} =req.user;
   const { search } = req.query;
 
   try {
     const results = await User.findAll({
-      where: {
+      where: {toOrganization:organization_id,
         [Op.or]: [{ firstName: { [Op.like]: `%${search}%` } }, { lastName: { [Op.like]: `%${search}%` } }]
       },
       include:[
@@ -187,73 +189,73 @@ const searchDoctor = async (req, res) => {
   }
 };
 
-const upsertOrder = async (req, res) => {
-  const uid = req.user?.id;  
-  const { id, userUUID, fromOrganization, toOrganization, service_id, orderDate, toothName, shades, remarks } = req.body;
 
+
+const searchOrdersGetByDate = async (req, res) => {
   try {
-    if (id) {
-      const order = await OrderReports.findByPk(id);
+    const { organization_id, id, role_id } = req.user;
+    console.log(req.user, "iufefeufufeufehu");
+    const { orderOrPayment, fromdate, todate } = req.params;
 
-      if (!order) {
-        return res.status(404).json({ message: "Order not found." });
-      }
-
-      await order.update({
-        userUUID,
-        fromOrganization,
-        toOrganization,
-        orderDate,
-        toothName,
-        shades,
-        remarks
+    if (!['order', 'payment'].includes(orderOrPayment)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid report type. Use "order" or "payment".',
       });
-
-      if (service_id) {
-        const serviceIds = Array.isArray(service_id) ? service_id : [service_id];
-
-        await OrderService.destroy({
-          where: { orderId: order.id }
-        });
-
-        const orderServices = serviceIds.map(service_id => ({
-          orderId: order.id,
-          service_id
-        }));
-
-        await OrderServices.bulkCreate(orderServices);
-      }
-
-      return res.status(200).json({ success: true, message: "Order updated successfully."});
-
-    } else {
-      const newOrder = await OrderReports.create({
-        userUUID,
-        fromOrganization,
-        toOrganization,
-        orderDate,
-        toothName,
-        shades,
-        remarks,
-      });
-
-      if (service_id) {
-        const serviceIds = Array.isArray(service_id) ? service_id : [service_id];
-
-        const orderServices = serviceIds.map(service_id => ({
-          orderId: newOrder.id,
-          service_id
-        }));
-
-        await OrderServices.bulkCreate(orderServices);
-      }
-
-      return res.status(201).json({ success: true, message: "Order created successfully." });
     }
+
+    let whereCondition = {};
+    const dateFilter = {};
+
+    if (fromdate && todate) {
+      dateFilter.createdAt = {
+        [Op.between]: [
+          new Date(fromdate + 'T00:00:00.000Z'),
+          new Date(todate + 'T23:59:59.999Z'),
+        ],
+      };
+    } else if (fromdate) {
+      dateFilter.createdAt = {
+        [Op.gte]: new Date(fromdate + 'T00:00:00.000Z'),
+      };
+    } else if (todate) {
+      dateFilter.createdAt = {
+        [Op.lte]: new Date(todate + 'T23:59:59.999Z'),
+      };
+    }
+
+    if (Object.keys(dateFilter).length > 0) {
+      whereCondition = { ...whereCondition, ...dateFilter };
+    }
+
+    whereCondition.payment_status = { [Op.in]: ['paid'] };  
+    whereCondition.orderStatus = { [Op.in]: ['completed'] };  
+    whereCondition.toOrganization = organization_id;
+
+    const reportData = await (orderOrPayment === 'order' ? OrderReports : OrderReports).findAll({
+      where: whereCondition,
+      include: [
+        {
+          model: Organization,
+          as: 'toOrg',
+          attributes: ['id', 'name'],
+        },
+      ],
+    });
+
+    return res.status(200).json({
+      success: true,
+      message: `${orderOrPayment.charAt(0).toUpperCase() + orderOrPayment.slice(1)} reports fetched successfully!`,
+      data: reportData,
+    });
   } catch (error) {
-    console.error("Error in upserting order:", error);
-    return res.status(500).json({ message: "Internal Server Error", error: error.message });
+    console.error('Error fetching reports:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'An error occurred while fetching the reports.',
+      error: error.message,
+    });
   }
 };
 
-module.exports = { labOrders, labAllOrders, labOrderAndPaymentReport, labOrderAndPaymentReportGetById, searchOrders ,searchDoctor,upsertOrder };
+module.exports = { labOrders, labAllOrders, labOrderAndPaymentReport, labOrderAndPaymentReportGetById, searchOrders ,searchDoctor ,searchOrdersGetByDate};

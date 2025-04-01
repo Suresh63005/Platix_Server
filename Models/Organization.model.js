@@ -18,8 +18,8 @@ const Organization = sequelize.define("Organization", {
     allowNull: false,
   },
   address: {
-    type: DataTypes.TEXT,
-    allowNull: false,
+    type: DataTypes.JSON,
+    allowNull: true,
   },
   googleCoordinates: {
     type: DataTypes.JSON, // ✅ Correct type for coordinates
