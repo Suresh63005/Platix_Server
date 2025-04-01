@@ -233,15 +233,36 @@ const orderReport = async (req, res) => {
 
     const allOrder = await OrderReports.findAll({
       where: whereCondition,
-      include:[
+      include: [
         {
           model: Organization,
-          as: "toOrg",
+          as: "toOrg", 
           attributes: ["id", "name"],
-          required: false,
+          required: false, 
         },
+        {
+          model: OrderServices,  
+          as: "orderServices",   
+          attributes: [ "quantity", "price"],  
+          include: [
+            {
+              model: TblOrganization_Service,    
+              as: "orgservice",     
+              attributes: ["id"],  
+              required: false, 
+              include:[
+                {
+                  model:Services,
+                  as:"servicess",
+                  attributes:["servicename"]
+                }
+              ]   
+            }
+          ]
+        }
       ]
     });
+    
 
     return res.status(200).json({
       success: true,
@@ -358,7 +379,37 @@ const PaymentReports = async (req, res) => {
     else if (toDate) {
       whereCondition.createdAt = { [Op.lte]: new Date(toDate), };
     }
-    const allOrders = await OrderReports.findAll({ where: whereCondition })
+    const allOrders = await OrderReports.findAll({
+       where: whereCondition,
+       include: [
+        {
+          model: Organization,
+          as: "toOrg", 
+          attributes: ["id", "name"],
+          required: false, 
+        },
+        {
+          model: OrderServices,  
+          as: "orderServices",   
+          attributes: [ "quantity", "price"],  
+          include: [
+            {
+              model: TblOrganization_Service,    
+              as: "orgservice",     
+              attributes: ["id"],  
+              required: false, 
+              include:[
+                {
+                  model:Services,
+                  as:"servicess",
+                  attributes:["servicename"]
+                }
+              ]   
+            }
+          ]
+        }
+      ]
+      })
     return res.status(200).json({
       success: true,
       message: "Payment Reports Fetched Successfully!",
