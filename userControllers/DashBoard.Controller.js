@@ -234,7 +234,7 @@ const searchOrganizations = async (req, res) => {
                 },
                 {
                     model: TblOrganization_Service,
-                    as: "organization", 
+                    as: "organization_service", 
                     attributes: ["service_id","price"],
                     include: [
                         {
@@ -349,7 +349,7 @@ const searchByOrganizationType = async (req, res) => {
                 },
                 {
                     model: TblOrganization_Service,
-                    as: "organization",
+                    as: "organization_service",
                     attributes: ["service_id", "price"],
                     include: [
                         {
