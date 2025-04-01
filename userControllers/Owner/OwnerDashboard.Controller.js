@@ -152,14 +152,8 @@ const labOrderAndPaymentReportGetById=async(req,res)=>{
 }
 // Search orders by order ID or organization name
 const searchOrders = async (req, res) => {
- 
   const {organization_id, id, role_id} =req.user;
-
-
-
-
   const { search } = req.query;
-
   
   try {
     const orders = await OrderReports.findAll({
