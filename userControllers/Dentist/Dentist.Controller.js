@@ -6,7 +6,7 @@ const TblOrganization_Service = require("../../Models/tblOrganizationService");
 const OrderServices = require("../../Models/ReportsModel/OrderServices.model");
 const User = require("../../Models/ReportsModel/User.model");
 const { sequelize } = require("../../config/db");
-const moment=require("moment");
+const moment = require("moment");
 const TblOrganizationType = require("../../Models/TblOrganizationType.model");
 
 // If I pass only the userUUID, it means the request is coming from the owner. If I pass both the userUUID and delivery_boy, it means the request is coming from the delivery boy. If I do not pass the delivery_boy and userUUID, it means the request is coming from the dentist.
@@ -17,7 +17,7 @@ const fromDentist = async (req, res) => {
 
   try {
     const {
-      id, 
+      id,
       fromOrganization,
       patientName,
       patientId,
@@ -25,20 +25,20 @@ const fromDentist = async (req, res) => {
       delivery_boy,
       userUUID,   //doctor id
       toOrganization,
-      serviceId = [], 
+      serviceId = [],
       requiredDate,
       toothName,
       shades,
       remarks,
       reasonForScan,
-      sub_total = 0, 
+      sub_total = 0,
       tax = 0,
-      service_charges = 0, 
-      paid_amount = 0, 
-      total_amount = 0, 
-      payment_method, 
-      order_status, 
-      address, 
+      service_charges = 0,
+      paid_amount = 0,
+      total_amount = 0,
+      payment_method,
+      order_status,
+      address,
     } = req.body;
 
     const { cancel } = req.params;
@@ -67,27 +67,27 @@ const fromDentist = async (req, res) => {
       console.log(`Updating order ${id}`);
 
       if (cancel) {
-        console.log(`Cancelling order ${id}`); 
+        console.log(`Cancelling order ${id}`);
         await orderReport.update(
           { orderStatus: "cancelled" },
           { transaction }
         );
       } else {
-        
+
         await orderReport.update(
           {
             fromOrganization,
             patientName,
-            orderId: orderReport.orderId, 
-            patientId: patientId || orderReport.patientId, 
+            orderId: orderReport.orderId,
+            patientId: patientId || orderReport.patientId,
             toOrganization,
             requiredDate,
             toothName,
-            orderDate:orderReport.orderDate,
+            orderDate: orderReport.orderDate,
             shades,
             remarks,
             reasonForScan,
-            userUUID : userUUID || orderReport.userUUID,
+            userUUID: userUUID || orderReport.userUUID,
             subTotal: sub_total,
             tax,
             serviceCharges: service_charges,
@@ -112,14 +112,14 @@ const fromDentist = async (req, res) => {
           orderId: orderIdValue,
           patientId,
           toOrganization,
-          orderDate:new Date(),
+          orderDate: new Date(),
           requiredDate,
           toothName,
           delivery_boy,
           shades,
           remarks,
           reasonForScan,
-          userUUID : userUUID || userId,
+          userUUID: userUUID || userId,
           subTotal: sub_total,
           tax,
           serviceCharges: service_charges,
@@ -128,7 +128,7 @@ const fromDentist = async (req, res) => {
           paymentMethod: payment_method,
           orderStatus: "processing",
           address,
-          payment_status:"inProgress"
+          payment_status: "inProgress"
         },
         { transaction }
       );
@@ -137,13 +137,13 @@ const fromDentist = async (req, res) => {
     // Update User Address
     if (address) {
       console.log(`Updating address for user ${userUUID || userId}`);
-      const user = await User.findOne({ where: { id:userUUID || userId }, transaction });
+      const user = await User.findOne({ where: { id: userUUID || userId }, transaction });
 
       if (user) {
         await user.update({ address }, { transaction });
         console.log(`Address updated for user ${userUUID}`);
       } else {
-        console.log(`User with ID ${userId||userUUID} not found`);
+        console.log(`User with ID ${userId || userUUID} not found`);
       }
     }
 
@@ -157,8 +157,8 @@ const fromDentist = async (req, res) => {
         serviceId.map(async (item) => {
 
           const service = await TblOrganization_Service.findOne({ where: { id: item.id }, transaction });
-          
-          if(!service){
+
+          if (!service) {
             return res.status(404).json({
               message: "orgnizationService not found",
               status: false
@@ -199,11 +199,11 @@ const fromDentist = async (req, res) => {
 
 // order report search by date and where orders are completed  . it is working for 2 apis
 const orderReport = async (req, res) => {
-  const uid=req.user?.id;
-  if(!uid){
-    return res.status(401).json({message: "Unauthorized"});
+
+  const uid = req.user?.id;
+  if (!uid) {
+    return res.status(401).json({ message: "Unauthorized!" });
   }
-  console.log(uid)
   try {
     const { fromdate, todate } = req.params;
 
@@ -211,10 +211,10 @@ const orderReport = async (req, res) => {
       orderStatus: {
         [Op.eq]: "completed",
       },
+      userUUID: uid
     };
 
     if (fromdate && todate) {
-      // Ensure the dates are correctly parsed and compare only the date part
       whereCondition.createdAt = {
         [Op.between]: [
           new Date(fromdate + 'T00:00:00.000Z'),
@@ -233,6 +233,14 @@ const orderReport = async (req, res) => {
 
     const allOrder = await OrderReports.findAll({
       where: whereCondition,
+      include:[
+        {
+          model: Organization,
+          as: "toOrg",
+          attributes: ["id", "name"],
+          required: false,
+        },
+      ]
     });
 
     return res.status(200).json({
@@ -250,7 +258,12 @@ const orderReport = async (req, res) => {
   }
 };
 
-const orderDetails = async (req, res) => {
+//order details get by id
+const orderDetailsgetById = async (req, res) => {
+  const uid=req.user?.id;
+  if(!uid){
+    return res.status(401).json({message: "Unauthorized!" })
+  }
   const { id } = req.params;
   try {
     const orderReport = await OrderReports.findByPk(id, {
@@ -259,36 +272,31 @@ const orderDetails = async (req, res) => {
           model: User,
           as: 'userDetails',
           attributes: ['id', 'firstName', 'email', 'address', 'hospital_name'],
-          
+
         },
         {
-          model:OrderServices,
+          model: OrderServices,
           as: 'orderServices',
-          attributes: [ "quantity" ],
+          attributes: ["quantity"],
           include: [
             {
               model: TblOrganization_Service,
               as: 'orgservice',
-              attributes: ['id','price'],
+              attributes: ['id', 'price'],
               include: [
                 {
                   model: Services,
                   as: 'servicess',
-                  attributes: [ 'servicename'],
+                  attributes: ['servicename'],
                 }
               ]
             },
           ],
-
-
-        
-        
         }
-        
       ],
     });
 
-    
+
 
     if (!orderReport) {
       return res.status(404).json({
@@ -308,16 +316,16 @@ const orderDetails = async (req, res) => {
       ]
     });
 
-    
-  
+
+
     return res.status(200).json({
       success: true,
       message: "Order Report found successfully!",
       data: {
         ...orderReport.toJSON(),
         toOrganizationDetails
-        
-        
+
+
       },
     });
   } catch (error) {
@@ -325,13 +333,18 @@ const orderDetails = async (req, res) => {
     res.status(500).json({ success: false, message: "Internal Server Error", error: error.message });
   }
 };
-
+// payment report search by date and where orders are completed  .
 const PaymentReports = async (req, res) => {
-
+  const uid=req.user?.id;
+  if (!uid) {
+    return res.status(401).json({ message: "Unauthorized!" });
+  }
   try {
     const { fromDate, toDate } = req.query;
     let whereCondition = {
-      orderStatus: { [Op.eq]: "completed" }
+      orderStatus: { [Op.eq]: "completed" },
+      payment_status:{[Op.eq]:"paid"},
+      userUUID:uid,
     }
     if (fromDate && toDate) {
       whereCondition.createdAt = { [Op.between]: [new Date(fromDate), new Date(toDate)] }
@@ -361,7 +374,12 @@ const PaymentReports = async (req, res) => {
   }
 }
 
-const ViewPaymentReportDetails = async (req, res) => {
+// payment details get by id
+const paymenDetailsGetById = async (req, res) => {
+  const uid=req.user?.id;
+  if(uid){
+    return res.status(401).json({ message: "Unauthorized!" });
+  }
   const { id } = req.params;
   try {
     // Fetch order details
@@ -400,7 +418,7 @@ const ViewPaymentReportDetails = async (req, res) => {
     let toOrganizationName = null;
     if (orderDetails.toOrganization) {
       const toOrganization = await Organization.findByPk(orderDetails.toOrganization, {
-        attributes: ['id', 'name']  
+        attributes: ['id', 'name']
       });
       if (toOrganization) {
         toOrganizationName = toOrganization.name;
@@ -413,7 +431,7 @@ const ViewPaymentReportDetails = async (req, res) => {
       data: {
         orderDetails: {
           ...orderDetails.toJSON(),
-          toOrganizationName  
+          toOrganizationName
         },
         billDetails,
         serviceDetails
@@ -425,13 +443,19 @@ const ViewPaymentReportDetails = async (req, res) => {
   }
 }
 
+// order search
 const orderAndPaymentSearch = async (req, res) => {
+  const uid=req.user?.id;
+  if(!uid){
+    return res.status(401).json({ message: "Unauthorized!" });
+  }
   const { search } = req.params;
 
   try {
     const orderReports = await OrderReports.findAll({
       where: {
-        orderStatus: "completed", // Ensure only completed orders are fetched
+        orderStatus: "completed",
+        userUUID:uid,
         [Op.or]: [
           { orderId: { [Op.like]: `%${search}%` } },
           { toothName: { [Op.like]: `%${search}%` } },
@@ -442,7 +466,7 @@ const orderAndPaymentSearch = async (req, res) => {
           { patientName: { [Op.like]: `%${search}%` } },
           { patientProblem: { [Op.like]: `%${search}%` } },
           { paymentMethod: { [Op.like]: `%${search}%` } },
-          literal(`toOrg.name LIKE '%${search}%'`) 
+          literal(`toOrg.name LIKE '%${search}%'`)
         ],
       },
       include: [
@@ -464,8 +488,12 @@ const orderAndPaymentSearch = async (req, res) => {
   }
 };
 
-
+// get organization details get by id
 const getorganizationDetailsById = async (req, res) => {
+  const uid=req.user?.id;
+  if(!uid){
+    return res.status(401).json({ message: "Unauthorized!" });
+  }
   const id = req.params.id;
 
   try {
@@ -480,16 +508,16 @@ const getorganizationDetailsById = async (req, res) => {
       include: [
         {
           model: Services,
-          as: "servicess", 
+          as: "servicess",
           attributes: ["servicename"],
         },
       ],
     });
-    
+
 
     return res.status(200).json({
       organization: orgDetails,
-      services:orgServiceDetails
+      services: orgServiceDetails
     });
   } catch (error) {
     console.log(error);
@@ -499,9 +527,9 @@ const getorganizationDetailsById = async (req, res) => {
 
 const cancelledAndDestroyOrder = async (req, res) => {
 
-  const{status}=req.params;
+  const { status } = req.params;
 
-  const userUUID  = req.user?.id;
+  const userUUID = req.user?.id;
 
 
   try {
@@ -510,7 +538,7 @@ const cancelledAndDestroyOrder = async (req, res) => {
         orderStatus: status,
         userUUID
       },
-    }); 
+    });
     if (cancelledOrders.length === 0) {
       return res.status(404).json({ message: "No cancelled orders found to delete." });
     }
@@ -535,4 +563,4 @@ const cancelledAndDestroyOrder = async (req, res) => {
 };
 
 
-module.exports = { fromDentist, orderDetails, orderReport, PaymentReports, ViewPaymentReportDetails,orderAndPaymentSearch,getorganizationDetailsById ,cancelledAndDestroyOrder };
+module.exports = { fromDentist, orderDetailsgetById, orderReport, PaymentReports, paymenDetailsGetById, orderAndPaymentSearch, getorganizationDetailsById, cancelledAndDestroyOrder };

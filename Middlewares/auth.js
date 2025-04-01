@@ -169,7 +169,7 @@ const isOwner = async(req,res,next)=>{
 
     const decode = jwt.verify(token, process.env.JWT_TOKEN);
 
-    console.log(decode ,"decode from token");
+    // console.log(decode ,"decode from token");
 
     const user = await User.findByPk(decode?.userId, {
       include:[
@@ -181,7 +181,7 @@ const isOwner = async(req,res,next)=>{
     });
 
 
-    console.log(user,"userrrrrrrrrrrrrrrrrrrrr")
+    // console.log(user,"userrrrrrrrrrrrrrrrrrrrr")
 
     // console.log(user, "user from decode");
 

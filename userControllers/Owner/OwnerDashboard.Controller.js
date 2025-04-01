@@ -262,4 +262,67 @@ const upsertOrder = async (req, res) => {
   }
 };
 
-module.exports = { labOrders, labAllOrders, labOrderAndPaymentReport, labOrderAndPaymentReportGetById, searchOrders ,searchDoctor,upsertOrder };
+const searchOrdersGetByDate = async (req, res) => {
+  try {
+    const { organization_id, id, role_id } = req.user;
+    console.log(req.user,"iufefeufufeufehu")
+    const { orderOrPayment, fromdate, todate } = req.params;
+
+    if (!['order', 'payment'].includes(orderOrPayment)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid report type. Use "order" or "payment".',
+      });
+    }
+
+    let whereCondition = {};
+    const dateFilter = {};
+
+    if (fromdate && todate) {
+      dateFilter.createdAt = {
+        [Op.between]: [
+          new Date(fromdate + 'T00:00:00.000Z'),
+          new Date(todate + 'T23:59:59.999Z'),
+        ],
+      };
+    } else if (fromdate) {
+      dateFilter.createdAt = {
+        [Op.gte]: new Date(fromdate + 'T00:00:00.000Z'),
+      };
+    } else if (todate) {
+      dateFilter.createdAt = {
+        [Op.lte]: new Date(todate + 'T23:59:59.999Z'),
+      };
+    }
+
+    if (Object.keys(dateFilter).length > 0) {
+      whereCondition = { ...whereCondition, ...dateFilter };
+    }
+
+    if (orderOrPayment === 'order') {
+      whereCondition.orderStatus = { [Op.in]: ['completed'] };  
+    }
+
+    if (orderOrPayment === 'payment') {
+      whereCondition.paymentStatus = { [Op.in]: ['paid'] };  
+    }
+
+    const reportData = await (orderOrPayment === 'order' ? OrderReports : PaymentReports).findAll({
+      where: whereCondition,
+    });
+
+    return res.status(200).json({
+      success: true,
+      message: `${orderOrPayment.charAt(0).toUpperCase() + orderOrPayment.slice(1)} reports fetched successfully!`,
+      data: reportData,
+    });
+  } catch (error) {
+    console.error('Error fetching reports:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'An error occurred while fetching the reports.',
+      error: error.message,
+    });
+  }
+};
+module.exports = { labOrders, labAllOrders, labOrderAndPaymentReport, labOrderAndPaymentReportGetById, searchOrders ,searchDoctor,upsertOrder ,searchOrdersGetByDate};
