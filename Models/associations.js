@@ -120,4 +120,4 @@ OrderReports.hasMany(OrderServices,{foreignKey:'orderId',as: "orderServices",})
 // Services.hasMany(OrderServices,{foreignKey:'orgserviceId'})
 
 OrderReports.belongsTo(User,{foreignKey:"userUUID",as:"userDetails"})
-User.hasMany(OrderReports,{foreignKey:"userUUID"})
+User.hasMany(OrderReports,{foreignKey:"userUUID"}) 
