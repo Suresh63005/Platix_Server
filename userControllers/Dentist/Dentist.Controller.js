@@ -128,7 +128,7 @@ const fromDentist = async (req, res) => {
           paymentMethod: payment_method,
           orderStatus: "processing",
           address,
-          payment_status: "inProgress"
+          payment_status: "unpaid"
         },
         { transaction }
       );

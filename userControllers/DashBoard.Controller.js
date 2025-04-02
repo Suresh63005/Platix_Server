@@ -4,37 +4,47 @@ const TblOrganizationType = require("../Models/TblOrganizationType.model");
 const { formatDateFields } = require("../helper/formatedDate");
 const Organization = require("../Models/Organization.model");
 const Services = require("../Models/TblServices.model");
-const TblOrganization_Service = require("../Models/tblOrganizationService"); //76a91dba-948d-4098-ad1e-26ceaa10a74d
+const TblOrganization_Service = require("../Models/tblOrganizationService");
 const OrderServices = require("../Models/ReportsModel/OrderServices.model");
 const Settings = require("../Models/TblSettings.model");
 
 const allOrders = async (req, res) => {
+    const uid = req.user?.id; 
+    if (!uid) {
+        return res.status(401).json({ message: "Unauthorized!" });
+    }
+
     try {
-        // Fetch order counts concurrently
+        // Fetch order counts concurrently for the given user
         const orderCounts = await Promise.all([
-            OrderReports.count({ where: { orderStatus: "processing" } }), // Active orders
-            OrderReports.count({ where: { orderStatus: "completed" } }), // Completed payable bills
-            OrderReports.count({ where: { orderStatus: { [Op.in]: ["completed", "cancelled", "processing", "pending"] } } }), // Total orders
-            OrderReports.count({ where: { orderStatus: { [Op.in]: ["processing", "pending"] } } }), // Open orders (active + pending)
-            OrderReports.count({ where: { orderStatus: { [Op.in]: ["completed", "cancelled"] } } }), // Closed orders
+            OrderReports.count({ where: { userUUID: uid, orderStatus: "processing" } }), 
+            OrderReports.count({ where: { userUUID: uid, orderStatus: "completed" } }), 
+            OrderReports.count({ where: { userUUID: uid, orderStatus: { [Op.in]: ["completed", "cancelled", "processing"] } } }), 
+            OrderReports.count({ where: { userUUID: uid, orderStatus: { [Op.in]: ["processing"] } } }),
+            OrderReports.count({ where: { userUUID: uid, orderStatus: { [Op.in]: ["completed", "cancelled"] } } }), 
         ]);
 
-        const receivedAmounts = await OrderReports.sum("paidAmount", { where: { orderStatus: { [Op.in]: ["completed", "cancelled", "pending", "processing"] } } });
+        // Fetch total paid amount for the given user
+        const receivedAmounts = await OrderReports.sum("paidAmount", { 
+            where: { 
+                userUUID: uid,
+                orderStatus: { [Op.in]: ["completed", "cancelled", "processing"] } 
+            }
+        });
 
-        // console.log("Total Received Amount:", receivedAmounts); // Debugging log
         const response = {
             activeOrders: orderCounts[0], // Processing orders
             totalPayableBills: orderCounts[1], // Completed orders
             totalOrders: orderCounts[2], // All orders
-            openOrders: orderCounts[3], // Processing + Pending
+            openOrders: orderCounts[3], // Processing 
             closedOrders: orderCounts[4], // Completed + Cancelled
             totalReceivedAmount: receivedAmounts || 0, // Total received amount
         };
 
-        return res.status(200).json(response);
+        return res.status(200).json(response); 
     } catch (error) {
         console.error("Error fetching order counts:", error);
-        return res.status(500).json({ message: "Internal Server Error" });
+        return res.status(500).json({ message: "Internal Server Error" }); 
     }
 };
 
@@ -42,11 +52,14 @@ const allOrders = async (req, res) => {
 const all = async (req, res) => {
     // const { search, page = 1, limit = 10 } = req.query;
     // const offset = (page - 1) * limit;
+    const uid=req.user?.id;
+    if(!uid){
+        return res.status(401).json({ message: "Unauthorized!" });
+    }
 
     try {
-       
-
         const organizations = await Organization.findAll({
+            
             attributes: ["id", "name", "address", "organizationType_id", "file1"],
             include: [
                 {
@@ -134,9 +147,17 @@ const statusOrder = async (req, res) => {
     try {
         const { status, userUUID } = req.params;
 
+        const userId = req.user?.id ;
+
+        if(!userId){
+            return res.status(401).json({ message: "Unauthorized" });
+        }
+
+        
+
         const whereCondition = {};
         if (status) whereCondition.orderStatus = status;
-        if (userUUID) whereCondition.userUUID = userUUID;
+        if (userId) whereCondition.userUUID = userId;
 
         const orderStatus = await OrderReports.findAll({
             where: whereCondition,
