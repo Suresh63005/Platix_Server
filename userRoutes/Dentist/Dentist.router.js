@@ -14,7 +14,8 @@ router.get("/dentist/order/search/:search",authMiddleware.isAuthenticated, Denti
 router.get("/dentist/organization-details/getbyid/:id",authMiddleware.isAuthenticated,DentistController.getorganizationDetailsById);
 // cancelled order destroy
 router.delete("/dentist/delete/:status",authMiddleware.isAuthenticated,DentistController.cancelledAndDestroyOrder)
-
+//paynow
+router.post("/dentist/paynow",authMiddleware.isAuthenticated,DentistController.payNow)
 router.get("/dashboard/all-orders",authMiddleware.isAuthenticated,dashBoardController.allOrders)
 router.get("/dashboard/all",authMiddleware.isAuthenticated,dashBoardController.all)
 router.get("/dashboard/all/organizations/search",authMiddleware.isAuthenticated, dashBoardController.searchOrganizations);
