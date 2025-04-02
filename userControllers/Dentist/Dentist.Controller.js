@@ -8,11 +8,11 @@ const User = require("../../Models/ReportsModel/User.model");
 const { sequelize } = require("../../config/db");
 const moment = require("moment");
 const TblOrganizationType = require("../../Models/TblOrganizationType.model");
+const orderTransaction = require("../../Models/ReportsModel/OrderTransaction.model");
 
 // If I pass only the userUUID, it means the request is coming from the owner. If I pass both the userUUID and delivery_boy, it means the request is coming from the delivery boy. If I do not pass the delivery_boy and userUUID, it means the request is coming from the dentist.
 const fromDentist = async (req, res) => {
   const transaction = await sequelize.transaction({ autocommit: false });
-
   const userId = req.user.id;
 
   try {
@@ -22,6 +22,7 @@ const fromDentist = async (req, res) => {
       patientName,
       patientId,
       orderDate,
+      transactionId,
       delivery_boy,
       userUUID,   //doctor id
       toOrganization,
@@ -134,6 +135,27 @@ const fromDentist = async (req, res) => {
       );
     }
 
+    if (transactionId) {
+      console.log("Processing transaction...");
+
+      // Insert into orderTransaction table
+      await orderTransaction.create(
+        {
+          orderId: orderReport.id,
+          userUUID: userUUID || userId,
+          transactionId,
+          amount: total_amount, // Assuming total_amount is the amount paid
+        },
+        { transaction }
+      );
+
+      // Update order status to 'paid'
+      await orderReport.update(
+        { payment_status: "paid" },
+        { transaction }
+      );
+    }
+
     // Update User Address
     if (address) {
       console.log(`Updating address for user ${userUUID || userId}`);
@@ -155,18 +177,17 @@ const fromDentist = async (req, res) => {
 
       await Promise.all(
         serviceId.map(async (item) => {
-
           const service = await TblOrganization_Service.findOne({ where: { id: item.id }, transaction });
 
           if (!service) {
             return res.status(404).json({
-              message: "orgnizationService not found",
+              message: "Organization service not found",
               status: false
-            })
+            });
           }
           await OrderServices.create(
             {
-              orderId: orderReport?.id,
+              orderId: orderReport.id,
               orgserviceId: item.id,
               quantity: item.quantity,
               price: item.quantity * service.price,
@@ -185,7 +206,10 @@ const fromDentist = async (req, res) => {
       data: orderReport,
     });
   } catch (error) {
-    if (transaction) await transaction.rollback();
+    // Check if the transaction is not committed yet before rolling back
+    if (transaction.finished !== 'commit') {
+      await transaction.rollback();
+    }
 
     console.error("Error processing Order:", error);
     return res.status(500).json({
@@ -195,6 +219,7 @@ const fromDentist = async (req, res) => {
     });
   }
 };
+
 
 
 // order report search by date and where orders are completed  . it is working for 2 apis
