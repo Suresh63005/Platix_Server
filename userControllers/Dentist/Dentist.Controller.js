@@ -221,7 +221,6 @@ const fromDentist = async (req, res) => {
 };
 
 
-
 // order report search by date and where orders are completed  . it is working for 2 apis
 const orderReport = async (req, res) => {
 
@@ -481,12 +480,12 @@ const paymenDetailsGetById = async (req, res) => {
     }
 
     const serviceDetails = await TblOrganization_Service.findOne({
-      where: { organization_id: orderDetails.fromOrganization },
+      where: { organization_id: orderDetails.toOrganization },
       include: [
         {
           model: Services,
           as: 'servicess',
-          attributes: ["id", "servicename", 'servicedescription']
+          attributes: [ "servicename", 'servicedescription']
         }
       ]
     })
@@ -638,5 +637,7 @@ const cancelledAndDestroyOrder = async (req, res) => {
   }
 };
 
-
+const payNow=async(req,res)=>{
+  
+}
 module.exports = { fromDentist, orderDetailsgetById, orderReport, PaymentReports, paymenDetailsGetById, orderAndPaymentSearch, getorganizationDetailsById, cancelledAndDestroyOrder };
