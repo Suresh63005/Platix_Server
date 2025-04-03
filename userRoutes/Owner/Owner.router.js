@@ -22,7 +22,7 @@ router.get("/owner/order/dashboard/search-orders",authMiddleware.isOwner, ownerC
 router.get("/owner/order/search/:search",authMiddleware.isOwner,ownerController.orderAndPaymentSearch);
 
 // for labrotory owner create order searching doctor
-router.get("/owner/doctor/search",authMiddleware.isOwner,ownerController.searchDoctor);
+router.get("/owner/doctor/search/:search",authMiddleware.isOwner,ownerController.searchDoctor);
 
 // create order
 router.post("/owner/upsert",authMiddleware.isOwner,dentistController.fromDentist);
