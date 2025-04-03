@@ -1,4 +1,4 @@
-const { Op } = require("sequelize");
+const { Op, literal } = require("sequelize");
 const OrderReports = require("../../Models/ReportsModel/OrderReport.model");
 const Organization = require("../../Models/Organization.model");
 const OrderService = require("../../Models/ReportsModel/OrderServices.model");
@@ -171,7 +171,7 @@ const labOrderAndPaymentReportGetById=async(req,res)=>{
     return res.status(500).json({ message: "Internal Server Error" });
   }
 }
-// Search orders by order ID or organization name
+// (dashboard) Search orders by order ID or organization name
 const searchOrders = async (req, res) => {
   const {organization_id, id, role_id} =req.user;
   const { search } = req.query;
@@ -298,22 +298,45 @@ const searchOrdersGetByDate = async (req, res) => {
 };
 
 
-const searchOrderAndPayment = async (req, res) => {
-  const {organization_id, id, role_id} =req.user;
+const orderAndPaymentSearch = async (req, res) => {
+  const { organization_id } = req.user;
   const { search } = req.query;
-  
+
   try {
-    const orders = await OrderReports.findAll({
-      where: { toOrganization:organization_id, orderStatus: "completed",
-        delivery_boy: { [Op.is]: null },
-        technician: { [Op.is]: null },[Op.or]: [{ orderId: { [Op.like]: `%${search}%` } }, { "$toOrg.name$": { [Op.like]: `%${search}%` } }] },
-      include: [{ model: Organization, as: "toOrg", attributes: ["name"] }]
+    const orderReports = await OrderReports.findAll({
+      where: {
+        orderStatus: "completed",
+        toOrganization:organization_id,
+        [Op.or]: [
+          { orderId: { [Op.like]: `%${search}%` } },
+          { toothName: { [Op.like]: `%${search}%` } },
+          { shades: { [Op.like]: `%${search}%` } },
+          { remarks: { [Op.like]: `%${search}%` } },
+          { reasonForScan: { [Op.like]: `%${search}%` } },
+          { mobileNo: { [Op.like]: `%${search}%` } },
+          { patientName: { [Op.like]: `%${search}%` } },
+          { patientProblem: { [Op.like]: `%${search}%` } },
+          { paymentMethod: { [Op.like]: `%${search}%` } },
+          literal(`toOrg.name LIKE '%${search}%'`)
+        ],
+      },
+      include: [
+        {
+          model: Organization,
+          as: "toOrg",
+          attributes: ["id", "name"],
+          required: false,
+        },
+      ],
     });
-    return res.status(200).json({ success: true, orders });
+
+    return res.status(200).json({ orderReports });
   } catch (error) {
-    console.error("Error during order search:", error);
-    return res.status(500).json({ message: "An error occurred while searching for orders" });
+    console.error("Error during global search:", error.message);
+    return res.status(500).json({
+      message: "An error occurred while performing the search",
+    });
   }
 };
 
-module.exports = { labOrders, labAllOrders, labOrderAndPaymentReport, labOrderAndPaymentReportGetById, searchOrders ,searchDoctor ,searchOrdersGetByDate,searchOrderAndPayment};
+module.exports = { labOrders, labAllOrders, labOrderAndPaymentReport, labOrderAndPaymentReportGetById, searchOrders ,searchDoctor ,searchOrdersGetByDate,orderAndPaymentSearch};

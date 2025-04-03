@@ -513,12 +513,19 @@ const paymenDetailsGetById = async (req, res) => {
     // })
 
     let toOrganizationName = null;
+    let toOrganizationType = null;
     if (orderDetails.toOrganization) {
       const toOrganization = await Organization.findByPk(orderDetails.toOrganization, {
-        attributes: ['id', 'name']
+        attributes: ['id', 'name'],
+        include:[{
+          model: TblOrganizationType,
+          as: 'organizationType',
+          attributes: ['id', 'organizationType']
+        }]
       });
       if (toOrganization) {
         toOrganizationName = toOrganization.name;
+        toOrganizationType = toOrganization?.organizationType?.organizationType
       }
     }
 
@@ -528,7 +535,8 @@ const paymenDetailsGetById = async (req, res) => {
       data: {
         orderDetails: {
           ...orderDetails.toJSON(),
-          toOrganizationName
+          toOrganizationName,
+          toOrganizationType
         },
         billDetails,
         // serviceDetails
