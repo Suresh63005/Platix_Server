@@ -104,8 +104,8 @@ TblOrganizationType.belongsToMany(Services, {
 OrderServices.belongsTo(OrderReports,{foreignKey:'orderId',as:"orderServices"})
 OrderReports.hasMany(OrderServices,{foreignKey:'orderId',as: "orderServices",})
 
-// OrderServices.belongsTo(Services,{foreignKey:'orgserviceId',as:"serviceDetails"})
-// Services.hasMany(OrderServices,{foreignKey:'orgserviceId'})
+OrderServices.belongsTo(Services,{foreignKey:'orgserviceId',as:"serviceDetails"})
+Services.hasMany(OrderServices,{foreignKey:'orgserviceId'})
 
 OrderReports.belongsTo(User,{foreignKey:"userUUID",as:"userDetails"})
 User.hasMany(OrderReports,{foreignKey:"userUUID"})
