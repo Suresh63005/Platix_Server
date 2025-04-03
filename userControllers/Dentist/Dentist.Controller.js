@@ -8,6 +8,7 @@ const User = require("../../Models/ReportsModel/User.model");
 const { sequelize } = require("../../config/db");
 const moment = require("moment");
 const TblOrganizationType = require("../../Models/TblOrganizationType.model");
+const Notification = require("../../Models/Notification.model");
 const orderTransaction = require("../../Models/ReportsModel/OrderTransaction.model");
 
 // If I pass only the userUUID, it means the request is coming from the owner. If I pass both the userUUID and delivery_boy, it means the request is coming from the delivery boy. If I do not pass the delivery_boy and userUUID, it means the request is coming from the dentist.
@@ -144,16 +145,26 @@ const fromDentist = async (req, res) => {
           orderId: orderReport.id,
           userUUID: userUUID || userId,
           transactionId,
-          amount: total_amount, // Assuming total_amount is the amount paid
+          amount: total_amount, 
         },
         { transaction }
       );
-
-      // Update order status to 'paid'
+      
+      // Update order status to 'paid' IF THEY PAID FULL AMOUNT
       await orderReport.update(
         { payment_status: "paid" },
         { transaction }
       );
+
+      // notification send
+     
+        await Notification.create({
+          uid: userUUID || userId,
+          datetime: new Date(),
+          title: "Order Confirmation",
+          description: `Order ${orderReport.orderId} has been successfully confirmed and is now beeing processed.`
+        })
+      
     }
 
     // Update User Address
@@ -631,11 +642,8 @@ const getorganizationDetailsById = async (req, res) => {
 };
 
 const cancelledAndDestroyOrder = async (req, res) => {
-
   const { status } = req.params;
-
   const userUUID = req.user?.id;
-
 
   try {
     const cancelledOrders = await OrderReports.findAll({
@@ -669,7 +677,6 @@ const cancelledAndDestroyOrder = async (req, res) => {
 
 const payNow = async (req, res) => {
   const uid = req.user?.id;
-  console.log(uid)
   
   if (!uid) {
     return res.status(401).json({ message: "Unauthorized" });
@@ -696,6 +703,13 @@ const payNow = async (req, res) => {
         payment_status: "paid"
       }
     );
+
+    await Notification.create({
+      uid: uid,
+      datetime: new Date(),
+      title: "Payment Confirmation",
+      description: `Order ${amount} for bill ${orderReport.orderId} has been successfully processed.`
+    });
 
     return res.status(200).json({ message: "Payment is successful",transaction:transaction });
     

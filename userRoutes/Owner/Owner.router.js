@@ -14,8 +14,9 @@ router.get("/owner/getall-order/:orderStatus",authMiddleware.isOwner,ownerContro
 router.get("/owner/report/:report/:fromdate?/:todate?",authMiddleware.isOwner,ownerController.searchOrdersGetByDate)
 
 // retrieve id of order and payment report along with their specific details
-// router.get("/owner/order/report/:id/:report",authMiddleware.isOwner, ownerController.labOrderAndPaymentReportGetById)
+router.get("/owner/order/report/:id/:report",authMiddleware.isOwner, ownerController.labOrderAndPaymentReportGetById)
 
+//for dashboard search
 router.get("/owner/order/dashboard/search-orders",authMiddleware.isOwner, ownerController.searchOrders);
 
 // // this will work for both order and payment search
