@@ -317,7 +317,7 @@ const orderAndPaymentSearch = async (req, res) => {
 // while creating order search doctor
 const searchDoctor = async (req, res) => {
   const {organization_id, id, role_id} =req.user;
-  const { search } = req.query;
+  const { search } = req.params;
 
   try {
     const results = await User.findAll({
