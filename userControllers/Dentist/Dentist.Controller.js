@@ -637,7 +637,42 @@ const cancelledAndDestroyOrder = async (req, res) => {
   }
 };
 
-const payNow=async(req,res)=>{
+const payNow = async (req, res) => {
+  const uid = req.user?.id;
+  console.log(uid)
   
-}
-module.exports = { fromDentist, orderDetailsgetById, orderReport, PaymentReports, paymenDetailsGetById, orderAndPaymentSearch, getorganizationDetailsById, cancelledAndDestroyOrder };
+  if (!uid) {
+    return res.status(401).json({ message: "Unauthorized" });
+  }
+
+  const { orderId, transactionId, amount } = req.body;
+
+  try {
+    const transaction = await orderTransaction.create({
+      orderId,
+      userUUID: uid,
+      transactionId,
+      amount
+    });
+
+    const orderReport = await OrderReports.findByPk(orderId);
+
+    if (!orderReport) {
+      return res.status(404).json({ message: "Order not found" });
+    }
+
+    await orderReport.update(
+      { 
+        payment_status: "paid"
+      }
+    );
+
+    return res.status(200).json({ message: "Payment is successful",transaction:transaction });
+    
+  } catch (error) {
+    console.error("Error processing payment:", error);
+    return res.status(500).json({ message: "Internal server error", error: error.message });
+  }
+};
+
+module.exports = { fromDentist, orderDetailsgetById, orderReport, PaymentReports, paymenDetailsGetById, orderAndPaymentSearch, getorganizationDetailsById, cancelledAndDestroyOrder,payNow };
