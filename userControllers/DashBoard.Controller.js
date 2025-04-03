@@ -14,6 +14,8 @@ const allOrders = async (req, res) => {
         return res.status(401).json({ message: "Unauthorized!" });
     }
 
+    
+
     try {
         // Fetch order counts concurrently for the given user
         const orderCounts = await Promise.all([
