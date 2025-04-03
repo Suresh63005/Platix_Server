@@ -378,7 +378,7 @@ const orderDetailsgetById = async (req, res) => {
     res.status(500).json({ success: false, message: "Internal Server Error", error: error.message });
   }
 };
-// payment report search by date and where orders are completed  .
+// payment report search by date and where orders are completed  . if u passed date then it will filter by date if not then it will filter by completed orders
 const PaymentReports = async (req, res) => {
   const uid=req.user?.id;
   if (!uid) {
@@ -465,6 +465,26 @@ const paymenDetailsGetById = async (req, res) => {
           as: 'userDetails',
           attributes: ['id', 'firstName']
         },
+        {
+          model:OrderServices,
+          as: 'orderServices',
+          attributes:["quantity"],
+          include:[
+            {
+              model:TblOrganization_Service,
+              as:"orgservice",
+              attributes:["id","price"],
+              include: [
+                {
+                  model: Services,
+                  as: 'servicess',
+                  attributes: [ "servicename", 'servicedescription']
+                },
+                
+              ],
+            }
+          ]
+        }
       ]
     })
     if (!orderDetails) {
@@ -479,16 +499,18 @@ const paymenDetailsGetById = async (req, res) => {
       return res.status(404).json({ message: "Bill Details are not found!" })
     }
 
-    const serviceDetails = await TblOrganization_Service.findOne({
-      where: { organization_id: orderDetails.toOrganization },
-      include: [
-        {
-          model: Services,
-          as: 'servicess',
-          attributes: [ "servicename", 'servicedescription']
-        }
-      ]
-    })
+    // const serviceDetails = await TblOrganization_Service.findOne({
+    //   where: { organization_id: orderDetails.toOrganization },
+    //   include: [
+    //     {
+    //       model: Services,
+    //       as: 'servicess',
+    //       attributes: [ "servicename", 'servicedescription']
+    //     },
+        
+    //   ],
+    //   attributes:["id","price"]
+    // })
 
     let toOrganizationName = null;
     if (orderDetails.toOrganization) {
@@ -509,7 +531,7 @@ const paymenDetailsGetById = async (req, res) => {
           toOrganizationName
         },
         billDetails,
-        serviceDetails
+        // serviceDetails
       }
     })
   } catch (error) {
