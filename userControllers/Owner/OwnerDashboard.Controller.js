@@ -298,4 +298,22 @@ const searchOrdersGetByDate = async (req, res) => {
 };
 
 
-module.exports = { labOrders, labAllOrders, labOrderAndPaymentReport, labOrderAndPaymentReportGetById, searchOrders ,searchDoctor ,searchOrdersGetByDate};
+const searchOrderAndPayment = async (req, res) => {
+  const {organization_id, id, role_id} =req.user;
+  const { search } = req.query;
+  
+  try {
+    const orders = await OrderReports.findAll({
+      where: { toOrganization:organization_id, orderStatus: "completed",
+        delivery_boy: { [Op.is]: null },
+        technician: { [Op.is]: null },[Op.or]: [{ orderId: { [Op.like]: `%${search}%` } }, { "$toOrg.name$": { [Op.like]: `%${search}%` } }] },
+      include: [{ model: Organization, as: "toOrg", attributes: ["name"] }]
+    });
+    return res.status(200).json({ success: true, orders });
+  } catch (error) {
+    console.error("Error during order search:", error);
+    return res.status(500).json({ message: "An error occurred while searching for orders" });
+  }
+};
+
+module.exports = { labOrders, labAllOrders, labOrderAndPaymentReport, labOrderAndPaymentReportGetById, searchOrders ,searchDoctor ,searchOrdersGetByDate,searchOrderAndPayment};

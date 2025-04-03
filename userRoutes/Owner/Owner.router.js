@@ -20,8 +20,9 @@ router.get("/owner/order/payment/search-orders",authMiddleware.isOwner,ownerCont
 
 // this will work for both order and payment search by date
 // router.get("/owner/report/:orderOrPayment/:fromdate?/:todate?",authMiddleware.isOwner,ownerController.searchOrdersGetByDate)
+
 // for labrotory owner create order searching doctor
-router.get("/owner/order/search",authMiddleware.isOwner,ownerController.searchDoctor);
+router.get("/owner/doctor/search",authMiddleware.isOwner,ownerController.searchDoctor);
 
 // create order
 router.post("/owner/upsert",authMiddleware.isOwner,dentistController.fromDentist);
