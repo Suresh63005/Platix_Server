@@ -63,10 +63,8 @@ const all = async (req, res) => {
                     required: true,
                 },
             ],
-            // where: searchFilter,
+
             order: [["createdAt", "DESC"]],
-            // offset,
-            // limit,
         });
         
         const orgIds = organizations.map(org => org.id);
@@ -92,18 +90,7 @@ const all = async (req, res) => {
             });
         }
 
-        // Map services to organizations
-        const organizationServiceMap = {};
-        organizationServices.forEach(service => {
-            if (!organizationServiceMap[service.organization_id]) {
-                organizationServiceMap[service.organization_id] = [];
-            }
-            organizationServiceMap[service.organization_id].push({
-                id: service.service_id,
-                servicename: serviceMap[service.service_id] || "Unknown Service",
-                price: service.price,
-            });
-        });
+       
 
         // Format the data
         const formattedOrganizations = organizations.map((org) => {

@@ -282,7 +282,7 @@ const orderDetails = async (req, res) => {
             {
               model: Services,
               as: 'servicess',
-              attributes: ['id', 'servicename'],
+              attributes: ['servicename'],
             }
           ]
         },

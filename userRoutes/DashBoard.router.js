@@ -1,8 +1,9 @@
 
 const express=require("express")
 const router=express.Router();
-const dashBoardController=require("../userControllers/DashBoard.Controller")
-const authMiddleWare=require("../Middlewares/auth")
+const dashBoardController=require("../userControllers/DashBoard.Controller");
+const { isAuthenticated } = require("../Middlewares/auth");
+// const authMiddleWare=require("../Middlewares/auth")
 
 
 
@@ -13,4 +14,4 @@ router.get("/dashboard/all/organizationstype/search", dashBoardController.search
 router.get("/dashboard/status/:status/:userUUID",dashBoardController.statusOrder)
 
 
-module.exports=router
+module.exports = router
