@@ -20,7 +20,7 @@ const allOrders = async (req, res) => {
         // Fetch order counts concurrently for the given user
         const orderCounts = await Promise.all([
             OrderReports.count({ where: { userUUID: uid, orderStatus: "processing" } }), 
-            OrderReports.count({ where: { userUUID: uid, orderStatus: "completed" } }), 
+            OrderReports.count({ where: { userUUID: uid,orderStatus :{[Op.in]: ["completed", "processing"]}, payment_status: "unpaid" } }), 
             OrderReports.count({ where: { userUUID: uid, orderStatus: { [Op.in]: ["completed", "cancelled", "processing"] } } }), 
             OrderReports.count({ where: { userUUID: uid, orderStatus: { [Op.in]: ["processing"] } } }),
             OrderReports.count({ where: { userUUID: uid, orderStatus: { [Op.in]: ["completed", "cancelled"] } } }), 
@@ -36,7 +36,7 @@ const allOrders = async (req, res) => {
 
         const response = {
             activeOrders: orderCounts[0], // Processing orders
-            totalPayableBills: orderCounts[1], // Completed orders
+            totalPayableBills: orderCounts[1], 
             totalOrders: orderCounts[2], // All orders
             openOrders: orderCounts[3], // Processing 
             closedOrders: orderCounts[4], // Completed + Cancelled
