@@ -110,24 +110,42 @@ const labAllOrders = async (req, res) => {
   }
 };
 
-
-// Retrieve order or payment reports
-const labOrderAndPaymentReport = async (req, res) => {
-
-  const { organization_id } = req.user;
-  const { report } = req.params;
-  if (!["order", "payment"].includes(report)) return res.status(400).json({ message: "Invalid report type" });
-
+// (dashboard) Search orders by order ID or organization name
+const searchOrders = async (req, res) => {
+  const {organization_id, id, role_id} =req.user;
+  const { search } = req.query;
+  
   try {
-    const reportData = await OrderReports.findAll({where:{toOrganization:organization_id,orderStatus:"completed"}});
-    if (!reportData.length) return res.status(404).json({ message: `No ${report} reports found.` });
-
-    return res.status(200).json({ message: `${report} reports retrieved successfully`, data: reportData });
+    const orders = await OrderReports.findAll({
+      where: { toOrganization:organization_id, orderStatus: "processing",
+        delivery_boy: { [Op.is]: null },
+        technician: { [Op.is]: null },[Op.or]: [{ orderId: { [Op.like]: `%${search}%` } }, { "$toOrg.name$": { [Op.like]: `%${search}%` } }] },
+      include: [{ model: Organization, as: "toOrg", attributes: ["name"] }]
+    });
+    return res.status(200).json({ success: true, orders });
   } catch (error) {
-    console.error(`Error fetching ${report} reports:`, error);
-    return res.status(500).json({ message: "Internal Server Error" });
+    console.error("Error during order search:", error);
+    return res.status(500).json({ message: "An error occurred while searching for orders" });
   }
 };
+
+// Retrieve order or payment reports
+// const labOrderAndPaymentReport = async (req, res) => {
+
+//   const { organization_id } = req.user;
+//   const { report } = req.params;
+//   if (!["order", "payment"].includes(report)) return res.status(400).json({ message: "Invalid report type" });
+
+//   try {
+//     const reportData = await OrderReports.findAll({where:{toOrganization:organization_id,orderStatus:"completed"}});
+//     if (!reportData.length) return res.status(404).json({ message: `No ${report} reports found.` });
+
+//     return res.status(200).json({ message: `${report} reports retrieved successfully`, data: reportData });
+//   } catch (error) {
+//     console.error(`Error fetching ${report} reports:`, error);
+//     return res.status(500).json({ message: "Internal Server Error" });
+//   }
+// };
 
 // Retrieve order or payment report by ID
 const labOrderAndPaymentReportGetById=async(req,res)=>{
@@ -171,51 +189,8 @@ const labOrderAndPaymentReportGetById=async(req,res)=>{
     return res.status(500).json({ message: "Internal Server Error" });
   }
 }
-// (dashboard) Search orders by order ID or organization name
-const searchOrders = async (req, res) => {
-  const {organization_id, id, role_id} =req.user;
-  const { search } = req.query;
-  
-  try {
-    const orders = await OrderReports.findAll({
-      where: { toOrganization:organization_id, orderStatus: "processing",
-        delivery_boy: { [Op.is]: null },
-        technician: { [Op.is]: null },[Op.or]: [{ orderId: { [Op.like]: `%${search}%` } }, { "$toOrg.name$": { [Op.like]: `%${search}%` } }] },
-      include: [{ model: Organization, as: "toOrg", attributes: ["name"] }]
-    });
-    return res.status(200).json({ success: true, orders });
-  } catch (error) {
-    console.error("Error during order search:", error);
-    return res.status(500).json({ message: "An error occurred while searching for orders" });
-  }
-};
 
-const searchDoctor = async (req, res) => {
-  const {organization_id, id, role_id} =req.user;
-  const { search } = req.query;
-
-  try {
-    const results = await User.findAll({
-      where: {organization_id:organization_id,
-        [Op.or]: [{ firstName: { [Op.like]: `%${search}%` } }, { lastName: { [Op.like]: `%${search}%` } }]
-      },
-      include:[
-        {
-          model:Organization,
-          as:'organization',
-          attributes:['id','name'],
-        }
-      ]
-    });
-    return res.status(200).json({ success: true, results });
-  } catch (error) {
-    console.error("Error searching for doctors:", error);
-    return res.status(500).json({ message: "Internal Server Error" });
-  }
-};
-
-
-// here is the code for the search functionality for order and payment search , if u provide date it will work if not it will also work
+// here is the code for the search functionality for order and payment search by date , if u provide date it will work if not it will also work
 const searchOrdersGetByDate = async (req, res) => {
   const { organization_id } = req.user;
   try {
@@ -297,10 +272,10 @@ const searchOrdersGetByDate = async (req, res) => {
   }
 };
 
-
+// order and payment search
 const orderAndPaymentSearch = async (req, res) => {
   const { organization_id } = req.user;
-  const { search } = req.query;
+  const { search } = req.params;
 
   try {
     const orderReports = await OrderReports.findAll({
@@ -339,4 +314,29 @@ const orderAndPaymentSearch = async (req, res) => {
   }
 };
 
-module.exports = { labOrders, labAllOrders, labOrderAndPaymentReport, labOrderAndPaymentReportGetById, searchOrders ,searchDoctor ,searchOrdersGetByDate,orderAndPaymentSearch};
+// while creating order search doctor
+const searchDoctor = async (req, res) => {
+  const {organization_id, id, role_id} =req.user;
+  const { search } = req.query;
+
+  try {
+    const results = await User.findAll({
+      where: {organization_id:organization_id,
+        [Op.or]: [{ firstName: { [Op.like]: `%${search}%` } }, { lastName: { [Op.like]: `%${search}%` } }]
+      },
+      include:[
+        {
+          model:Organization,
+          as:'organization',
+          attributes:['id','name'],
+        }
+      ]
+    });
+    return res.status(200).json({ success: true, results });
+  } catch (error) {
+    console.error("Error searching for doctors:", error);
+    return res.status(500).json({ message: "Internal Server Error" });
+  }
+};
+
+module.exports = { labOrders, labAllOrders, labOrderAndPaymentReportGetById, searchOrders ,searchDoctor ,searchOrdersGetByDate,orderAndPaymentSearch };
