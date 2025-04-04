@@ -1,5 +1,5 @@
 const Notification = require("../Models/Notification.model");
-const moment = require('moment');
+const moment = require('moment-timezone');
 
 const createNotification = async (req, res) => {
     const { uid, datetime, title, description } = req.body;
@@ -24,14 +24,13 @@ const createNotification = async (req, res) => {
     try {
       const notifications = await Notification.findAll({
         where: { uid: id, deletedAt: null },
-        raw: true,  
+        raw: true,  // Get plain data to manipulate the date
       });
   
       const formattedNotifications = notifications.map((notification) => {
-        notification.createdAt = moment(notification.createdAt).local().format('YYYY-MM-DD HH:mm:ss');
-        notification.updatedAt = moment(notification.updatedAt).local().format('YYYY-MM-DD HH:mm:ss');
-        notification.datetime = moment(notification.datetime).local().format('YYYY-MM-DD HH:mm:ss');
-        notification.deletedAt = moment(notification.deletedAt).local().format('YYYY-MM-DD HH:mm:ss');
+        // Convert the createdAt to local time using moment-timezone
+        const localTime = moment(notification.createdAt).tz('Asia/Kolkata').format('YYYY-MM-DD HH:mm:ss');
+        notification.createdAt = localTime;
         return notification;
       });
   
