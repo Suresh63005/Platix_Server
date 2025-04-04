@@ -653,15 +653,26 @@ const cancelledAndDestroyOrder = async (req, res) => {
       },
     });
     if (cancelledOrders.length === 0) {
-      return res.status(404).json({ message: "No cancelled orders found to delete." });
+      return res.status(404).json({ message: `No ${status} orders found to delete.` });
     }
-    const deletedCount = await OrderReports.destroy({
-      where: {
-        orderStatus: status,
-        userUUID
-      },
-    });
-
+    let deletedCount;
+    if(status === "completed"){
+       deletedCount = await OrderReports.destroy({
+        where: {
+          orderStatus: status,
+          payment_status:"paid",
+          userUUID
+        },
+      });
+    }else if(status === "cancelled"){
+       deletedCount = await OrderReports.destroy({
+        where: {
+          orderStatus: status,
+          userUUID
+        },
+      });
+    }
+    
     return res.status(200).json({
       success: true,
       message: `${deletedCount}  ${status} orders have been deleted successfully.`,
