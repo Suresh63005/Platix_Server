@@ -354,65 +354,83 @@ const UploadImagesByTechnician = async (req, res) => {
   const TechnicianDashboardOrderSearch = async (req, res) => {
     const uid = req.user?.id;
     if (!uid) {
-        return res.status(401).json({ message: "Unauthorized: User not found!" });
+      return res.status(401).json({ message: "Unauthorized: User not found!" });
     }
-
-    const searchTerm = Object.keys(req.query)[0]; 
-    if (!searchTerm || searchTerm.trim() === '') {
-        return res.status(400).json({ message: "Search term is required" });
+  
+    // Extract the search term from the first query parameter key
+    const searchTerm = Object.keys(req.query)[0];
+    console.log("Search Term:", searchTerm); // Debug: Confirm the search term
+  
+    if (!searchTerm || searchTerm.trim() === "") {
+      return res.status(400).json({ message: "A valid search term is required" });
     }
-
+  
     try {
-        const whereClause = {
-            technician: uid,
-            [Op.or]: [
-                { orderId: { [Op.like]: `%${searchTerm}%` } },
-                { orderDate: { [Op.like]: `%${searchTerm}%` } }
-            ]
-        };
-
-        const orders = await OrderReports.findAll({
-            where: whereClause,
-            include: [
-                {
-                    model: Organization,
-                    as: "fromOrg",
-                    attributes: ['name'],
-                    where: { name: { [Op.like]: `%${searchTerm}%` } },
-                    required: false 
-                }
-            ],
-            order: [["orderDate", "DESC"]]
-        });
-
-        if (!orders || orders.length === 0) {
-            return res.status(404).json({ message: "No orders found matching the search criteria!" });
-        }
-
-        const formattedOrders = orders.map(order => ({
-            id: order.id,
-            orderId: order.orderId,
-            orderDate: order.orderDate,
-            orderStatus: order.orderStatus,
-            fromOrganizationName: order.fromOrg ? order.fromOrg.name : null,
-            toothName: order.toothName,
-            shades: order.shades,
-            totalAmount: order.totalAmount,
-            patientName: order.patientName,
-            createdAt: order.createdAt,
-            updatedAt: order.updatedAt
-        }));
-
-        return res.status(200).json({
-            message: "Orders fetched successfully!",
-            totalResults: formattedOrders.length,
-            orders: formattedOrders
-        });
+      // Define the where clause for the database query
+      const whereClause = {
+        technician: uid,
+        [Op.or]: [
+          { orderId: { [Op.like]: `%${searchTerm}%` } },
+          { orderDate: { [Op.like]: `%${searchTerm}%` } },
+        ],
+      };
+  
+      // Fetch orders from the database
+      const orders = await OrderReports.findAll({
+        where: whereClause,
+        include: [
+          {
+            model: Organization,
+            as: "fromOrg",
+            attributes: ["name"],
+            required: false, // LEFT JOIN, so non-matching orgs don’t exclude orders
+          },
+        ],
+        order: [["orderDate", "DESC"]],
+        logging: console.log, // Debug: Log the generated SQL query
+      });
+  
+      console.log("Raw Orders:", JSON.stringify(orders, null, 2)); // Debug: Log raw results
+  
+      // Filter orders to ensure search term matches orderId, orderDate, or fromOrg.name
+      const filteredOrders = orders.filter((order) => {
+        const orderIdMatch = order.orderId.toLowerCase().includes(searchTerm.toLowerCase());
+        const orderDateMatch = order.orderDate.toString().toLowerCase().includes(searchTerm.toLowerCase());
+        const orgNameMatch =
+          order.fromOrg && order.fromOrg.name.toLowerCase().includes(searchTerm.toLowerCase());
+  
+        return orderIdMatch || orderDateMatch || orgNameMatch;
+      });
+  
+      if (!filteredOrders || filteredOrders.length === 0) {
+        return res.status(404).json({ message: "No orders found matching the search criteria!" });
+      }
+  
+      // Format the filtered orders for the response
+      const formattedOrders = filteredOrders.map((order) => ({
+        id: order.id,
+        orderId: order.orderId,
+        orderDate: order.orderDate,
+        orderStatus: order.orderStatus,
+        fromOrganizationName: order.fromOrg ? order.fromOrg.name : "Unknown",
+        toothName: order.toothName,
+        shades: order.shades,
+        totalAmount: order.totalAmount,
+        patientName: order.patientName,
+        createdAt: order.createdAt,
+        updatedAt: order.updatedAt,
+      }));
+  
+      return res.status(200).json({
+        message: "Orders fetched successfully!",
+        totalResults: formattedOrders.length,
+        orders: formattedOrders,
+      });
     } catch (error) {
-        console.error("Error in SearchAPI:", error);
-        return res.status(500).json({ message: "Internal Server Error: " + error.message });
+      console.error("Error in SearchAPI:", error);
+      return res.status(500).json({ message: "Internal Server Error: " + error.message });
     }
-};
+  };
 
 module.exports = {
   technicianDashboardData,
