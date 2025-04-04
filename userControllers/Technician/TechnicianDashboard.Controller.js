@@ -138,6 +138,12 @@ const ViewOrderDetails = async (req, res) => {
                             attributes: ["id", "servicename"],
                         }
                     ]
+                },
+                {
+                  model:UploadImages,
+                  as:"orderImages",
+                  attributes:["id","images","order_id"],
+                  required:false
                 }
             ],
         });
@@ -176,6 +182,13 @@ const ViewOrderDetails = async (req, res) => {
                     quantity: service.quantity,
                     servicename: service.serviceDetails?.servicename || "Unknown"
                 };
+            }),
+            orderImages:order.orderImages.map((image)=>{
+                return {
+                    id:image.id,
+                    images:JSON.parse(image.images),
+                    order_id:image.order_id
+                }
             })
                        
         };
@@ -338,12 +351,75 @@ const UploadImagesByTechnician = async (req, res) => {
     }
   }
 
+  const TechnicianDashboardOrderSearch = async (req, res) => {
+    const uid = req.user?.id;
+    if (!uid) {
+        return res.status(401).json({ message: "Unauthorized: User not found!" });
+    }
+
+    const searchTerm = Object.keys(req.query)[0]; 
+    if (!searchTerm || searchTerm.trim() === '') {
+        return res.status(400).json({ message: "Search term is required" });
+    }
+
+    try {
+        const whereClause = {
+            technician: uid,
+            [Op.or]: [
+                { orderId: { [Op.like]: `%${searchTerm}%` } },
+                { orderDate: { [Op.like]: `%${searchTerm}%` } }
+            ]
+        };
+
+        const orders = await OrderReports.findAll({
+            where: whereClause,
+            include: [
+                {
+                    model: Organization,
+                    as: "fromOrg",
+                    attributes: ['name'],
+                    where: { name: { [Op.like]: `%${searchTerm}%` } },
+                    required: false 
+                }
+            ],
+            order: [["orderDate", "DESC"]]
+        });
+
+        if (!orders || orders.length === 0) {
+            return res.status(404).json({ message: "No orders found matching the search criteria!" });
+        }
+
+        const formattedOrders = orders.map(order => ({
+            id: order.id,
+            orderId: order.orderId,
+            orderDate: order.orderDate,
+            orderStatus: order.orderStatus,
+            fromOrganizationName: order.fromOrg ? order.fromOrg.name : null,
+            toothName: order.toothName,
+            shades: order.shades,
+            totalAmount: order.totalAmount,
+            patientName: order.patientName,
+            createdAt: order.createdAt,
+            updatedAt: order.updatedAt
+        }));
+
+        return res.status(200).json({
+            message: "Orders fetched successfully!",
+            totalResults: formattedOrders.length,
+            orders: formattedOrders
+        });
+    } catch (error) {
+        console.error("Error in SearchAPI:", error);
+        return res.status(500).json({ message: "Internal Server Error: " + error.message });
+    }
+};
+
 module.exports = {
   technicianDashboardData,
   FetchTechnicianOrdersByStatus,
   ViewOrderDetails,
   CancelAndCloseOrder,
   UploadImagesByTechnician,
-  SearchAPI
-  
+  SearchAPI,
+  TechnicianDashboardOrderSearch
 };
