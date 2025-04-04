@@ -168,17 +168,17 @@ const fromDentist = async (req, res) => {
     }
 
     // Update User Address
-    if (address) {
-      console.log(`Updating address for user ${userUUID || userId}`);
-      const user = await User.findOne({ where: { id: userUUID || userId }, transaction });
+    // if (address) {
+    //   console.log(`Updating address for user ${userUUID || userId}`);
+    //   const user = await User.findOne({ where: { id: userUUID || userId }, transaction });
 
-      if (user) {
-        await user.update({ address }, { transaction });
-        console.log(`Address updated for user ${userUUID}`);
-      } else {
-        console.log(`User with ID ${userId || userUUID} not found`);
-      }
-    }
+    //   if (user) {
+    //     await user.update({ address }, { transaction });
+    //     console.log(`Address updated for user ${userUUID}`);
+    //   } else {
+    //     console.log(`User with ID ${userId || userUUID} not found`);
+    //   }
+    // }
 
     // Handle Services
     if (serviceId.length > 0) {
