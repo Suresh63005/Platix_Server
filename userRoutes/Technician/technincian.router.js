@@ -10,5 +10,6 @@ router.get("/technician/order-details/:orderId",authMiddleware.isAuthenticated,t
 router.put("/technician",authMiddleware.isAuthenticated,technicianDashboard.CancelAndCloseOrder);
 router.post("/technician/upload-images",authMiddleware.isAuthenticated,upload.array("images",5),technicianDashboard.UploadImagesByTechnician)
 router.get("/technician/search",authMiddleware.isAuthenticated,technicianDashboard.SearchAPI)
+router.get("/technician/orders/search",authMiddleware.isAuthenticated,technicianDashboard.TechnicianDashboardOrderSearch)
 
 module.exports = router;
