@@ -1,3 +1,4 @@
+
 const { DataTypes } = require("sequelize");
 const { sequelize } = require("../config/db");
 
@@ -58,5 +59,6 @@ const Settings = sequelize.define(
     collate: "utf8mb4_general_ci",
   }
 );
+
 
 module.exports = Settings;

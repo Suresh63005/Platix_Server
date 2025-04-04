@@ -8,6 +8,7 @@ const User = require("../../Models/ReportsModel/User.model");
 const { sequelize } = require("../../config/db");
 const moment = require("moment");
 const TblOrganizationType = require("../../Models/TblOrganizationType.model");
+const Notification = require("../../Models/Notification.model");
 const orderTransaction = require("../../Models/ReportsModel/OrderTransaction.model");
 
 // If I pass only the userUUID, it means the request is coming from the owner. If I pass both the userUUID and delivery_boy, it means the request is coming from the delivery boy. If I do not pass the delivery_boy and userUUID, it means the request is coming from the dentist.
@@ -135,6 +136,13 @@ const fromDentist = async (req, res) => {
       );
     }
 
+    await Notification.create({
+      uid: userUUID || userId,
+      datetime: new Date(),
+      title: "Order Confirmation",
+      description: `Order ${orderReport.orderId} has been successfully confirmed and is now beeing processed.`
+    })
+
     if (transactionId) {
       console.log("Processing transaction...");
 
@@ -144,30 +152,35 @@ const fromDentist = async (req, res) => {
           orderId: orderReport.id,
           userUUID: userUUID || userId,
           transactionId,
-          amount: total_amount, // Assuming total_amount is the amount paid
+          amount: total_amount, 
         },
         { transaction }
       );
-
-      // Update order status to 'paid'
+      
+      // Update order status to 'paid' IF THEY PAID FULL AMOUNT
       await orderReport.update(
         { payment_status: "paid" },
         { transaction }
       );
+
+      // notification send
+     
+       
+      
     }
 
     // Update User Address
-    if (address) {
-      console.log(`Updating address for user ${userUUID || userId}`);
-      const user = await User.findOne({ where: { id: userUUID || userId }, transaction });
+    // if (address) {
+    //   console.log(`Updating address for user ${userUUID || userId}`);
+    //   const user = await User.findOne({ where: { id: userUUID || userId }, transaction });
 
-      if (user) {
-        await user.update({ address }, { transaction });
-        console.log(`Address updated for user ${userUUID}`);
-      } else {
-        console.log(`User with ID ${userId || userUUID} not found`);
-      }
-    }
+    //   if (user) {
+    //     await user.update({ address }, { transaction });
+    //     console.log(`Address updated for user ${userUUID}`);
+    //   } else {
+    //     console.log(`User with ID ${userId || userUUID} not found`);
+    //   }
+    // }
 
     // Handle Services
     if (serviceId.length > 0) {
@@ -283,6 +296,11 @@ const orderReport = async (req, res) => {
               ]   
             }
           ]
+        },
+        {
+          model:orderTransaction,
+          as:"transactions",
+          attributes:["transactionId","amount","createdAt"],
         }
       ]
     });
@@ -484,6 +502,11 @@ const paymenDetailsGetById = async (req, res) => {
               ],
             }
           ]
+        },
+        {
+          model:orderTransaction,
+          as:"transactions",
+          attributes:["transactionId","amount","createdAt"],
         }
       ]
     })
@@ -513,12 +536,19 @@ const paymenDetailsGetById = async (req, res) => {
     // })
 
     let toOrganizationName = null;
+    let toOrganizationType = null;
     if (orderDetails.toOrganization) {
       const toOrganization = await Organization.findByPk(orderDetails.toOrganization, {
-        attributes: ['id', 'name']
+        attributes: ['id', 'name'],
+        include:[{
+          model: TblOrganizationType,
+          as: 'organizationType',
+          attributes: ['id', 'organizationType']
+        }]
       });
       if (toOrganization) {
         toOrganizationName = toOrganization.name;
+        toOrganizationType = toOrganization?.organizationType?.organizationType
       }
     }
 
@@ -528,7 +558,8 @@ const paymenDetailsGetById = async (req, res) => {
       data: {
         orderDetails: {
           ...orderDetails.toJSON(),
-          toOrganizationName
+          toOrganizationName,
+          toOrganizationType
         },
         billDetails,
         // serviceDetails
@@ -623,11 +654,8 @@ const getorganizationDetailsById = async (req, res) => {
 };
 
 const cancelledAndDestroyOrder = async (req, res) => {
-
   const { status } = req.params;
-
   const userUUID = req.user?.id;
-
 
   try {
     const cancelledOrders = await OrderReports.findAll({
@@ -637,15 +665,26 @@ const cancelledAndDestroyOrder = async (req, res) => {
       },
     });
     if (cancelledOrders.length === 0) {
-      return res.status(404).json({ message: "No cancelled orders found to delete." });
+      return res.status(404).json({ message: `No ${status} orders found to delete.` });
     }
-    const deletedCount = await OrderReports.destroy({
-      where: {
-        orderStatus: status,
-        userUUID
-      },
-    });
-
+    let deletedCount;
+    if(status === "completed"){
+       deletedCount = await OrderReports.destroy({
+        where: {
+          orderStatus: status,
+          payment_status:"paid",
+          userUUID
+        },
+      });
+    }else if(status === "cancelled"){
+       deletedCount = await OrderReports.destroy({
+        where: {
+          orderStatus: status,
+          userUUID
+        },
+      });
+    }
+    
     return res.status(200).json({
       success: true,
       message: `${deletedCount}  ${status} orders have been deleted successfully.`,
@@ -661,7 +700,6 @@ const cancelledAndDestroyOrder = async (req, res) => {
 
 const payNow = async (req, res) => {
   const uid = req.user?.id;
-  console.log(uid)
   
   if (!uid) {
     return res.status(401).json({ message: "Unauthorized" });
@@ -688,6 +726,13 @@ const payNow = async (req, res) => {
         payment_status: "paid"
       }
     );
+
+    await Notification.create({
+      uid: uid,
+      datetime: new Date(),
+      title: "Payment Confirmation",
+      description: `Order ${amount} for bill ${orderReport.orderId} has been successfully processed.`
+    });
 
     return res.status(200).json({ message: "Payment is successful",transaction:transaction });
     

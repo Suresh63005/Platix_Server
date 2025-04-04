@@ -14,11 +14,13 @@ const allOrders = async (req, res) => {
         return res.status(401).json({ message: "Unauthorized!" });
     }
 
+    
+
     try {
         // Fetch order counts concurrently for the given user
         const orderCounts = await Promise.all([
             OrderReports.count({ where: { userUUID: uid, orderStatus: "processing" } }), 
-            OrderReports.count({ where: { userUUID: uid, orderStatus: "completed" } }), 
+            OrderReports.count({ where: { userUUID: uid,orderStatus :{[Op.in]: ["completed", "processing"]}, payment_status: "unpaid" } }), 
             OrderReports.count({ where: { userUUID: uid, orderStatus: { [Op.in]: ["completed", "cancelled", "processing"] } } }), 
             OrderReports.count({ where: { userUUID: uid, orderStatus: { [Op.in]: ["processing"] } } }),
             OrderReports.count({ where: { userUUID: uid, orderStatus: { [Op.in]: ["completed", "cancelled"] } } }), 
@@ -34,7 +36,7 @@ const allOrders = async (req, res) => {
 
         const response = {
             activeOrders: orderCounts[0], // Processing orders
-            totalPayableBills: orderCounts[1], // Completed orders
+            totalPayableBills: orderCounts[1], 
             totalOrders: orderCounts[2], // All orders
             openOrders: orderCounts[3], // Processing 
             closedOrders: orderCounts[4], // Completed + Cancelled
@@ -438,10 +440,11 @@ const searchByOrganizationType = async (req, res) => {
     }
 };
 
+// get all settings
 const termAndConditions = async (req, res) => {
     try {
         const settings = await Settings.findOne({
-            attributes: ["termsAndConditions", "privacyPolicy"]
+            attributes: ["termsAndConditions", "privacyPolicy","platformFee"]
         });
 
         if (!settings) {

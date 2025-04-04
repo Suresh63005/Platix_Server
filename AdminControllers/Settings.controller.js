@@ -20,6 +20,7 @@ const getSettingsById = async (req, res) => {
 const createOrUpdateSettings = async (req, res) => {
   try {
     const {
+      id,
       notificationApiKey,
       smsGatewayApiKey,
       paymentGatewayApiKey,
@@ -27,7 +28,10 @@ const createOrUpdateSettings = async (req, res) => {
       whatsappApiKey,
       privacyPolicy,
       termsAndConditions,
+      platformFee
     } = req.body;
+
+    console.log(req.body); // Debugging
 
     let imgUrl;
 
@@ -38,12 +42,20 @@ const createOrUpdateSettings = async (req, res) => {
 
     console.log(req.file, "📸 Received Image File");
 
-    let settings = await Settings.findOne();
+    // If `id` is provided, update the existing settings; otherwise, create new settings
+    let settings;
 
-    if (settings) {
+    if (id) {
+      // Update existing settings
       console.log("🔄 Updating existing settings...");
 
-      settings.image = imgUrl || settings.image;  // ✅ Fix: Use `image` instead of `websiteImage`
+      settings = await Settings.findByPk(id);
+
+      if (!settings) {
+        return res.status(404).json({ message: "Settings not found" });
+      }
+
+      settings.image = imgUrl || settings.image;  // Use `image` instead of `websiteImage`
       settings.notificationApiKey = notificationApiKey || settings.notificationApiKey;
       settings.smsGatewayApiKey = smsGatewayApiKey || settings.smsGatewayApiKey;
       settings.paymentGatewayApiKey = paymentGatewayApiKey || settings.paymentGatewayApiKey;
@@ -51,35 +63,38 @@ const createOrUpdateSettings = async (req, res) => {
       settings.whatsappApiKey = whatsappApiKey || settings.whatsappApiKey;
       settings.privacyPolicy = privacyPolicy || settings.privacyPolicy;
       settings.termsAndConditions = termsAndConditions || settings.termsAndConditions;
+      settings.platformFee = platformFee || settings.platformFee;
 
       await settings.save();
       console.log(settings, "✅ Updated settings after save");
 
       return res.json({ message: "Settings updated successfully", settings });
+    } else {
+      // Create new settings if `id` is not provided
+      console.log("🆕 Creating new settings...");
+
+      settings = await Settings.create({
+        image: imgUrl || null,  // Use `image` instead of `websiteImage`
+        notificationApiKey,
+        smsGatewayApiKey,
+        paymentGatewayApiKey,
+        emailApiKey,
+        whatsappApiKey,
+        privacyPolicy,
+        termsAndConditions,
+        platformFee
+      });
+
+      console.log(settings, "✅ Created new settings");
+
+      return res.json({ message: "Settings created successfully", settings });
     }
-
-    console.log("🆕 Creating new settings...");
-
-    settings = await Settings.create({
-      image: imgUrl || null,  // ✅ Fix: Use `image` instead of `websiteImage`
-      notificationApiKey,
-      smsGatewayApiKey,
-      paymentGatewayApiKey,
-      emailApiKey,
-      whatsappApiKey,
-      privacyPolicy,
-      termsAndConditions,
-    });
-
-    console.log(settings, "✅ Created new settings");
-
-    res.json({ message: "Settings created successfully", settings });
-
   } catch (error) {
     console.error("❌ Error creating/updating settings:", error);
-    res.status(500).json({ message: "Internal server error" });
+    return res.status(500).json({ message: "Internal server error" });
   }
 };
+
 
 const FetchSettings = async (req, res) => {
   try {
