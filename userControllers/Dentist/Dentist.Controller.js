@@ -294,6 +294,11 @@ const orderReport = async (req, res) => {
               ]   
             }
           ]
+        },
+        {
+          model:orderTransaction,
+          as:"transactions",
+          attributes:["transactionId","amount","createdAt"],
         }
       ]
     });
