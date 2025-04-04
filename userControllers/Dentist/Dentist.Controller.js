@@ -136,6 +136,13 @@ const fromDentist = async (req, res) => {
       );
     }
 
+    await Notification.create({
+      uid: userUUID || userId,
+      datetime: new Date(),
+      title: "Order Confirmation",
+      description: `Order ${orderReport.orderId} has been successfully confirmed and is now beeing processed.`
+    })
+
     if (transactionId) {
       console.log("Processing transaction...");
 
@@ -158,12 +165,7 @@ const fromDentist = async (req, res) => {
 
       // notification send
      
-        await Notification.create({
-          uid: userUUID || userId,
-          datetime: new Date(),
-          title: "Order Confirmation",
-          description: `Order ${orderReport.orderId} has been successfully confirmed and is now beeing processed.`
-        })
+       
       
     }
 
