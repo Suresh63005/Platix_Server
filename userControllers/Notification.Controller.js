@@ -24,20 +24,35 @@ const createNotification = async (req, res) => {
     try {
       const notifications = await Notification.findAll({
         where: { uid: id, deletedAt: null },
-        raw: true,  // Get plain data to manipulate the date
+        raw: true,  // Get plain data without the Sequelize model wrapper
       });
   
       const formattedNotifications = notifications.map((notification) => {
-        // Convert the createdAt to local time using moment-timezone
-        const localTime = moment(notification.createdAt).tz('Asia/Kolkata').format('YYYY-MM-DD HH:mm:ss');
-        notification.createdAt = localTime;
+        const localCreatedAt = moment.utc(notification.createdAt).tz('Asia/Kolkata').format('YYYY-MM-DD HH:mm:ss');
+        notification.createdAt = localCreatedAt;
+  
+        // Handle deletedAt: if it's invalid or null, return null
+        if (!notification.deletedAt || isNaN(new Date(notification.deletedAt))) {
+          notification.deletedAt = null;
+        } else {
+          const localDeletedAt = moment.utc(notification.deletedAt).tz('Asia/Kolkata').format('YYYY-MM-DD HH:mm:ss');
+          notification.deletedAt = localDeletedAt;
+        }
+  
         return notification;
       });
   
-      return res.status(200).json({ success: true, notifications: formattedNotifications });
+      return res.status(200).json({
+        success: true,
+        notifications: formattedNotifications
+      });
     } catch (error) {
       console.error("Error fetching notifications:", error);
-      return res.status(500).json({ success: false, message: "Internal Server Error", error: error.message });
+      return res.status(500).json({
+        success: false,
+        message: "Internal Server Error",
+        error: error.message
+      });
     }
   };
 
