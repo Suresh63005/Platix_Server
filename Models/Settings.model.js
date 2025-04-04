@@ -43,10 +43,10 @@ const Settings = sequelize.define(
       allowNull: true,
     },
     platformFee: {
-      type: DataTypes.BIGINT,
-      allowNull: true, // Optional field
+      type: DataTypes.DECIMAL(10, 2),
+      allowNull: true,
       validate: {
-        min: 0, // Enforce non-negative values if provided
+        min: 0,
       },
     },
   },
