@@ -26,6 +26,11 @@ const OrderReports = sequelize.define(
       type: DataTypes.DATE,
       allowNull: true,
     },
+    address:{
+      type:DataTypes.TEXT,
+      allowNull:true,
+
+    },
     toothName: {
       type: DataTypes.STRING,
       allowNull: true,
@@ -107,6 +112,7 @@ const OrderReports = sequelize.define(
       type: DataTypes.STRING,
       allowNull: true,
     },
+
     patientProblem: {
       type: DataTypes.STRING,
       allowNull: true,
