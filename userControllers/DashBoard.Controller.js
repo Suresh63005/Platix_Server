@@ -440,10 +440,11 @@ const searchByOrganizationType = async (req, res) => {
     }
 };
 
+// get all settings
 const termAndConditions = async (req, res) => {
     try {
         const settings = await Settings.findOne({
-            attributes: ["termsAndConditions", "privacyPolicy"]
+            attributes: ["termsAndConditions", "privacyPolicy","platformFee"]
         });
 
         if (!settings) {
