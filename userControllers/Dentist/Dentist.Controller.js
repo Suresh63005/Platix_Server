@@ -114,7 +114,7 @@ const fromDentist = async (req, res) => {
           orderId: orderIdValue,
           patientId,
           toOrganization,
-          orderDate: new Date(),
+          orderDate,
           requiredDate,
           toothName,
           delivery_boy,
