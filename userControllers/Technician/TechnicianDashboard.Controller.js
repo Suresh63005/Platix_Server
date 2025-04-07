@@ -432,6 +432,52 @@ const UploadImagesByTechnician = async (req, res) => {
     }
   };
 
+  const ClearAllCompletedOrders = async (req, res) => {
+    const uid = req.user?.id;
+    if (!uid) {
+      return res.status(401).json({ message: "Unauthorized: User not found!" });
+    }
+  
+    try {
+      const [affectedRows] = await OrderReports.update(
+        { technician: null },
+        { where: { technician: uid, orderStatus: "completed" } }
+      );
+  
+      if (affectedRows === 0) {
+        return res.status(404).json({ message: "No completed orders found for this technician!" });
+      }
+  
+      return res.status(200).json({ message: "All completed orders cleared successfully" });
+    } catch (error) {
+      console.error("Error in ClearAllCompletedOrders:", error);
+      return res.status(500).json({ message: "Internal Server Error: " + error.message });
+    }
+  };
+
+  const ClearAllCancelledOrders = async (req, res) => {
+    const uid = req.user?.id;
+    if (!uid) {
+      return res.status(401).json({ message: "Unauthorized: User not found!" });
+    }
+  
+    try {
+      const [affectedRows] = await OrderReports.update(
+        { technician: null },
+        { where: { technician: uid, orderStatus: "cancelled" } }
+      );
+  
+      if (affectedRows === 0) {
+        return res.status(404).json({ message: "No cancelled orders found for this technician!" });
+      }
+  
+      return res.status(200).json({ message: "All cancelled orders cleared successfully" });
+    } catch (error) {
+      console.error("Error in ClearAllCancelledOrders:", error);
+      return res.status(500).json({ message: "Internal Server Error: " + error.message });
+    }
+  };
+
 module.exports = {
   technicianDashboardData,
   FetchTechnicianOrdersByStatus,
@@ -439,5 +485,7 @@ module.exports = {
   CancelAndCloseOrder,
   UploadImagesByTechnician,
   SearchAPI,
-  TechnicianDashboardOrderSearch
+  TechnicianDashboardOrderSearch,
+  ClearAllCompletedOrders,
+  ClearAllCancelledOrders
 };
