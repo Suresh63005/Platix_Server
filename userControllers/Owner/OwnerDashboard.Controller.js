@@ -374,20 +374,19 @@ const searchDoctor = async (req, res) => {
 
 const assignService = async (req, res) => {
   const { organization_id } = req.user;
-  console.log(organization_id,"organization_id")
+  // console.log(organization_id,"organization_id")
   if (!organization_id) {
     return res.status(401).json({ message: "Unauthorized" });
   }
 
   const { orderId, technician, delivery_boy } = req.body;
 
-  // Ensure orderId is provided
   if (!orderId) {
     return res.status(400).json({ message: "Order ID is required" });
   }
 
   try {
-    const order = await OrderReports.findOne({ where: { orderId: orderId } });
+    const order = await OrderReports.findOne({ where: { id: orderId ,toOrganization:organization_id} });
     if (!order) {
       return res.status(404).json({ message: "Order not found" });
     }
@@ -396,13 +395,23 @@ const assignService = async (req, res) => {
 
     if (technician) {
       updateFields.technician = technician;
+
+      const technicianuser = await User.findOne({ where: { id: technician, organization_id:organization_id } });
+
+      if (!technicianuser) {
+        return res.status(404).json({ message: "Technician not found" });
+      }
     }
     if (delivery_boy) {
       updateFields.delivery_boy = delivery_boy;
+      const deliveryboyuser = await User.findOne({ where: { id: delivery_boy, organization_id:organization_id } });
+      if (!deliveryboyuser) {
+        return res.status(404).json({ message: "Delivery Boy not found" });
+        }
     }
 
     if (Object.keys(updateFields).length > 0) {
-      await OrderReports.update(updateFields, { where: { orderId: orderId } });
+      await OrderReports.update(updateFields, { where: { id: orderId } });
     }
 
     return res.status(200).json({ message: "Service assigned successfully" });

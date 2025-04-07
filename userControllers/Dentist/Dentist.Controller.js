@@ -194,7 +194,7 @@ const fromDentist = async (req, res) => {
 
           if (!service) {
             return res.status(404).json({
-              message: "Organization service not found",
+              message: "Organization service not found", 
               status: false
             });
           }

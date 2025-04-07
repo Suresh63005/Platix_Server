@@ -28,7 +28,8 @@ const getAll = async (req, res) => {
         }
       ],
       where:{
-        delivery_boy: uid
+        delivery_boy: uid,
+        orderStatus:"processing"
       }
     });
 
