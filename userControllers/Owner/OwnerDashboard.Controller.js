@@ -1,4 +1,4 @@
-const { Op } = require("sequelize");
+const { Op, literal } = require("sequelize");
 const OrderReports = require("../../Models/ReportsModel/OrderReport.model");
 const Organization = require("../../Models/Organization.model");
 const OrderService = require("../../Models/ReportsModel/OrderServices.model");
@@ -6,6 +6,7 @@ const Services = require("../../Models/TblServices.model");
 const { sequelize } = require("../../config/db");
 const User = require("../../Models/ReportsModel/User.model");
 const OrderServices = require("../../Models/ReportsModel/OrderServices.model");
+const TblOrganization_Service = require("../../Models/tblOrganizationService");
 
 // Fetch total payable bills, active orders, closed orders, received payments, and order list
 const labOrders = async (req, res) => {
@@ -13,6 +14,8 @@ const labOrders = async (req, res) => {
   try {
     // console.log(req.user);
     const { organization_id, id, role_id } = req.user;
+
+    console.log(organization_id,"yyyyyyyyyyyyy")
 
     const user = await User.findOne({
       where: { id, role_id },
@@ -107,46 +110,7 @@ const labAllOrders = async (req, res) => {
   }
 };
 
-
-// Retrieve order or payment reports
-const labOrderAndPaymentReport = async (req, res) => {
-  const { organization_id } = req.user;
-  const { report } = req.params;
-  if (!["order", "payment"].includes(report)) return res.status(400).json({ message: "Invalid report type" });
-
-  try {
-    const reportData = await OrderReports.findAll({where:{toOrganization:organization_id}});
-    if (!reportData.length) return res.status(404).json({ message: `No ${report} reports found.` });
-
-    return res.status(200).json({ message: `${report} reports retrieved successfully`, data: reportData });
-  } catch (error) {
-    console.error(`Error fetching ${report} reports:`, error);
-    return res.status(500).json({ message: "Internal Server Error" });
-  }
-};
-
-// Retrieve order or payment report by ID
-const labOrderAndPaymentReportGetById=async(req,res)=>{
-  const { id, report } = req.params;
-  if (!["order", "payment"].includes(report)) return res.status(400).json({ message: "Invalid report type" });
-
-  try {
-    const attributes = report === "order" ? ["orderId", "orderDate", "fromOrganization", "toOrganization", "patientId", "patientName"] : ["orderId", "orderDate", "fromOrganization", "toOrganization", "patientId", "patientName", "totalAmount", "paidAmount", "paymentMethod", "remarks"];
-    const reportData = await OrderReports.findOne({
-      where: { id },
-      attributes,
-      include: [{ model: OrderService, as: "orderServices", attributes: ["quantity", "price"], include: [{ model: Services, as: "serviceDetails", attributes: ["servicename"] }] }]
-    });
-
-    if (!reportData) return res.status(404).json({ message: `${report} report with ID ${id} not found.` });
-
-    return res.status(200).json({ message: `${report} report retrieved successfully`, data: reportData });
-  } catch (error) {
-    console.error(`Error fetching ${report} report with ID ${id}:`, error);
-    return res.status(500).json({ message: "Internal Server Error" });
-  }
-}
-// Search orders by order ID or organization name
+// (dashboard) Search orders by order ID or organization name
 const searchOrders = async (req, res) => {
   const {organization_id, id, role_id} =req.user;
   const { search } = req.query;
@@ -165,48 +129,99 @@ const searchOrders = async (req, res) => {
   }
 };
 
-const searchDoctor = async (req, res) => {
-  const {organization_id, id, role_id} =req.user;
-  const { search } = req.query;
+// Retrieve order or payment reports
+// const labOrderAndPaymentReport = async (req, res) => {
+
+//   const { organization_id } = req.user;
+//   const { report } = req.params;
+//   if (!["order", "payment"].includes(report)) return res.status(400).json({ message: "Invalid report type" });
+
+//   try {
+//     const reportData = await OrderReports.findAll({where:{toOrganization:organization_id,orderStatus:"completed"}});
+//     if (!reportData.length) return res.status(404).json({ message: `No ${report} reports found.` });
+
+//     return res.status(200).json({ message: `${report} reports retrieved successfully`, data: reportData });
+//   } catch (error) {
+//     console.error(`Error fetching ${report} reports:`, error);
+//     return res.status(500).json({ message: "Internal Server Error" });
+//   }
+// };
+
+// Retrieve order or payment report by ID
+const labOrderAndPaymentReportGetById=async(req,res)=>{
+  const { id, report } = req.params;
+  if (!["order", "payment"].includes(report)) return res.status(400).json({ message: "Invalid report type" });
 
   try {
-    const results = await User.findAll({
-      where: {toOrganization:organization_id,
-        [Op.or]: [{ firstName: { [Op.like]: `%${search}%` } }, { lastName: { [Op.like]: `%${search}%` } }]
-      },
-      include:[
+    const attributes = report === "order" ? ["orderId", "orderDate", "fromOrganization", "toOrganization", "patientId", "patientName"] : ["orderId", "orderDate", "fromOrganization", "toOrganization", "patientId", "patientName", "totalAmount", "paidAmount", "paymentMethod", "remarks"];
+    const reportData = await OrderReports.findOne({
+      where: { id },
+      attributes,
+      include: [
         {
-          model:Organization,
-          as:'organization',
-          attributes:['id','name'],
+          model:OrderServices,
+          as: 'orderServices',
+          attributes:["quantity"],
+          include:[
+            {
+              model:TblOrganization_Service,
+              as:"orgservice",
+              attributes:["id","price"],
+              include: [
+                {
+                  model: Services,
+                  as: 'servicess',
+                  attributes: [ "servicename", 'servicedescription']
+                },
+                
+              ],
+            }
+          ]
         }
       ]
     });
-    return res.status(200).json({ success: true, results });
+
+    if (!reportData) return res.status(404).json({ message: `${report} report with ID ${id} not found.` });
+
+    return res.status(200).json({ message: `${report} report retrieved successfully`, data: reportData });
   } catch (error) {
-    console.error("Error searching for doctors:", error);
+    console.error(`Error fetching ${report} report with ID ${id}:`, error);
     return res.status(500).json({ message: "Internal Server Error" });
   }
-};
+}
 
-
-
+// here is the code for the search functionality for order and payment search by date , if u provide date it will work if not it will also work
 const searchOrdersGetByDate = async (req, res) => {
+  const { organization_id } = req.user;
   try {
-    const { organization_id, id, role_id } = req.user;
-    console.log(req.user, "iufefeufufeufehu");
-    const { orderOrPayment, fromdate, todate } = req.params;
+    // Extract report, fromdate, and todate from request parameters
+    const { report, fromdate, todate } = req.params;
 
-    if (!['order', 'payment'].includes(orderOrPayment)) {
+    // Validate the report type
+    if (!['order', 'payment'].includes(report)) {
       return res.status(400).json({
         success: false,
         message: 'Invalid report type. Use "order" or "payment".',
       });
     }
 
+    // Initialize whereCondition with organization filter
     let whereCondition = {};
-    const dateFilter = {};
+    whereCondition.toOrganization = organization_id;
 
+    // Apply conditions based on report type
+    if (report === 'order') {
+      // In "order" screen: `orderStatus` is "completed", and `payment_status` can be "paid" or "unpaid"
+      whereCondition.orderStatus = 'completed';
+      whereCondition.payment_status = { [Op.in]: ['paid', 'unpaid'] };
+    } else if (report === 'payment') {
+      // In "payment" screen: `orderStatus` is "completed", and `payment_status` should be "paid" only
+      whereCondition.orderStatus = 'completed';
+      whereCondition.payment_status = 'paid';
+    }
+
+    // Apply date filtering if provided
+    const dateFilter = {};
     if (fromdate && todate) {
       dateFilter.createdAt = {
         [Op.between]: [
@@ -224,15 +239,13 @@ const searchOrdersGetByDate = async (req, res) => {
       };
     }
 
+    // Merge the dateFilter with the whereCondition if there are any date filters
     if (Object.keys(dateFilter).length > 0) {
       whereCondition = { ...whereCondition, ...dateFilter };
     }
 
-    whereCondition.payment_status = { [Op.in]: ['paid'] };  
-    whereCondition.orderStatus = { [Op.in]: ['completed'] };  
-    whereCondition.toOrganization = organization_id;
-
-    const reportData = await (orderOrPayment === 'order' ? OrderReports : OrderReports).findAll({
+    // Fetch the report data based on the whereCondition
+    const reportData = await OrderReports.findAll({
       where: whereCondition,
       include: [
         {
@@ -243,9 +256,10 @@ const searchOrdersGetByDate = async (req, res) => {
       ],
     });
 
+    // Return the successful response with the report data
     return res.status(200).json({
       success: true,
-      message: `${orderOrPayment.charAt(0).toUpperCase() + orderOrPayment.slice(1)} reports fetched successfully!`,
+      message: `${report.charAt(0).toUpperCase() + report.slice(1)} reports fetched successfully!`,
       data: reportData,
     });
   } catch (error) {
@@ -258,4 +272,71 @@ const searchOrdersGetByDate = async (req, res) => {
   }
 };
 
-module.exports = { labOrders, labAllOrders, labOrderAndPaymentReport, labOrderAndPaymentReportGetById, searchOrders ,searchDoctor ,searchOrdersGetByDate};
+// order and payment search
+const orderAndPaymentSearch = async (req, res) => {
+  const { organization_id } = req.user;
+  const { search } = req.params;
+
+  try {
+    const orderReports = await OrderReports.findAll({
+      where: {
+        orderStatus: "completed",
+        toOrganization:organization_id,
+        [Op.or]: [
+          { orderId: { [Op.like]: `%${search}%` } },
+          { toothName: { [Op.like]: `%${search}%` } },
+          { shades: { [Op.like]: `%${search}%` } },
+          { remarks: { [Op.like]: `%${search}%` } },
+          { reasonForScan: { [Op.like]: `%${search}%` } },
+          { mobileNo: { [Op.like]: `%${search}%` } },
+          { patientName: { [Op.like]: `%${search}%` } },
+          { patientProblem: { [Op.like]: `%${search}%` } },
+          { paymentMethod: { [Op.like]: `%${search}%` } },
+          literal(`toOrg.name LIKE '%${search}%'`)
+        ],
+      },
+      include: [
+        {
+          model: Organization,
+          as: "toOrg",
+          attributes: ["id", "name"],
+          required: false,
+        },
+      ],
+    });
+
+    return res.status(200).json({ orderReports });
+  } catch (error) {
+    console.error("Error during global search:", error.message);
+    return res.status(500).json({
+      message: "An error occurred while performing the search",
+    });
+  }
+};
+
+// while creating order search doctor
+const searchDoctor = async (req, res) => {
+  const {organization_id, id, role_id} =req.user;
+  const { search } = req.params;
+
+  try {
+    const results = await User.findAll({
+      where: {organization_id:organization_id,
+        [Op.or]: [{ firstName: { [Op.like]: `%${search}%` } }, { lastName: { [Op.like]: `%${search}%` } }]
+      },
+      include:[
+        {
+          model:Organization,
+          as:'organization',
+          attributes:['id','name'],
+        }
+      ]
+    });
+    return res.status(200).json({ success: true, results });
+  } catch (error) {
+    console.error("Error searching for doctors:", error);
+    return res.status(500).json({ message: "Internal Server Error" });
+  }
+};
+
+module.exports = { labOrders, labAllOrders, labOrderAndPaymentReportGetById, searchOrders ,searchDoctor ,searchOrdersGetByDate,orderAndPaymentSearch };
