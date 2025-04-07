@@ -10,6 +10,8 @@ router.get("/owner/dashboard",authMiddleware.isOwner,ownerController.labOrders);
 // get all order status wise (active || close || cancelled)
 router.get("/owner/getall-order/:orderStatus",authMiddleware.isOwner,ownerController.labAllOrders)
 
+
+
 // it shown all order reports(order report and payment report) // this report should be order or payment
 router.get("/owner/report/:report/:fromdate?/:todate?",authMiddleware.isOwner,ownerController.searchOrdersGetByDate)
 
@@ -29,5 +31,8 @@ router.get("/owner/doctor/search/:search",authMiddleware.isOwner,ownerController
 router.post("/owner/upsert",authMiddleware.isOwner,dentistController.fromDentist);
 
 router.route("/owner/upsert/:cancel?").post(authMiddleware.isAuthenticated,dentistController.fromDentist).put(authMiddleware.isAuthenticated,dentistController.fromDentist);
+
+// for assigning service to technician or delivery boy
+router.post("/owner/assign-service",authMiddleware.isOwner,ownerController.assignService);
 
 module.exports=router

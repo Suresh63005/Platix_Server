@@ -2,6 +2,8 @@ const User = require("../../Models/ReportsModel/User.model");
 const admin = require("../../config/firebase-config");
 const jwt = require("jsonwebtoken");
 const {sendEmail,subscribeUser} = require("../../utils/sendEmail");
+const TblOrganizationType = require("../../Models/TblOrganizationType.model");
+const Organization = require("../../Models/Organization.model");
 
 let otpStore={};
 
@@ -172,7 +174,23 @@ const loginwithnumber = async (req, res) => {
         }
 
         // Check if the user exists in the local database
-        const userRecord = await User.findOne({ where: { mobileNo } });
+        const userRecord = await User.findOne({ where: { mobileNo },
+            include:[
+                {
+                  model:Organization,
+                  as:'organization',
+                  attributes:['id','name'],
+                  include:[
+                    {
+                        model:TblOrganizationType,
+                        as:'organizationType',
+                        attributes:['id','organizationType'],
+
+                    }
+                  ]
+                }
+              ]
+         });
 
         if (!userRecord) {
             return res.status(404).json({ message: "User not found in the database." });

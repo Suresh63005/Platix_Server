@@ -7,6 +7,7 @@ const { sequelize } = require("../../config/db");
 const User = require("../../Models/ReportsModel/User.model");
 const OrderServices = require("../../Models/ReportsModel/OrderServices.model");
 const TblOrganization_Service = require("../../Models/tblOrganizationService");
+const TblOrganizationType = require("../../Models/TblOrganizationType.model");
 
 // Fetch total payable bills, active orders, closed orders, received payments, and order list
 const labOrders = async (req, res) => {
@@ -149,15 +150,24 @@ const searchOrders = async (req, res) => {
 
 // Retrieve order or payment report by ID
 const labOrderAndPaymentReportGetById=async(req,res)=>{
+  const {organization_id} =req.user;
+  if(!organization_id){
+    return res.status(401).json({message:"Unauthorized"})
+  }
   const { id, report } = req.params;
   if (!["order", "payment"].includes(report)) return res.status(400).json({ message: "Invalid report type" });
 
   try {
-    const attributes = report === "order" ? ["orderId", "orderDate", "fromOrganization", "toOrganization", "patientId", "patientName"] : ["orderId", "orderDate", "fromOrganization", "toOrganization", "patientId", "patientName", "totalAmount", "paidAmount", "paymentMethod", "remarks"];
+    // const attributes = report === "order" ? ["orderId", "orderDate", "fromOrganization", "toOrganization", "patientId", "patientName"] : ["orderId", "orderDate", "fromOrganization", "toOrganization", "patientId", "patientName", "totalAmount", "paidAmount", "paymentMethod", "remarks"];
     const reportData = await OrderReports.findOne({
-      where: { id },
-      attributes,
+      where: { id ,toOrganization:organization_id},
+      // attributes,
       include: [
+        {
+          model: User,
+          as: 'userDetails',
+          attributes: ['id', 'firstName', 'email', 'address', 'hospital_name'],
+        },
         {
           model:OrderServices,
           as: 'orderServices',
@@ -182,8 +192,29 @@ const labOrderAndPaymentReportGetById=async(req,res)=>{
     });
 
     if (!reportData) return res.status(404).json({ message: `${report} report with ID ${id} not found.` });
+    const toOrganizationDetails = await Organization.findByPk(reportData.toOrganization, {
+      attributes: ["id", "name"],
+      include: [
+        {
+          model: TblOrganizationType,
+          as: 'organizationType',
+          attributes: ["id", "organizationType"],
+        }
+      ]
+    });
 
-    return res.status(200).json({ message: `${report} report retrieved successfully`, data: reportData });
+    const fromOrganizationDetails = await Organization.findByPk(reportData.fromOrganization, {
+      attributes: ["id", "name"],
+      include: [
+        {
+          model: TblOrganizationType,
+          as: 'organizationType',
+          attributes: ["id", "organizationType"],
+        }
+      ]
+    });
+
+    return res.status(200).json({ message: `${report} report retrieved successfully`, data: reportData, toOrganizationDetails, fromOrganizationDetails });
   } catch (error) {
     console.error(`Error fetching ${report} report with ID ${id}:`, error);
     return res.status(500).json({ message: "Internal Server Error" });
@@ -339,4 +370,46 @@ const searchDoctor = async (req, res) => {
   }
 };
 
-module.exports = { labOrders, labAllOrders, labOrderAndPaymentReportGetById, searchOrders ,searchDoctor ,searchOrdersGetByDate,orderAndPaymentSearch };
+// assigning service to the delivery boy or technician
+
+const assignService = async (req, res) => {
+  const { organization_id } = req.user;
+  console.log(organization_id,"organization_id")
+  if (!organization_id) {
+    return res.status(401).json({ message: "Unauthorized" });
+  }
+
+  const { orderId, technician, delivery_boy } = req.body;
+
+  // Ensure orderId is provided
+  if (!orderId) {
+    return res.status(400).json({ message: "Order ID is required" });
+  }
+
+  try {
+    const order = await OrderReports.findOne({ where: { orderId: orderId } });
+    if (!order) {
+      return res.status(404).json({ message: "Order not found" });
+    }
+
+    const updateFields = {};
+
+    if (technician) {
+      updateFields.technician = technician;
+    }
+    if (delivery_boy) {
+      updateFields.delivery_boy = delivery_boy;
+    }
+
+    if (Object.keys(updateFields).length > 0) {
+      await OrderReports.update(updateFields, { where: { orderId: orderId } });
+    }
+
+    return res.status(200).json({ message: "Service assigned successfully" });
+  } catch (error) {
+    console.error("Error assigning service:", error);
+    return res.status(500).json({ message: "Internal Server Error" });
+  }
+};
+
+module.exports = { labOrders, labAllOrders, labOrderAndPaymentReportGetById, searchOrders ,searchDoctor ,searchOrdersGetByDate,orderAndPaymentSearch,assignService };

@@ -194,8 +194,7 @@ const isOwner = async(req,res,next)=>{
 
 
     if(user.role.rolename === "Owner" || "owner"  ){
-      req.user = user;
-      
+      req.user = user;  
     }
 
     
