@@ -114,7 +114,7 @@ const fromDentist = async (req, res) => {
           orderId: orderIdValue,
           patientId,
           toOrganization,
-          orderDate: new Date(),
+          orderDate,
           requiredDate,
           toothName,
           delivery_boy,
@@ -194,7 +194,7 @@ const fromDentist = async (req, res) => {
 
           if (!service) {
             return res.status(404).json({
-              message: "Organization service not found",
+              message: "Organization service not found", 
               status: false
             });
           }
@@ -324,12 +324,17 @@ const orderReport = async (req, res) => {
 //order details get by id
 const orderDetailsgetById = async (req, res) => {
   const uid=req.user?.id;
+  console.log(uid,"uid from order details");
   if(!uid){
     return res.status(401).json({message: "Unauthorized!" })
   }
   const { id } = req.params;
   try {
-    const orderReport = await OrderReports.findByPk(id, {
+    const orderReport = await OrderReports.findOne( {
+      where: {
+        id:id,
+        userUUID: uid
+      },
       include: [
         {
           model: User,
@@ -379,6 +384,17 @@ const orderDetailsgetById = async (req, res) => {
       ]
     });
 
+    const fromOrganizationDetails = await Organization.findByPk(orderReport.fromOrganization, {
+      attributes: ["id", "name"],
+      include: [
+        {
+          model: TblOrganizationType,
+          as: 'organizationType',
+          attributes: ["id", "organizationType"],
+        }
+      ]
+    });
+
 
 
     return res.status(200).json({
@@ -386,9 +402,8 @@ const orderDetailsgetById = async (req, res) => {
       message: "Order Report found successfully!",
       data: {
         ...orderReport.toJSON(),
-        toOrganizationDetails
-
-
+        toOrganizationDetails,
+        fromOrganizationDetails
       },
     });
   } catch (error) {
