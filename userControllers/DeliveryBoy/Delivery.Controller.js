@@ -5,33 +5,67 @@ const User = require("../../Models/ReportsModel/User.model");
 const OrderServices = require("../../Models/ReportsModel/OrderServices.model");
 const TblOrganization_Service = require("../../Models/tblOrganizationService");
 const Services = require("../../Models/TblServices.model");
+const TblOrganizationType = require("../../Models/TblOrganizationType.model");
 
 // getall dashboard data
 const getAll = async (req, res) => {
-  const uid = req.user?.id;
-  if(!uid){
-    return res.status(401).json({message: "Unauthorized"})
+  const uid = req.user?.id; 
+  if (!uid) {
+    return res.status(401).json({ message: "Unauthorized" });
   }
-  try {
-    const [activeOrders, completedOrders] = await Promise.all([
-      OrderReports.count({ where: { orderStatus: "processing",delivery_boy:uid } }),
-      OrderReports.count({ where: { orderStatus: "completed" , delivery_boy:uid} })
-    ]);
 
-    const orderList = await OrderReports.findAll({
-      include: [
-        {
-          model: Organization, 
-          attributes: ['name'], 
-          as: 'toOrg',
-          required: false 
+  const { search } = req.query;  
+
+  try {
+    let orderList = [];
+    let activeOrders = 0;
+    let completedOrders = 0;
+
+    [activeOrders, completedOrders] = await Promise.all([
+      OrderReports.count({ where: { orderStatus: "processing", delivery_boy: uid } }),
+      OrderReports.count({ where: { orderStatus: "completed",payment_status:"paid", delivery_boy: uid } })
+    ]);
+    // If search query is provided, perform search
+    if (search) {
+      orderList = await OrderReports.findAll({
+        where: {
+          [Op.or]: [
+            { orderId: { [Op.like]: `%${search}%` } },
+            { "$toOrg.name$": { [Op.like]: `%${search}%` } }
+          ],
+          delivery_boy: uid,
+          orderStatus: "processing"
+        },
+        include: [
+          {
+            model: Organization,
+            as: 'toOrg',
+            attributes: ['name'],
+          }
+        ]
+      });
+
+      // if (orderList.length === 0) {
+      //   return res.status(404).json({ message: "No orders found matching your search." });
+      // }
+
+    } else {
+      // If no search term is provided, retrieve active orders and completed orders 
+      orderList = await OrderReports.findAll({
+        include: [
+          {
+            model: Organization,
+            attributes: ['name'],
+            as: 'toOrg',
+            required: false
+          }
+        ],
+        where: {
+          delivery_boy: uid,
+          orderStatus: "processing"
         }
-      ],
-      where:{
-        delivery_boy: uid,
-        orderStatus:"processing"
-      }
-    });
+      });
+    }
 
     const response = {
       activeOrders,
@@ -42,59 +76,13 @@ const getAll = async (req, res) => {
     };
 
     return res.status(200).json(response);
+
   } catch (error) {
     console.error('Error fetching order counts:', error);
-
     return res.status(500).json({
       message: 'Failed to retrieve order counts. Please try again later.',
       error: error.message
     });
-  }
-};
-
-// Search orders by order ID or organization name
-const dashboardSearch = async (req, res) => {
-  const uid = req.user?.id; 
-  const { search } = req.query;
-
-  if (!uid) {
-    return res.status(401).json({ message: "Unauthorized. Please log in." });
-  }
-
-  if (!search) {
-    return res.status(400).json({ message: "Search term is required." });
-  }
-
-  try {
-    const orders = await OrderReports.findAll({
-      where: {
-        [Op.or]: [
-          { orderId: { [Op.like]: `%${search}%` } },
-          { "$toOrg.name$": { [Op.like]: `%${search}%` } }
-        ],
-        // Filtering by delivery_boy or technician (depends on your schema)
-        [Op.or]: [
-          { delivery_boy: uid },
-          // { technician: uid }
-        ]
-      },
-      include: [
-        { 
-          model: Organization, 
-          as: "toOrg", 
-          attributes: ["name"] 
-        }
-      ]
-    });
-
-    if (orders.length === 0) {
-      return res.status(404).json({ message: "No orders found matching your search." });
-    }
-
-    return res.status(200).json({ success: true, orders });
-  } catch (error) {
-    console.error("Error during order search:", error);
-    return res.status(500).json({ message: "An error occurred while searching for orders" });
   }
 };
 
@@ -180,7 +168,14 @@ const orderDetailsGetById = async (req, res) => {
     });
 
     const toOrganizationDetails = await Organization.findByPk(orderReport.toOrganization, {
-      attributes: ['id', 'name']
+      attributes: ['id', 'name'],
+      include:[
+        {
+          model:TblOrganizationType,
+          as:'organizationType',
+          attributes:['id','organizationType']
+        }
+      ]
     });
 
     return res.status(200).json({
@@ -273,4 +268,4 @@ const upsert = async (req, res) => {
   }
 };
 
-module.exports={ getAll,dashboardSearch ,deliveryAllOrders,orderDetailsGetById,upsert}
+module.exports={ getAll ,deliveryAllOrders,orderDetailsGetById,upsert}
