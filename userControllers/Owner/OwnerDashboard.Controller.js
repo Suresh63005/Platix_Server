@@ -8,6 +8,7 @@ const User = require("../../Models/ReportsModel/User.model");
 const OrderServices = require("../../Models/ReportsModel/OrderServices.model");
 const TblOrganization_Service = require("../../Models/tblOrganizationService");
 const TblOrganizationType = require("../../Models/TblOrganizationType.model");
+const Notification = require("../../Models/Notification.model");
 
 // Fetch total payable bills, active orders, closed orders, received payments, and order list
 const labOrders = async (req, res) => {
@@ -284,6 +285,18 @@ const searchOrdersGetByDate = async (req, res) => {
           as: 'toOrg',
           attributes: ['id', 'name'],
         },
+        {
+          model:OrderService,
+          as: 'orderServices',
+          attributes: ['id','quantity','price'],
+          include: [
+            {
+              model: Services,
+              as: 'serviceDetails',
+              attributes: ['id', 'servicename','servicedescription'],
+            },
+          ],
+        }
       ],
     });
 
@@ -371,10 +384,9 @@ const searchDoctor = async (req, res) => {
 };
 
 // assigning service to the delivery boy or technician
-
 const assignService = async (req, res) => {
   const { organization_id } = req.user;
-  // console.log(organization_id,"organization_id")
+  console.log(organization_id,"organization_id")
   if (!organization_id) {
     return res.status(401).json({ message: "Unauthorized" });
   }
@@ -413,7 +425,15 @@ const assignService = async (req, res) => {
     if (Object.keys(updateFields).length > 0) {
       await OrderReports.update(updateFields, { where: { id: orderId } });
     }
+    if(delivery_boy || technician){
+      await Notification.create({
+        uid:delivery_boy || technician,
+        datetime: new Date(),
+        title: "Order Assigned",
+        description: `You have been assigned to order ID ${orderId}`,
 
+      })
+    }
     return res.status(200).json({ message: "Service assigned successfully" });
   } catch (error) {
     console.error("Error assigning service:", error);
@@ -421,4 +441,88 @@ const assignService = async (req, res) => {
   }
 };
 
-module.exports = { labOrders, labAllOrders, labOrderAndPaymentReportGetById, searchOrders ,searchDoctor ,searchOrdersGetByDate,orderAndPaymentSearch,assignService };
+const upsertDoctor = async (req, res) => {
+  const { organization_id } = req.user;
+
+  if (!organization_id) {
+    return res.status(401).json({ message: "Unauthorized" });
+  }
+
+  const {
+    id,          
+    prefix,
+    firstName,
+    lastName,
+    email,
+    mobileNo,
+    hospital_name,
+    address,
+    googleMapLink
+  } = req.body;
+
+  try {
+    if (id) {
+      const doctor = await User.findOne({ where: { id, organization_id } });
+
+      if (!doctor) {
+        return res.status(404).json({ message: "Doctor not found" });
+      }
+      const updatedDoctor = await doctor.update({
+        prefix,
+        firstName,
+        lastName,
+        email,
+        mobileNo,
+        hospital_name,
+        address,
+        googleMapLink
+      });
+
+      return res.status(200).json({ message: "Doctor updated successfully", doctor: updatedDoctor });
+    }
+
+    const existingDoctor = await User.findOne({ where: { email } });
+    const existingDoctorByMobile = await User.findOne({ where: { mobileNo } });
+    if (existingDoctorByMobile) {
+      return res.status(400).json({ message: "Mobile number already exists" });
+    }
+
+    if (existingDoctor) {
+      return res.status(400).json({ message: "Email already exists" });
+    }
+
+    const newDoctor = await User.create({
+      prefix,
+      firstName,
+      lastName,
+      email,
+      mobileNo,
+      hospital_name,
+      address,
+      googleMapLink,
+      role_id:"b83bfdf1-7a7e-4284-8da9-9e332a18f889"
+    });
+
+    return res.status(201).json({ message: "Doctor created successfully", doctor: newDoctor });
+  } catch (error) {
+    console.error("Error during upsert:", error);
+    return res.status(500).json({ message: "Internal Server Error" });
+  }
+};
+
+
+ // for clear notifications 
+ const clearAllNotifications=async(req,res)=>{
+  const  {organization_id}=req.user;
+  try {
+    const notifications=await Notification.destroy({
+      where:{toOrganization:organization_id},
+    })
+    return res.status(200).json({success:true,notifications})
+  } catch (error) {
+    console.error("Error fetching notifications:", error);
+    return res.status(500).json({ success: false,  message: "Internal Server Error",  error: error.message });
+  }
+}
+
+module.exports = { labOrders, labAllOrders, labOrderAndPaymentReportGetById, searchOrders ,searchDoctor ,searchOrdersGetByDate,orderAndPaymentSearch,assignService,upsertDoctor,clearAllNotifications };

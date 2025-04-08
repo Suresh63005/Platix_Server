@@ -5,6 +5,7 @@ const User = require("../../Models/ReportsModel/User.model");
 const OrderServices = require("../../Models/ReportsModel/OrderServices.model");
 const TblOrganization_Service = require("../../Models/tblOrganizationService");
 const Services = require("../../Models/TblServices.model");
+const TblOrganizationType = require("../../Models/TblOrganizationType.model");
 
 // getall dashboard data
 const getAll = async (req, res) => {
@@ -180,7 +181,14 @@ const orderDetailsGetById = async (req, res) => {
     });
 
     const toOrganizationDetails = await Organization.findByPk(orderReport.toOrganization, {
-      attributes: ['id', 'name']
+      attributes: ['id', 'name'],
+      include:[
+        {
+          model:TblOrganizationType,
+          as:'organizationType',
+          attributes:['id','organizationType']
+        }
+      ]
     });
 
     return res.status(200).json({

@@ -35,4 +35,10 @@ router.route("/owner/upsert/:cancel?").post(authMiddleware.isAuthenticated,denti
 // for assigning service to technician or delivery boy
 router.post("/owner/assign-service",authMiddleware.isOwner,ownerController.assignService);
 
+// create a new doctor
+router.post("/owner/upsert-doctor",authMiddleware.isOwner,ownerController.upsertDoctor);
+
+//delete notfication
+// router.delete
+
 module.exports=router
