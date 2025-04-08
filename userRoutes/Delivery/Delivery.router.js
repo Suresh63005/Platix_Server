@@ -4,9 +4,8 @@ const deliveryBoyController=require("../../userControllers/DeliveryBoy/Delivery.
 const authMiddleware=require("../../Middlewares/auth")
 const dentistController=require("../../userControllers/Dentist/Dentist.Controller")
 
+// this will working for order count , order search where order status is processing and orderlist also
 router.get("/delivery/getall",authMiddleware.isAuthenticated,deliveryBoyController.getAll);
-// get all dashboard search by organization name and order id
-router.get("/delivery/dashboard/:search",authMiddleware.isAuthenticated,deliveryBoyController.dashboardSearch)
 // get all order status wise (active || close || cancelled)
 router.get("/delivery/getall-order/:orderStatus",authMiddleware.isAuthenticated,deliveryBoyController.deliveryAllOrders)
 
