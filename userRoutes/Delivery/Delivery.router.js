@@ -14,4 +14,8 @@ router.get("/delivery/order/getbyid/:id",authMiddleware.isAuthenticated,delivery
 
 // upsert order
 router.post("/delivery/upsert",authMiddleware.isAuthenticated,dentistController.fromDentist)
+
+//closed order
+router.get("/delivery/closed-order/:id", authMiddleware.isAuthenticated, deliveryBoyController.closedOrder);
+
 module.exports=router
