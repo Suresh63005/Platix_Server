@@ -1,7 +1,6 @@
 const express=require("express")
 const router=express.Router()
 const ownerController=require("../../userControllers/Owner/OwnerDashboard.Controller")
-const dentistController=require("../../userControllers/Dentist/Dentist.Controller")
 const authMiddleware=require("../../Middlewares/auth")
 
 // dashboard counting data
@@ -9,8 +8,6 @@ router.get("/owner/dashboard",authMiddleware.isOwner,ownerController.labOrders);
 
 // get all order status wise (active || close || cancelled)
 router.get("/owner/getall-order/:orderStatus",authMiddleware.isOwner,ownerController.labAllOrders)
-
-
 
 // it shown all order reports(order report and payment report) // this report should be order or payment
 router.get("/owner/report/:report/:fromdate?/:todate?",authMiddleware.isOwner,ownerController.searchOrdersGetByDate)
@@ -27,9 +24,7 @@ router.get("/owner/order/search/:search",authMiddleware.isOwner,ownerController.
 // for labrotory owner create order searching doctor
 router.get("/owner/doctor/search/:search",authMiddleware.isOwner,ownerController.searchDoctor);
 
-// create order
-// router.post("/owner/upsert",authMiddleware.isOwner,dentistController.fromDentist);
-
+// for labrotory owner create order and updating order and cancelled order also
 router.route("/owner/upsert/:cancel?").post(authMiddleware.isOwner,ownerController.ownerUpsertOrder).put(authMiddleware.isOwner,ownerController.ownerUpsertOrder);
 
 // for assigning service to technician or delivery boy
