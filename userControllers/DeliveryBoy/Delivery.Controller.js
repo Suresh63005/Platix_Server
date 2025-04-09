@@ -274,10 +274,11 @@ const closedOrder=async(req,res)=>{
     return res.status(401).json({ message: "Unauthorized" });
   }
   const { id }=req.params;
-  
+    console.log(id)
   try {
     const closedOrder=await OrderReports.findOne({
-
+      id:id,
+      where:{orderStatus:"completed",payment_status:"paid"}
     })
   } catch (error) {
     console.error("Error closing orders:", error);

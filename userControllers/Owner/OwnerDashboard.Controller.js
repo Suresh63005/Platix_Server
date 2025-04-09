@@ -287,16 +287,24 @@ const searchOrdersGetByDate = async (req, res) => {
           attributes: ['id', 'name'],
         },
         {
-          model:OrderService,
-          as: 'orderServices',
-          attributes: ['id','quantity','price'],
+          model: OrderServices,  
+          as: "orderServices",   
+          attributes: [ "quantity", "price"],  
           include: [
             {
-              model: Services,
-              as: 'serviceDetails',
-              attributes: ['id', 'servicename','servicedescription'],
-            },
-          ],
+              model: TblOrganization_Service,    
+              as: "orgservice",     
+              attributes: ["id"],  
+              required: false, 
+              include:[
+                {
+                  model:Services,
+                  as:"servicess",
+                  attributes:["servicename"]
+                }
+              ]   
+            }
+          ]
         }
       ],
     });
