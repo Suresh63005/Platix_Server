@@ -35,8 +35,15 @@ router.post("/owner/upsert-doctor",authMiddleware.isOwner,ownerController.upsert
 
 
 //get all hospital name
-router.get("/owner/get-hospital-name",ownerController.getAllHospitalName);
+router.get("/owner/get-hospital-name",authMiddleware.isOwner,ownerController.getAllHospitalName);
 //delete notfication
 // router.delete
+
+
+//get all technician 
+router.get("/owner/get-technician",authMiddleware.isOwner,ownerController.getAllTechnician);
+
+//get all delivery boy
+router.get("/owner/get-delivery-boy",authMiddleware.isOwner,ownerController.getAllDeliveryBoy);
 
 module.exports=router
