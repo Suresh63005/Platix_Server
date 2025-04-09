@@ -362,11 +362,13 @@ const orderAndPaymentSearch = async (req, res) => {
 // while creating order search doctor
 const searchDoctor = async (req, res) => {
   const {organization_id, id, role_id} =req.user;
+  if(!organization_id) {
+    return res.status(401).json({ message: "Unauthorized" });
+  }
   const { search } = req.params;
-
   try {
     const results = await User.findAll({
-      where: {organization_id:organization_id,
+      where: {
         [Op.or]: [{ firstName: { [Op.like]: `%${search}%` } }, { lastName: { [Op.like]: `%${search}%` } }]
       },
       include:[
@@ -377,6 +379,7 @@ const searchDoctor = async (req, res) => {
         }
       ]
     });
+    console.log(results,"results")
     return res.status(200).json({ success: true, results });
   } catch (error) {
     console.error("Error searching for doctors:", error);
