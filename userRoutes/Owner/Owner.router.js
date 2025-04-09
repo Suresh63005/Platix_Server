@@ -28,9 +28,9 @@ router.get("/owner/order/search/:search",authMiddleware.isOwner,ownerController.
 router.get("/owner/doctor/search/:search",authMiddleware.isOwner,ownerController.searchDoctor);
 
 // create order
-router.post("/owner/upsert",authMiddleware.isOwner,dentistController.fromDentist);
+// router.post("/owner/upsert",authMiddleware.isOwner,dentistController.fromDentist);
 
-router.route("/owner/upsert/:cancel?").post(authMiddleware.isAuthenticated,dentistController.fromDentist).put(authMiddleware.isAuthenticated,dentistController.fromDentist);
+router.route("/owner/upsert/:cancel?").post(authMiddleware.isOwner,ownerController.ownerUpsertOrder).put(authMiddleware.isOwner,ownerController.ownerUpsertOrder);
 
 // for assigning service to technician or delivery boy
 router.post("/owner/assign-service",authMiddleware.isOwner,ownerController.assignService);
@@ -38,6 +38,9 @@ router.post("/owner/assign-service",authMiddleware.isOwner,ownerController.assig
 // create a new doctor
 router.post("/owner/upsert-doctor",authMiddleware.isOwner,ownerController.upsertDoctor);
 
+
+//get all hospital name
+router.get("/owner/get-hospital-name",ownerController.getAllHospitalName);
 //delete notfication
 // router.delete
 

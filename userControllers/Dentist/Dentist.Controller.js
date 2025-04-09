@@ -16,6 +16,12 @@ const fromDentist = async (req, res) => {
   const transaction = await sequelize.transaction({ autocommit: false });
   const userId = req.user.id;
 
+  if (!userId) {
+    return res.status(401).json({ message: "Unauthorized!" });
+  }
+
+
+
   try {
     const {
       id,
@@ -60,7 +66,9 @@ const fromDentist = async (req, res) => {
 
     if (id) {
       // Update existing order
-      orderReport = await OrderReports.findByPk(id, { transaction });
+      orderReport = await OrderReports.findOne({
+        where: { id:id, userUUID:userId },
+      }, { transaction });
 
       if (!orderReport) {
         return res.status(404).json({ success: false, message: "Order not found." });
