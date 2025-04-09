@@ -268,22 +268,44 @@ const upsert = async (req, res) => {
   }
 };
 
-const closedOrder=async(req,res)=>{
+const closedOrder = async (req, res) => {
   const uid = req.user?.id; 
+
+  console.log(uid)
   if (!uid) {
     return res.status(401).json({ message: "Unauthorized" });
   }
-  const { id }=req.params;
-    console.log(id)
+
+  const { id } = req.params;
+  console.log(id);
+
   try {
-    const closedOrder=await OrderReports.findOne({
-      id:id,
-      where:{orderStatus:"completed",payment_status:"paid"}
-    })
+    const order = await OrderReports.findOne({
+      where: { 
+        id: id,  
+        delivery_boy: uid,
+        
+      }
+    });
+    console.log(order)
+
+    if (order.orderStatus === "completed") {
+      return res.status(400).json({ message: "Order already closed" });
+    }
+
+    await OrderReports.update(
+      { 
+        orderStatus: "completed", 
+        payment_status: "paid" 
+      },
+      { where: { id } }
+    );
+
+    return res.status(200).json({ success: true, message: "Order closed successfully!" });
   } catch (error) {
     console.error("Error closing orders:", error);
     return res.status(500).json({ message: "Server error" });
-    
   }
 }
-module.exports={ getAll ,deliveryAllOrders,orderDetailsGetById,upsert}
+
+module.exports={ getAll ,deliveryAllOrders,orderDetailsGetById,upsert,closedOrder}
