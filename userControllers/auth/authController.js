@@ -176,33 +176,29 @@ const loginwithnumber = async (req, res) => {
 
         // Check if the user exists in the local database
         const userRecord = await User.findOne({ where: { mobileNo },
-            include:[
+            include: [
                 {
-                  model:Organization,
-                  as:'organization',
-                  attributes:['id','name'],
-                  include:[
+                  model: Organization,
+                  as: 'organization',
+                  attributes: ['id', 'name'],
+                  include: [
                     {
-                        model:TblOrganizationType,
-                        as:'organizationType',
-                        attributes:['id','organizationType'],
-
-                    }
-                  ],
-                  include:[
+                      model: TblOrganizationType,
+                      as: 'organizationType',
+                      attributes: ['id', 'organizationType'],
+                    },
                     {
-                        model:TblOrganization_Service,
-                        as:'organization_service',
-                        attributes:['id','price'],
-                        include:[
-                            {
-                                model:Services,
-                                as:'servicess',
-                                attributes:['id','servicename','servicedescription'],
-                            }
-                        ]
+                      model: TblOrganization_Service,
+                      as: 'organization_service',
+                      attributes: ['id', 'price'],
+                      include: [
+                        {
+                          model: Services,
+                          as: 'servicess',
+                          attributes: ['id', 'servicename', 'servicedescription'],
+                        }
+                      ]
                     }
-
                   ]
                 }
               ]

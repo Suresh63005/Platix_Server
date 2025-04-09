@@ -442,6 +442,7 @@ const assignService = async (req, res) => {
   }
 };
 
+// adding or updating doctor
 const upsertDoctor = async (req, res) => {
   const { organization_id } = req.user;
 
@@ -777,3 +778,18 @@ const ownerUpsertOrder = async (req, res) => {
 };
 
 module.exports = { labOrders, labAllOrders, labOrderAndPaymentReportGetById, searchOrders ,searchDoctor ,searchOrdersGetByDate,orderAndPaymentSearch,assignService,upsertDoctor,clearAllNotifications,getAllHospitalName,ownerUpsertOrder };
+
+const arr=[1,4,5,90,34,23,45,67,89,0,2,3,4,5,6,7,8,9]
+console.log(bubbleSort(arr))
+function bubbleSort(){
+  for(let i=0;i<arr.length;i++){
+    for(let j=0;j<arr.length-i-1;j++){
+        if(arr[j] > arr[j+1]){
+          let temp=arr[j]
+          arr[j]=arr[j+1]
+          arr[j+1]=temp
+        }
+    }
+  }
+  return arr
+}
