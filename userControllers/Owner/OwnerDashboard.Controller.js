@@ -9,6 +9,7 @@ const OrderServices = require("../../Models/ReportsModel/OrderServices.model");
 const TblOrganization_Service = require("../../Models/tblOrganizationService");
 const TblOrganizationType = require("../../Models/TblOrganizationType.model");
 const Notification = require("../../Models/Notification.model");
+const orderTransaction = require("../../Models/ReportsModel/OrderTransaction.model");
 
 // Fetch total payable bills, active orders, closed orders, received payments, and order list
 const labOrders = async (req, res) => {
@@ -510,7 +511,26 @@ const upsertDoctor = async (req, res) => {
   }
 };
 
+//get all hospital name (organization name ) where organization type is dentist
+const getAllHospitalName=async(req,res)=>{
 
+  try {
+    const organizations = await Organization.findAll({
+      include: {
+        model: TblOrganizationType,
+        where: {
+          organizationType: 'dentist',
+        },
+        required: true, 
+      },
+      attributes: ['name'], 
+    });
+  } catch (error) {
+    console.error("Error fetching hospital names:", error);
+    return res.status(500).json({ message: "Internal Server Error" });
+    
+  }
+}
  // for clear notifications 
  const clearAllNotifications=async(req,res)=>{
   const  {organization_id}=req.user;
@@ -525,4 +545,232 @@ const upsertDoctor = async (req, res) => {
   }
 }
 
-module.exports = { labOrders, labAllOrders, labOrderAndPaymentReportGetById, searchOrders ,searchDoctor ,searchOrdersGetByDate,orderAndPaymentSearch,assignService,upsertDoctor,clearAllNotifications };
+// If I pass only the userUUID, it means the request is coming from the owner. If I pass both the userUUID and delivery_boy, it means the request is coming from the delivery boy. If I do not pass the delivery_boy and userUUID, it means the request is coming from the dentist.
+const ownerUpsertOrder = async (req, res) => {
+  const transaction = await sequelize.transaction({ autocommit: false });
+  const { organization_id } = req.user;
+  console.log(organization_id,"organization_id")
+  if (!organization_id) {
+    return res.status(401).json({ message: "Unauthorized" });
+  }
+
+  try {
+    const {
+      id,
+      fromOrganization,
+      patientName,
+      patientId,
+      orderDate,
+      transactionId,
+      delivery_boy,
+      userUUID,   //doctor id
+      toOrganization,
+      serviceId = [],
+      requiredDate,
+      toothName,
+      shades,
+      remarks,
+      reasonForScan,
+      sub_total = 0,
+      tax = 0,
+      service_charges = 0,
+      paid_amount = 0,
+      total_amount = 0,
+      payment_method,
+      order_status,
+      address,
+    } = req.body;
+
+    const { cancel } = req.params;
+
+    // Function to generate a unique ID
+    const generateUniqueId = async (prefix, model, field) => {
+      let uniqueId;
+      let exists;
+      do {
+        uniqueId = `${prefix}${Math.floor(100000 + Math.random() * 900000)}`;
+        exists = await model.findOne({ where: { [field]: uniqueId } });
+      } while (exists);
+      return uniqueId;
+    };
+
+    let orderReport;
+
+    if (id) {
+      // Update existing order
+      orderReport = await OrderReports.findOne({
+        where: { id:id, toOrganization:organization_id, orderStatus: "processing" },
+      }, { transaction });
+
+      if (!orderReport) {
+        return res.status(404).json({ success: false, message: "Order not found." });
+      }
+
+      console.log(`Updating order ${id}`);
+
+      if (cancel) {
+        console.log(`Cancelling order ${id}`);
+        await orderReport.update(
+          { orderStatus: "cancelled" },
+          { transaction }
+        );
+      } else {
+
+        await orderReport.update(
+          {
+            fromOrganization,
+            patientName,
+            orderId: orderReport.orderId,
+            patientId: patientId || orderReport.patientId,
+            toOrganization:organization_id,
+            requiredDate,
+            toothName,
+            orderDate: orderReport.orderDate,
+            shades,
+            remarks,
+            reasonForScan,
+            userUUID: userUUID || orderReport.userUUID,
+            subTotal: sub_total,
+            tax,
+            serviceCharges: service_charges,
+            paidAmount: paid_amount,
+            totalAmount: total_amount,
+            paymentMethod: payment_method,
+            orderStatus: order_status,
+            address
+          },
+          { transaction }
+        );
+      }
+    } else {
+      // Create new order
+      const orderIdValue = await generateUniqueId("ORD", OrderReports, "orderId");
+
+      console.log("Creating a new order");
+      orderReport = await OrderReports.create(
+        {
+          fromOrganization,
+          patientName,
+          orderId: orderIdValue,
+          patientId,
+          toOrganization:organization_id,
+          orderDate,
+          requiredDate,
+          toothName,
+          delivery_boy,
+          shades,
+          remarks,
+          reasonForScan,
+          userUUID: userUUID,
+          subTotal: sub_total,
+          tax,
+          serviceCharges: service_charges,
+          paidAmount: paid_amount,
+          totalAmount: total_amount,
+          paymentMethod: payment_method,
+          orderStatus: "processing",
+          address,
+          payment_status: "unpaid"
+        },
+        { transaction }
+      );
+    }
+
+    await Notification.create({
+      uid: userUUID ,
+      datetime: new Date(),
+      title: "Order Confirmation",
+      description: `Order ${orderReport.orderId} has been successfully confirmed and is now beeing processed.`
+    })
+
+    if (transactionId) {
+      console.log("Processing transaction...");
+
+      // Insert into orderTransaction table
+      await orderTransaction.create(
+        {
+          orderId: orderReport.id,
+          userUUID: userUUID,
+          transactionId,
+          amount: total_amount, 
+        },
+        { transaction }
+      );
+      
+      // Update order status to 'paid' IF THEY PAID FULL AMOUNT
+      await orderReport.update(
+        { payment_status: "paid" },
+        { transaction }
+      );
+
+      // notification send
+     
+       
+      
+    }
+
+    // Update User Address
+    // if (address) {
+    //   console.log(`Updating address for user ${userUUID || userId}`);
+    //   const user = await User.findOne({ where: { id: userUUID || userId }, transaction });
+
+    //   if (user) {
+    //     await user.update({ address }, { transaction });
+    //     console.log(`Address updated for user ${userUUID}`);
+    //   } else {
+    //     console.log(`User with ID ${userId || userUUID} not found`);
+    //   }
+    // }
+
+    // Handle Services
+    if (serviceId.length > 0) {
+      console.log(`Handling services for order ${orderReport.id}`);
+
+      await OrderServices.destroy({ where: { orderId: orderReport.id }, transaction });
+
+      await Promise.all(
+        serviceId.map(async (item) => {
+          const service = await TblOrganization_Service.findOne({ where: { id: item.id }, transaction });
+
+          if (!service) {
+            return res.status(404).json({
+              message: "Organization service not found", 
+              status: false
+            });
+          }
+          await OrderServices.create(
+            {
+              orderId: orderReport.id,
+              orgserviceId: item.id,
+              quantity: item.quantity,
+              price: item.quantity * service.price,
+            },
+            { transaction }
+          );
+        })
+      );
+    }
+
+    await transaction.commit();
+
+    return res.status(200).json({
+      success: true,
+      message: id ? "Order updated successfully." : "Order created successfully.",
+      data: orderReport,
+    });
+  } catch (error) {
+    // Check if the transaction is not committed yet before rolling back
+    if (transaction.finished !== 'commit') {
+      await transaction.rollback();
+    }
+
+    console.error("Error processing Order:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Internal server error",
+      error: error.message,
+    });
+  }
+};
+
+module.exports = { labOrders, labAllOrders, labOrderAndPaymentReportGetById, searchOrders ,searchDoctor ,searchOrdersGetByDate,orderAndPaymentSearch,assignService,upsertDoctor,clearAllNotifications,getAllHospitalName,ownerUpsertOrder };
