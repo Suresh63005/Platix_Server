@@ -268,4 +268,21 @@ const upsert = async (req, res) => {
   }
 };
 
+const closedOrder=async(req,res)=>{
+  const uid = req.user?.id; 
+  if (!uid) {
+    return res.status(401).json({ message: "Unauthorized" });
+  }
+  const { id }=req.params;
+  
+  try {
+    const closedOrder=await OrderReports.findOne({
+
+    })
+  } catch (error) {
+    console.error("Error closing orders:", error);
+    return res.status(500).json({ message: "Server error" });
+    
+  }
+}
 module.exports={ getAll ,deliveryAllOrders,orderDetailsGetById,upsert}
