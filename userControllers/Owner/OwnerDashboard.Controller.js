@@ -10,6 +10,7 @@ const TblOrganization_Service = require("../../Models/tblOrganizationService");
 const TblOrganizationType = require("../../Models/TblOrganizationType.model");
 const Notification = require("../../Models/Notification.model");
 const orderTransaction = require("../../Models/ReportsModel/OrderTransaction.model");
+const Roles = require("../../Models/TblRoles.model");
 
 // Fetch total payable bills, active orders, closed orders, received payments, and order list
 const labOrders = async (req, res) => {
@@ -788,4 +789,89 @@ const ownerUpsertOrder = async (req, res) => {
   }
 };
 
-module.exports = { labOrders, labAllOrders, labOrderAndPaymentReportGetById, searchOrders ,searchDoctor ,searchOrdersGetByDate,orderAndPaymentSearch,assignService,upsertDoctor,clearAllNotifications,getAllHospitalName,ownerUpsertOrder };
+// get all technician 
+const getAllTechnician = async (req, res) => {
+  const { organization_id } = req.user;
+  if (!organization_id) {
+    return res.status(401).json({ message: "Unauthorized" });
+  }
+
+  try {
+    const technicianRole = await Roles.findOne({
+      where: {
+        rolename: 'Technician' || 'technician',  
+      },
+    });
+
+    if (!technicianRole) {
+      return res.status(404).json({ message: "Technician role not found" });
+    }
+
+    const technician = await User.findAll({
+      where: {
+        organization_id: organization_id,
+        role_id: technicianRole.id, 
+      },
+    });
+
+    if (!technician.length === 0) {
+      return res.status(404).json({ message: "No technicians found for this organization" });
+    }
+
+    return res.status(200).json({
+      success: true,
+      count: technician.length,
+      technicians: technician,
+    });
+
+  } catch (error) {
+    console.error("Error fetching technicians:", error);
+    return res.status(500).json({ message: "Server error" });
+  }
+};
+
+// get all  delivery_boy
+const getAllDeliveryBoy = async (req, res) => {
+  const { organization_id } = req.user;
+  if (!organization_id) {
+    return res.status(401).json({ message: "Unauthorized" });
+  }
+
+  try {
+    const DeliveryBoyRole = await Roles.findOne({
+      where: {
+        rolename: {
+          [Op.like]: 'delivery boy', 
+        }
+      }
+    });
+    
+
+    if (!DeliveryBoyRole) {
+      return res.status(404).json({ message: "DeliveryBoy role not found" });
+    }
+
+    const deliveryBoy = await User.findAll({
+      where: {
+        organization_id: organization_id,
+        role_id: DeliveryBoyRole.id 
+      },
+    });
+
+    if (!deliveryBoy.length === 0) {
+      return res.status(404).json({ message: "No Delivery Boy found for this organization" });
+    }
+
+    return res.status(200).json({
+      success: true,
+      count: deliveryBoy.length,
+      DeliveryBoy: deliveryBoy,
+    });
+
+  } catch (error) {
+    console.error("Error fetching Delivery Boy:", error);
+    return res.status(500).json({ message: "Server error" });
+  }
+};
+
+module.exports = { labOrders, labAllOrders, labOrderAndPaymentReportGetById, searchOrders ,searchDoctor ,searchOrdersGetByDate,orderAndPaymentSearch,assignService,upsertDoctor,clearAllNotifications,getAllHospitalName,ownerUpsertOrder,getAllTechnician,getAllDeliveryBoy };
