@@ -518,13 +518,16 @@ const getAllHospitalName=async(req,res)=>{
     const organizations = await Organization.findAll({
       include: {
         model: TblOrganizationType,
+        as: "organizationType",
         where: {
           organizationType: 'dentist',
         },
+        attributes:['id','organizationType','description'],
         required: true, 
       },
-      attributes: ['name'], 
+      attributes: ['id','name'], 
     });
+    return res.status(200).json({ message: "Hospital name fetched successfully", hospitalName: organizations });
   } catch (error) {
     console.error("Error fetching hospital names:", error);
     return res.status(500).json({ message: "Internal Server Error" });
