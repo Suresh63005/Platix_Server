@@ -442,6 +442,7 @@ const assignService = async (req, res) => {
   }
 };
 
+// adding or updating doctor
 const upsertDoctor = async (req, res) => {
   const { organization_id } = req.user;
 
