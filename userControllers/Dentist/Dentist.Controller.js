@@ -233,7 +233,6 @@ const fromDentist = async (req, res) => {
   }
 };
 
-
 // order report search by date and where orders are completed  . it is working for 2 apis
 const orderReport = async (req, res) => {
 
@@ -360,11 +359,14 @@ const orderDetailsgetById = async (req, res) => {
               ]
             },
           ],
+        },
+        {
+          model: orderTransaction,
+          as: 'transactions',
+          attributes: ['transactionId', 'amount','createdAt'],
         }
       ],
     });
-
-
 
     if (!orderReport) {
       return res.status(404).json({
@@ -394,8 +396,6 @@ const orderDetailsgetById = async (req, res) => {
         }
       ]
     });
-
-
 
     return res.status(200).json({
       success: true,
