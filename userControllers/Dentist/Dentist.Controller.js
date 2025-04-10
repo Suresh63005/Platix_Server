@@ -20,8 +20,6 @@ const fromDentist = async (req, res) => {
     return res.status(401).json({ message: "Unauthorized!" });
   }
 
-
-
   try {
     const {
       id,
@@ -66,8 +64,9 @@ const fromDentist = async (req, res) => {
 
     if (id) {
       // Update existing order
+
       orderReport = await OrderReports.findOne({
-        where: { id:id, userUUID:userId },
+        where: { id:id, [Op.or]:[{userUUID:userId },{delivery_boy:userId}] },
       }, { transaction });
 
       if (!orderReport) {
@@ -677,14 +676,13 @@ const getorganizationDetailsById = async (req, res) => {
 };
 
 const cancelledAndDestroyOrder = async (req, res) => {
-  const { status } = req.params;
+  const { status } = req.params; // it should be complted or cancelled
   const userUUID = req.user?.id;
-
   try {
     const cancelledOrders = await OrderReports.findAll({
       where: {
         orderStatus: status,
-        userUUID
+        [Op.or]:[{userUUID},{delivery_boy:userUUID}],
       },
     });
     if (cancelledOrders.length === 0) {
@@ -696,14 +694,14 @@ const cancelledAndDestroyOrder = async (req, res) => {
         where: {
           orderStatus: status,
           payment_status:"paid",
-          userUUID
+          [Op.or]:[{userUUID},{delivery_boy:userUUID}]
         },
       });
     }else if(status === "cancelled"){
        deletedCount = await OrderReports.destroy({
         where: {
           orderStatus: status,
-          userUUID
+          [Op.or]:[{userUUID},{delivery_boy:userUUID}]
         },
       });
     }

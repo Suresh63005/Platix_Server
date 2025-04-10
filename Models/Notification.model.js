@@ -13,7 +13,11 @@ const Notification = sequelize.define(
       },
       uid: {
         type: DataTypes.UUID,
-        allowNull: false,
+        allowNull: true,
+      },
+      organization_id:{
+        type: DataTypes.UUID,
+        allowNull: true,
       },
       datetime: {
         type: DataTypes.DATE,

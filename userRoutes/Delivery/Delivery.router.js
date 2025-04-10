@@ -2,7 +2,7 @@ const express=require("express")
 const router=express.Router();
 const deliveryBoyController=require("../../userControllers/DeliveryBoy/Delivery.Controller")
 const authMiddleware=require("../../Middlewares/auth")
-const dentistController=require("../../userControllers/Dentist/Dentist.Controller")
+const DentistController=require("../../userControllers/Dentist/Dentist.Controller")
 
 // this will working for order count , order search where order status is processing and orderlist also
 router.get("/delivery/getall",authMiddleware.isAuthenticated,deliveryBoyController.getAll);
@@ -13,9 +13,14 @@ router.get("/delivery/getall-order/:orderStatus",authMiddleware.isAuthenticated,
 router.get("/delivery/order/getbyid/:id",authMiddleware.isAuthenticated,deliveryBoyController.orderDetailsGetById)
 
 // upsert order
-router.post("/delivery/upsert",authMiddleware.isAuthenticated,dentistController.fromDentist)
+// router.post("/delivery/upsert/:cancel",authMiddleware.isAuthenticated,dentistController.fromDentist)
 
 //closed order
 router.get("/delivery/closed-order/:id", authMiddleware.isAuthenticated, deliveryBoyController.closedOrder);
+
+// upsert order
+router.route("/delivery/upsert/:cancel?").post(authMiddleware.isAuthenticated,DentistController.fromDentist).put(authMiddleware.isAuthenticated,DentistController.fromDentist);//1
+
+router.delete("/delivery/delete/:status",authMiddleware.isAuthenticated,DentistController.cancelledAndDestroyOrder)
 
 module.exports=router
