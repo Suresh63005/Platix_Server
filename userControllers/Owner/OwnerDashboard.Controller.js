@@ -190,6 +190,11 @@ const labOrderAndPaymentReportGetById=async(req,res)=>{
               ],
             }
           ]
+        },
+        {
+          model:orderTransaction,
+          as:"transactions",
+          attributes:["transactionId","amount","createdAt"],
         }
       ]
     });
@@ -306,6 +311,11 @@ const searchOrdersGetByDate = async (req, res) => {
               ]   
             }
           ]
+        },
+        {
+          model:orderTransaction,
+          as:"transactions",
+          attributes:["transactionId","amount","createdAt"],
         }
       ],
     });
