@@ -10,6 +10,7 @@ const moment = require("moment");
 const TblOrganizationType = require("../../Models/TblOrganizationType.model");
 const Notification = require("../../Models/Notification.model");
 const orderTransaction = require("../../Models/ReportsModel/OrderTransaction.model");
+const Roles = require("../../Models/TblRoles.model");
 
 // If I pass only the userUUID, it means the request is coming from the owner. If I pass both the userUUID and delivery_boy, it means the request is coming from the delivery boy. If I do not pass the delivery_boy and userUUID, it means the request is coming from the dentist.
 const fromDentist = async (req, res) => {
@@ -66,14 +67,17 @@ const fromDentist = async (req, res) => {
       // Update existing order
 
       orderReport = await OrderReports.findOne({
-        where: { id:id, [Op.or]:[{userUUID:userId },{delivery_boy:userId}] },
+        where: { id:id,},
       }, { transaction });
 
       if (!orderReport) {
         return res.status(404).json({ success: false, message: "Order not found." });
       }
 
-      console.log(`Updating order ${id}`);
+       // Check if the user is the creator
+      if (orderReport.created_by !== userId) {
+        return res.status(403).json({ success: false, message: "You are not allowed to edit or cancel this order." });
+      }
 
       if (cancel) {
         console.log(`Cancelling order ${id}`);
@@ -137,7 +141,8 @@ const fromDentist = async (req, res) => {
           paymentMethod: payment_method,
           orderStatus: "processing",
           address,
-          payment_status: "unpaid"
+          payment_status: "unpaid",
+          created_by: userId,
         },
         { transaction }
       );
@@ -149,6 +154,37 @@ const fromDentist = async (req, res) => {
       title: "Order Confirmation",
       description: `Order ${orderReport.orderId} has been successfully confirmed and is now beeing processed.`
     })
+
+
+    const ownersFromOrganization = await User.findAll({
+      where: {
+        organization_id:toOrganization,
+      },
+      include:[
+        {
+          model:Roles,
+          as:"role",
+          attributes:["id","rolename"],
+          where:{
+            rolename: "owner"
+          }
+        }
+      ]
+    })
+    console.log(ownersFromOrganization,"ownersFromOrganization");
+   if(ownersFromOrganization.length > 0){
+    const notifications=ownersFromOrganization.map((owner)=>{
+      return {
+        organization_id:toOrganization,
+        uid: owner.id,
+        datetime: new Date(),
+        title: "New Order Received",
+        description: `New Order ${orderReport.orderId} has been received to your organization.`,
+        
+      }
+    })
+    await Notification.bulkCreate(notifications,{ transaction })
+   }
 
     if (transactionId) {
       console.log("Processing transaction...");

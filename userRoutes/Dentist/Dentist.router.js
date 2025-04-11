@@ -13,7 +13,7 @@ router.get("/dentist/order/payment-report-getbyid/:id",authMiddleware.isAuthenti
 router.get("/dentist/order/search/:search",authMiddleware.isAuthenticated, DentistController.orderAndPaymentSearch);//1
 router.get("/dentist/organization-details/getbyid/:id",authMiddleware.isAuthenticated,DentistController.getorganizationDetailsById); 
 
-// cancelled order destroy
+// cancelled and complted order destroy
 router.delete("/dentist/delete/:status",authMiddleware.isAuthenticated,DentistController.cancelledAndDestroyOrder)
 //paynow
 router.post("/dentist/paynow",authMiddleware.isAuthenticated,DentistController.payNow)
