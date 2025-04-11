@@ -1,4 +1,5 @@
 const { Op, literal } = require("sequelize");
+const { v4: uuidv4 } = require("uuid");
 const OrderReports = require("../../Models/ReportsModel/OrderReport.model");
 const Organization = require("../../Models/Organization.model");
 const OrderService = require("../../Models/ReportsModel/OrderServices.model");
@@ -11,6 +12,8 @@ const TblOrganizationType = require("../../Models/TblOrganizationType.model");
 const Notification = require("../../Models/Notification.model");
 const orderTransaction = require("../../Models/ReportsModel/OrderTransaction.model");
 const Roles = require("../../Models/TblRoles.model");
+const uploadToS3 = require("../../config/fileUpload.aws");
+const UploadImages = require("../../Models/ReportsModel/UploadImages.model");
 
 // Fetch total payable bills, active orders, closed orders, received payments, and order list
 const labOrders = async (req, res) => {
@@ -195,6 +198,11 @@ const labOrderAndPaymentReportGetById=async(req,res)=>{
           model:orderTransaction,
           as:"transactions",
           attributes:["transactionId","amount","createdAt"],
+        },
+        {
+          model:UploadImages,
+          as:"orderImages",
+          attributes:["id","order_id","images"],
         }
       ]
     });
@@ -316,6 +324,11 @@ const searchOrdersGetByDate = async (req, res) => {
           model:orderTransaction,
           as:"transactions",
           attributes:["transactionId","amount","createdAt"],
+        },
+        {
+          model:UploadImages,
+          as:"orderImages",
+          attributes:["id","order_id","images"],
         }
       ],
     });
@@ -884,4 +897,111 @@ const getAllDeliveryBoy = async (req, res) => {
   }
 };
 
-module.exports = { labOrders, labAllOrders, labOrderAndPaymentReportGetById, searchOrders ,searchDoctor ,searchOrdersGetByDate,orderAndPaymentSearch,assignService,upsertDoctor,clearAllNotifications,getAllHospitalName,ownerUpsertOrder,getAllTechnician,getAllDeliveryBoy };
+
+const uploadImagesByOwner = async (req, res) => {
+  console.log("Reached uploadImagesByOwner API");
+  console.log("User:", req.user);
+  console.log("Query:", req.query);
+  console.log("Files:", req.files);
+
+  const { organization_id, id: userId, role_id } = req.user;
+  const { orderId } = req.query;
+
+  if (!orderId) {
+    return res.status(400).json({ message: "Order ID is required" });
+  }
+
+  if (!req.files || req.files.length === 0) {
+    return res.status(400).json({ message: "At least one image is required!" });
+  }
+
+  try {
+    const order = await OrderReports.findOne({
+      where: {
+        toOrganization: organization_id,
+        id: orderId,
+        orderStatus: { [Op.or]: ["processing", "completed"] },
+        delivery_boy: { [Op.is]: null },
+        technician: { [Op.is]: null },
+      },
+      include: [
+        {
+          model: Organization,
+          as: "toOrg",
+          attributes: ["name"],
+        },
+      ],
+    });
+
+    if (!order) {
+      return res.status(404).json({
+        message: "Order not found or you don't have permission to upload images for it!",
+      });
+    }
+
+    // Upload images to S3
+    const imageUploadPromises = req.files.map(async (file) => {
+      try {
+        const url = await uploadToS3(file, "labImages");
+        if (!url) {
+          throw new Error(`Failed to upload ${file.originalname} to S3`);
+        }
+        return url;
+      } catch (error) {
+        console.error(`Error uploading ${file.originalname}:`, error.message);
+        return null; // Handle individual failures gracefully
+      }
+    });
+
+    const imageUrls = await Promise.all(imageUploadPromises);
+    console.log("Uploaded Image URLs:", imageUrls);
+
+    // Check if any uploads succeeded
+    const validUrls = imageUrls.filter((url) => url !== null);
+    if (validUrls.length === 0) {
+      return res.status(500).json({
+        message: "Failed to upload any images to S3",
+      });
+    }
+
+    // Store in database
+    const uploadRecord = await UploadImages.create({
+      id: uuidv4(),
+      uid: userId,
+      order_id: orderId,
+      images: JSON.stringify(validUrls), // Only store valid URLs
+    });
+
+    return res.status(200).json({
+      message: "Images uploaded successfully!",
+      data: {
+        orderId: orderId,
+        imageUrls: validUrls,
+        uploadRecordId: uploadRecord.id,
+      },
+    });
+  } catch (error) {
+    console.error("Error in uploadImagesByOwner:", error.message);
+    return res.status(500).json({
+      message: "Internal server error: " + error.message,
+    });
+  }
+};
+
+module.exports = {
+  labOrders,
+  labAllOrders,
+  labOrderAndPaymentReportGetById,
+  searchOrders,
+  searchDoctor,
+  searchOrdersGetByDate,
+  orderAndPaymentSearch,
+  assignService,
+  upsertDoctor,
+  clearAllNotifications,
+  getAllHospitalName,
+  ownerUpsertOrder,
+  getAllTechnician,
+  getAllDeliveryBoy,
+  uploadImagesByOwner
+};

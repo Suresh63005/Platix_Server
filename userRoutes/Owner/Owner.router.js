@@ -1,7 +1,9 @@
 const express=require("express")
 const router=express.Router()
 const ownerController=require("../../userControllers/Owner/OwnerDashboard.Controller")
-const authMiddleware=require("../../Middlewares/auth")
+const authMiddleware=require("../../Middlewares/auth");
+const upload = require("../../utils/multer")
+
 
 // dashboard counting data
 router.get("/owner/dashboard",authMiddleware.isOwner,ownerController.labOrders);
@@ -45,5 +47,7 @@ router.get("/owner/get-technician",authMiddleware.isOwner,ownerController.getAll
 
 //get all delivery boy
 router.get("/owner/get-delivery-boy",authMiddleware.isOwner,ownerController.getAllDeliveryBoy);
+
+router.post("/owner/upload-images",authMiddleware.isOwner,upload.array("images",4),ownerController.uploadImagesByOwner)
 
 module.exports=router

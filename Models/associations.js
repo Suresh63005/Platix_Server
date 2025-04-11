@@ -125,3 +125,5 @@ OrderReports.hasMany(orderTransaction, {
   foreignKey: 'orderId', 
   as: 'transactions' 
 });
+
+
