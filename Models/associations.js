@@ -132,3 +132,4 @@ OrderReports.belongsTo(User,{
   as:'deliveryBoy'
 })
 
+
