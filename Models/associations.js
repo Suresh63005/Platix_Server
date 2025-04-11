@@ -125,3 +125,10 @@ OrderReports.hasMany(orderTransaction, {
   foreignKey: 'orderId', 
   as: 'transactions' 
 });
+
+
+OrderReports.belongsTo(User,{
+  foreignKey:'delivery_boy',
+  as:'deliveryBoy'
+})
+
