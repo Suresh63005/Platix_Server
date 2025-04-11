@@ -934,23 +934,50 @@ const cancelledAndDestroyOrder = async (req, res) => {
   }
 };
 
-const raiseInvoiceAndCloseOrder =async(req,res)=>{
-  const {organization_id}=req.user;
-  if(!organization_id){
+const raiseInvoiceAndCloseOrder = async (req, res) => {
+  const { organization_id } = req.user;
+  const { id } = req.params;
+
+  if (!organization_id) {
     return res.status(401).json({ message: "Unauthorized" });
   }
-  const {id}=req.params;
+
   try {
-    
-    const checkOrder=await OrderReports.findOne({id:id,organization_id:organization_id});
-    if(!checkOrder){
-      return res.status(404).json({message:"Order not found"})
+    const checkOrder = await OrderReports.findOne({
+      where: {
+        id: id,
+        toOrganization: organization_id, 
+      },
+    });
+
+    if (!checkOrder) {
+      return res.status(404).json({ message: "Order not found" });
     }
-    if(checkOrder.orderStatus==="completed"){
-      
+
+    if (checkOrder.orderStatus === "completed" && checkOrder.payment_status === "unpaid") {
+      await checkOrder.update({
+        orderStatus: "completed", 
+        payment_status: "processing", 
+      });
+
+      return res.status(200).json({
+        success: true,
+        message: "Invoice process started successfully.",
+        data: checkOrder,
+      });
+    } else {
+      return res.status(400).json({
+        success: false,
+        message: "Order is not eligible for invoice generation.",
+      });
     }
   } catch (error) {
-    
+    console.error("Error in raiseInvoiceAndCloseOrder:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Internal server error",
+    });
   }
-}
-module.exports = { labOrders, labAllOrders, labOrderAndPaymentReportGetById, searchOrders ,searchDoctor ,searchOrdersGetByDate,orderAndPaymentSearch,assignService,upsertDoctor,clearAllNotifications,getAllHospitalName,ownerUpsertOrder,getAllTechnician,getAllDeliveryBoy ,cancelledAndDestroyOrder};
+};
+
+module.exports = { labOrders, labAllOrders, labOrderAndPaymentReportGetById, searchOrders ,searchDoctor ,searchOrdersGetByDate,orderAndPaymentSearch,assignService,upsertDoctor,clearAllNotifications,getAllHospitalName,ownerUpsertOrder,getAllTechnician,getAllDeliveryBoy ,cancelledAndDestroyOrder,raiseInvoiceAndCloseOrder};
