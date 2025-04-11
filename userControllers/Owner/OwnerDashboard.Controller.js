@@ -12,8 +12,12 @@ const TblOrganizationType = require("../../Models/TblOrganizationType.model");
 const Notification = require("../../Models/Notification.model");
 const orderTransaction = require("../../Models/ReportsModel/OrderTransaction.model");
 const Roles = require("../../Models/TblRoles.model");
+
 const uploadToS3 = require("../../config/fileUpload.aws");
 const UploadImages = require("../../Models/ReportsModel/UploadImages.model");
+
+const moment=require("moment-timezone");
+
 
 // Fetch total payable bills, active orders, closed orders, received payments, and order list
 const labOrders = async (req, res) => {
@@ -92,7 +96,8 @@ const labOrders = async (req, res) => {
 // Fetch active, closed, and cancelled orders for the laboratory owner
 const labAllOrders = async (req, res) => {
   try {
-    const { organization_id } = req.user;
+    const { organization_id,id:userId } = req.user;
+    console.log(userId,"req.user")
     const { orderStatus } = req.params;
 
     if (!["completed", "processing", "cancelled"].includes(orderStatus)) {
@@ -103,7 +108,7 @@ const labAllOrders = async (req, res) => {
       where: { orderStatus, toOrganization: organization_id },
       include: [{ model: Organization, as: "toOrg", attributes: ["name"] }],
     });
-
+    console.log(allOrders,"allOrders")
     return res.status(200).json({
       [orderStatus]: allOrders.map(order => ({
         ...order.toJSON(),
@@ -401,6 +406,7 @@ const searchDoctor = async (req, res) => {
   try {
     const results = await User.findAll({
       where: {
+        prefix:"DR",
         [Op.or]: [{ firstName: { [Op.like]: `%${search}%` } }, { lastName: { [Op.like]: `%${search}%` } }]
       },
       include:[
@@ -618,8 +624,9 @@ const ownerUpsertOrder = async (req, res) => {
       payment_method,
       order_status,
       address,
+      created_by,
     } = req.body;
-
+    console.log(req.body,"req.body")
     const { cancel } = req.params;
 
     // Function to generate a unique ID
@@ -709,7 +716,8 @@ const ownerUpsertOrder = async (req, res) => {
           paymentMethod: payment_method,
           orderStatus: "processing",
           address,
-          payment_status: "unpaid"
+          payment_status: "unpaid",
+          created_by:userUUID,
         },
         { transaction }
       );
@@ -898,6 +906,122 @@ const getAllDeliveryBoy = async (req, res) => {
 };
 
 
+
+
+
+const cancelledAndDestroyOrder = async (req, res) => {
+  const { status } = req.params; // expected: 'completed' or 'cancelled'
+  const { organization_id,  id:userId } = req.user;
+
+  if (!organization_id) {
+    return res.status(401).json({ message: "Unauthorized" });
+  }
+
+  if (!["completed", "cancelled"].includes(status)) {
+    return res.status(400).json({ message: "Invalid status. Use 'completed' or 'cancelled'." });
+  }
+
+  try {
+    // Build dynamic where clause
+    const whereClause = {
+      orderStatus: status,
+      toOrganization: organization_id,
+      created_by: userId, 
+    };
+
+    if (status === "completed") {
+      whereClause.payment_status = "paid";
+    }
+
+    const ordersToDelete = await OrderReports.findAll({ where: whereClause });
+
+    if (ordersToDelete.length === 0) {
+      return res.status(404).json({ message: `No ${status} orders found to delete.` });
+    }
+
+    const deletedCount = await OrderReports.destroy({ where: whereClause });
+
+    return res.status(200).json({
+      success: true,
+      message: `${deletedCount} ${status} orders created by you have been deleted successfully.`,
+    });
+  } catch (error) {
+    console.error("Error deleting orders:", error.message);
+    return res.status(500).json({
+      success: false,
+      message: "An error occurred while deleting orders.",
+    });
+  }
+};
+
+const raiseInvoiceAndCloseOrder = async (req, res) => {
+  const { organization_id } = req.user;
+  const { id } = req.params;
+
+  if (!organization_id) {
+    return res.status(401).json({ message: "Unauthorized" });
+  }
+
+  try {
+    const checkOrder = await OrderReports.findOne({
+      where: {
+        id: id,
+        toOrganization: organization_id, 
+      },
+    });
+
+    if (!checkOrder) {
+      return res.status(404).json({ message: "Order not found" });
+    }
+
+    if (checkOrder.orderStatus === "completed" && checkOrder.payment_status === "unpaid") {
+      await checkOrder.update({
+        orderStatus: "completed", 
+        payment_status: "processing", 
+      });
+
+      return res.status(200).json({
+        success: true,
+        message: "Invoice process started successfully.",
+        data: checkOrder,
+      });
+    } else {
+      return res.status(400).json({
+        success: false,
+        message: "Order is not eligible for invoice generation.",
+      });
+    }
+  } catch (error) {
+    console.error("Error in raiseInvoiceAndCloseOrder:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Internal server error",
+    });
+  }
+};
+
+const editInvoice=async(req,res)=>{
+  const { organization_id } = req.user;
+  const { id } = req.params;
+  if(!organization_id) {
+    return res.status(401).json({ message: "Unauthorized" });
+  }
+  const {totalAmount,remarks}=req.body;
+  try {
+    const order = await OrderReports.findOne({
+      where: { id, toOrganization: organization_id,payment_status:{[Op.ne]: "paid" }, },
+    });
+    if (!order) {
+      return res.status(404).json({ message: "Order not found" });
+    }
+    await order.update({ totalAmount, remarks });
+    return res.status(200).json({ message: "Invoice updated successfully", order });
+  } catch (error) {
+    console.error("Error updating invoice:", error);
+    return res.status(500).json({ message: "Internal Server Error" });
+  }
+}
+
 const uploadImagesByOwner = async (req, res) => {
   console.log("Reached uploadImagesByOwner API");
   console.log("User:", req.user);
@@ -988,20 +1112,5 @@ const uploadImagesByOwner = async (req, res) => {
   }
 };
 
-module.exports = {
-  labOrders,
-  labAllOrders,
-  labOrderAndPaymentReportGetById,
-  searchOrders,
-  searchDoctor,
-  searchOrdersGetByDate,
-  orderAndPaymentSearch,
-  assignService,
-  upsertDoctor,
-  clearAllNotifications,
-  getAllHospitalName,
-  ownerUpsertOrder,
-  getAllTechnician,
-  getAllDeliveryBoy,
-  uploadImagesByOwner
-};
+module.exports = { labOrders, labAllOrders, labOrderAndPaymentReportGetById, searchOrders ,searchDoctor ,searchOrdersGetByDate,orderAndPaymentSearch,assignService,upsertDoctor,clearAllNotifications,getAllHospitalName,ownerUpsertOrder,getAllTechnician, uploadImagesByOwner, getAllDeliveryBoy ,cancelledAndDestroyOrder,raiseInvoiceAndCloseOrder,editInvoice};
+

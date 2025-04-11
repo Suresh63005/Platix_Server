@@ -41,6 +41,11 @@ const getAll = async (req, res) => {
             model: Organization,
             as: 'toOrg',
             attributes: ['name'],
+          },
+          {
+            model:Organization,
+            as: 'fromOrg',
+            attributes: ['name'],
           }
         ]
       });
@@ -129,7 +134,7 @@ const orderDetailsGetById = async (req, res) => {
   const uid = req.user?.id; 
   const { id } = req.params; 
   if (!uid) {
-    return res.status(401).json({ success: false, message: "Unauthorized. Please log in." });
+    return res.status(401).json({ success: false, message: "Unauthorized" });
   }
 
   try {
@@ -143,7 +148,13 @@ const orderDetailsGetById = async (req, res) => {
           model: User,
           as: 'userDetails',
           attributes: ['id', 'firstName', 'email', 'address', 'hospital_name']
+        },
+        {
+          model:User,
+          as:'deliveryBoy',
+          attributes: ['id', 'firstName','lastName', 'email', ]
         }
+        // here shown doctor details mean useruuid in orderreports table
       ]
     });
 
@@ -177,14 +188,29 @@ const orderDetailsGetById = async (req, res) => {
         }
       ]
     });
+    const fromOrganizationDetails = await Organization.findByPk(orderReport.fromOrganization, {
+      attributes: ['id', 'name'],
+      include:[
+        {
+          model:TblOrganizationType,
+          as:'organizationType',
+          attributes:['id','organizationType']
+        }
+      ]
+    });
+
+    const orderData=orderReport.toJSON()
+    orderData.doctorDetails = orderData.userDetails; //Creates a new key called doctorDetails and assigns it the value of userDetails (which was loaded from the association).
+    delete orderData.userDetails; //Removes the original userDetails key from the object, so only doctorDetails will appear in the final response.
 
     return res.status(200).json({
       success: true,
       message: "Order report found successfully!",
       data: {
-        ...orderReport.toJSON(),
+        ...orderData,
         orderServices,
-        toOrganizationDetails
+        toOrganizationDetails,
+        fromOrganizationDetails
       }
     });
 

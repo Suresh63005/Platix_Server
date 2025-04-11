@@ -48,6 +48,18 @@ router.get("/owner/get-technician",authMiddleware.isOwner,ownerController.getAll
 //get all delivery boy
 router.get("/owner/get-delivery-boy",authMiddleware.isOwner,ownerController.getAllDeliveryBoy);
 
+
 router.post("/owner/upload-images",authMiddleware.isOwner,upload.array("images",4),ownerController.uploadImagesByOwner)
+
+
+//delete complted and cancelled order
+router.delete("/owner/delete/:status",authMiddleware.isOwner,ownerController.cancelledAndDestroyOrder)
+
+
+// raiseInvoiceAndCloseOrder
+router.post("/owner/raise-invoice/:id",authMiddleware.isOwner,ownerController.raiseInvoiceAndCloseOrder)
+
+//edit invoice
+router.put("/owner/edit-invoice/:id",authMiddleware.isOwner,ownerController.editInvoice)
 
 module.exports=router

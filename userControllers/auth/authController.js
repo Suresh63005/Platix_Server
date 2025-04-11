@@ -112,7 +112,7 @@ const RoleDetails = async (req, res) => {
         console.log(otp)
         await sendEmail(email, subject, text);
 
-        return res.status(200).json({ message: "Role details updated successfully! OTP has been sent to your email." });
+        return res.status(200).json({ message: "Role details updated successfully! OTP has been sent to your email." ,user:user});
 
     } catch (error) {
         console.error("Error assigning/updating role:", error.message);
