@@ -200,8 +200,8 @@ const orderDetailsGetById = async (req, res) => {
     });
 
     const orderData=orderReport.toJSON()
-    orderData.doctorDetails = orderData.userDetails;
-    delete orderData.userDetails; 
+    orderData.doctorDetails = orderData.userDetails; //Creates a new key called doctorDetails and assigns it the value of userDetails (which was loaded from the association).
+    delete orderData.userDetails; //Removes the original userDetails key from the object, so only doctorDetails will appear in the final response.
 
     return res.status(200).json({
       success: true,

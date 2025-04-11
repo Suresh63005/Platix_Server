@@ -980,4 +980,26 @@ const raiseInvoiceAndCloseOrder = async (req, res) => {
   }
 };
 
-module.exports = { labOrders, labAllOrders, labOrderAndPaymentReportGetById, searchOrders ,searchDoctor ,searchOrdersGetByDate,orderAndPaymentSearch,assignService,upsertDoctor,clearAllNotifications,getAllHospitalName,ownerUpsertOrder,getAllTechnician,getAllDeliveryBoy ,cancelledAndDestroyOrder,raiseInvoiceAndCloseOrder};
+const editInvoice=async(req,res)=>{
+  const { organization_id } = req.user;
+  const { id } = req.params;
+  if(!organization_id) {
+    return res.status(401).json({ message: "Unauthorized" });
+  }
+  const {totalAmount,remarks}=req.body;
+  try {
+    const order = await OrderReports.findOne({
+      where: { id, toOrganization: organization_id,payment_status:{[Op.ne]: "paid" }, },
+    });
+    if (!order) {
+      return res.status(404).json({ message: "Order not found" });
+    }
+    await order.update({ totalAmount, remarks });
+    return res.status(200).json({ message: "Invoice updated successfully", order });
+  } catch (error) {
+    console.error("Error updating invoice:", error);
+    return res.status(500).json({ message: "Internal Server Error" });
+  }
+}
+
+module.exports = { labOrders, labAllOrders, labOrderAndPaymentReportGetById, searchOrders ,searchDoctor ,searchOrdersGetByDate,orderAndPaymentSearch,assignService,upsertDoctor,clearAllNotifications,getAllHospitalName,ownerUpsertOrder,getAllTechnician,getAllDeliveryBoy ,cancelledAndDestroyOrder,raiseInvoiceAndCloseOrder,editInvoice};

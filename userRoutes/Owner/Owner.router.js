@@ -52,4 +52,7 @@ router.delete("/owner/delete/:status",authMiddleware.isOwner,ownerController.can
 
 // raiseInvoiceAndCloseOrder
 router.post("/owner/raise-invoice/:id",authMiddleware.isOwner,ownerController.raiseInvoiceAndCloseOrder)
+
+//edit invoice
+router.put("/owner/edit-invoice/:id",authMiddleware.isOwner,ownerController.editInvoice)
 module.exports=router
