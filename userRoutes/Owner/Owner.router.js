@@ -46,4 +46,7 @@ router.get("/owner/get-technician",authMiddleware.isOwner,ownerController.getAll
 //get all delivery boy
 router.get("/owner/get-delivery-boy",authMiddleware.isOwner,ownerController.getAllDeliveryBoy);
 
+//delete complted and cancelled order
+router.delete("/owner/delete/:status",authMiddleware.isOwner,ownerController.cancelledAndDestroyOrder)
+
 module.exports=router

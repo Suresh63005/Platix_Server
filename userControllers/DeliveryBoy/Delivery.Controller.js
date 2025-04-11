@@ -41,6 +41,11 @@ const getAll = async (req, res) => {
             model: Organization,
             as: 'toOrg',
             attributes: ['name'],
+          },
+          {
+            model:Organization,
+            as: 'fromOrg',
+            attributes: ['name'],
           }
         ]
       });

@@ -11,6 +11,7 @@ const TblOrganizationType = require("../../Models/TblOrganizationType.model");
 const Notification = require("../../Models/Notification.model");
 const orderTransaction = require("../../Models/ReportsModel/OrderTransaction.model");
 const Roles = require("../../Models/TblRoles.model");
+const moment=require("moment-timezone");
 
 // Fetch total payable bills, active orders, closed orders, received payments, and order list
 const labOrders = async (req, res) => {
@@ -884,4 +885,51 @@ const getAllDeliveryBoy = async (req, res) => {
   }
 };
 
-module.exports = { labOrders, labAllOrders, labOrderAndPaymentReportGetById, searchOrders ,searchDoctor ,searchOrdersGetByDate,orderAndPaymentSearch,assignService,upsertDoctor,clearAllNotifications,getAllHospitalName,ownerUpsertOrder,getAllTechnician,getAllDeliveryBoy };
+const cancelledAndDestroyOrder = async (req, res) => {
+  const { status } = req.params; // it should be complted or cancelled
+  const { organization_id } = req.user;
+  if (!organization_id) {
+    return res.status(401).json({ message: "Unauthorized" });
+  }
+  try {
+    const cancelledOrders = await OrderReports.findAll({
+      where: {
+        orderStatus: status,
+        toOrganization: organization_id,
+      },
+    });
+    if (cancelledOrders.length === 0) {
+      return res.status(404).json({ message: `No ${status} orders found to delete.` });
+    }
+    let deletedCount;
+    if(status === "completed"){
+       deletedCount = await OrderReports.destroy({
+        where: {
+          orderStatus: status,
+          payment_status:"paid",
+          toOrganization: organization_id
+        },
+      });
+    }else if(status === "cancelled"){
+       deletedCount = await OrderReports.destroy({
+        where: {
+          orderStatus: status,
+          toOrganization: organization_id
+        },
+      });
+    }
+    
+    return res.status(200).json({
+      success: true,
+      message: `${deletedCount}  ${status} orders have been deleted successfully.`,
+    });
+  } catch (error) {
+    console.error("Error deleting cancelled orders:", error.message);
+    return res.status(500).json({
+      success: false,
+      message: "An error occurred while deleting cancelled orders.",
+    });
+  }
+};
+
+module.exports = { labOrders, labAllOrders, labOrderAndPaymentReportGetById, searchOrders ,searchDoctor ,searchOrdersGetByDate,orderAndPaymentSearch,assignService,upsertDoctor,clearAllNotifications,getAllHospitalName,ownerUpsertOrder,getAllTechnician,getAllDeliveryBoy ,cancelledAndDestroyOrder};
