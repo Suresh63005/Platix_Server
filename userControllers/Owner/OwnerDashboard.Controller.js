@@ -90,7 +90,8 @@ const labOrders = async (req, res) => {
 // Fetch active, closed, and cancelled orders for the laboratory owner
 const labAllOrders = async (req, res) => {
   try {
-    const { organization_id } = req.user;
+    const { organization_id,id:userId } = req.user;
+    console.log(req.user,"req.user")
     const { orderStatus } = req.params;
 
     if (!["completed", "processing", "cancelled"].includes(orderStatus)) {
@@ -98,7 +99,7 @@ const labAllOrders = async (req, res) => {
     }
 
     const allOrders = await OrderReports.findAll({
-      where: { orderStatus, toOrganization: organization_id },
+      where: { orderStatus, toOrganization: organization_id,created_by:userId },
       include: [{ model: Organization, as: "toOrg", attributes: ["name"] }],
     });
 
@@ -389,6 +390,7 @@ const searchDoctor = async (req, res) => {
   try {
     const results = await User.findAll({
       where: {
+        prefix:"DR",
         [Op.or]: [{ firstName: { [Op.like]: `%${search}%` } }, { lastName: { [Op.like]: `%${search}%` } }]
       },
       include:[
@@ -606,6 +608,7 @@ const ownerUpsertOrder = async (req, res) => {
       payment_method,
       order_status,
       address,
+      created_by,
     } = req.body;
 
     const { cancel } = req.params;
@@ -697,7 +700,8 @@ const ownerUpsertOrder = async (req, res) => {
           paymentMethod: payment_method,
           orderStatus: "processing",
           address,
-          payment_status: "unpaid"
+          payment_status: "unpaid",
+          created_by:userUUID,
         },
         { transaction }
       );
@@ -886,50 +890,49 @@ const getAllDeliveryBoy = async (req, res) => {
 };
 
 const cancelledAndDestroyOrder = async (req, res) => {
-  const { status } = req.params; // it should be complted or cancelled
-  const { organization_id } = req.user;
+  const { status } = req.params; // expected: 'completed' or 'cancelled'
+  const { organization_id,  id:userId } = req.user;
+
   if (!organization_id) {
     return res.status(401).json({ message: "Unauthorized" });
   }
+
+  if (!["completed", "cancelled"].includes(status)) {
+    return res.status(400).json({ message: "Invalid status. Use 'completed' or 'cancelled'." });
+  }
+
   try {
-    const cancelledOrders = await OrderReports.findAll({
-      where: {
-        orderStatus: status,
-        toOrganization: organization_id,
-      },
-    });
-    if (cancelledOrders.length === 0) {
+    // Build dynamic where clause
+    const whereClause = {
+      orderStatus: status,
+      toOrganization: organization_id,
+      created_by: userId, 
+    };
+
+    if (status === "completed") {
+      whereClause.payment_status = "paid";
+    }
+
+    const ordersToDelete = await OrderReports.findAll({ where: whereClause });
+
+    if (ordersToDelete.length === 0) {
       return res.status(404).json({ message: `No ${status} orders found to delete.` });
     }
-    let deletedCount;
-    if(status === "completed"){
-       deletedCount = await OrderReports.destroy({
-        where: {
-          orderStatus: status,
-          payment_status:"paid",
-          toOrganization: organization_id
-        },
-      });
-    }else if(status === "cancelled"){
-       deletedCount = await OrderReports.destroy({
-        where: {
-          orderStatus: status,
-          toOrganization: organization_id
-        },
-      });
-    }
-    
+
+    const deletedCount = await OrderReports.destroy({ where: whereClause });
+
     return res.status(200).json({
       success: true,
-      message: `${deletedCount}  ${status} orders have been deleted successfully.`,
+      message: `${deletedCount} ${status} orders created by you have been deleted successfully.`,
     });
   } catch (error) {
-    console.error("Error deleting cancelled orders:", error.message);
+    console.error("Error deleting orders:", error.message);
     return res.status(500).json({
       success: false,
-      message: "An error occurred while deleting cancelled orders.",
+      message: "An error occurred while deleting orders.",
     });
   }
 };
+
 
 module.exports = { labOrders, labAllOrders, labOrderAndPaymentReportGetById, searchOrders ,searchDoctor ,searchOrdersGetByDate,orderAndPaymentSearch,assignService,upsertDoctor,clearAllNotifications,getAllHospitalName,ownerUpsertOrder,getAllTechnician,getAllDeliveryBoy ,cancelledAndDestroyOrder};
