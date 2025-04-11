@@ -65,7 +65,7 @@ const OrderReports = sequelize.define(
       allowNull: true,
     },
     payment_status: {
-      type: DataTypes.ENUM("unpaid", "paid"),
+      type: DataTypes.ENUM("unpaid", "paid","processing"),
       allowNull: true
     },
     mobileNo: {

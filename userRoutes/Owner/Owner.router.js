@@ -49,4 +49,7 @@ router.get("/owner/get-delivery-boy",authMiddleware.isOwner,ownerController.getA
 //delete complted and cancelled order
 router.delete("/owner/delete/:status",authMiddleware.isOwner,ownerController.cancelledAndDestroyOrder)
 
+
+// raiseInvoiceAndCloseOrder
+router.post("/owner/raise-invoice/:id",authMiddleware.isOwner,ownerController.raiseInvoiceAndCloseOrder)
 module.exports=router

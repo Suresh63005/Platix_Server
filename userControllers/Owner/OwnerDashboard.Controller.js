@@ -91,7 +91,7 @@ const labOrders = async (req, res) => {
 const labAllOrders = async (req, res) => {
   try {
     const { organization_id,id:userId } = req.user;
-    console.log(req.user,"req.user")
+    console.log(userId,"req.user")
     const { orderStatus } = req.params;
 
     if (!["completed", "processing", "cancelled"].includes(orderStatus)) {
@@ -99,10 +99,10 @@ const labAllOrders = async (req, res) => {
     }
 
     const allOrders = await OrderReports.findAll({
-      where: { orderStatus, toOrganization: organization_id,created_by:userId },
+      where: { orderStatus, toOrganization: organization_id },
       include: [{ model: Organization, as: "toOrg", attributes: ["name"] }],
     });
-
+    console.log(allOrders,"allOrders")
     return res.status(200).json({
       [orderStatus]: allOrders.map(order => ({
         ...order.toJSON(),
@@ -610,7 +610,7 @@ const ownerUpsertOrder = async (req, res) => {
       address,
       created_by,
     } = req.body;
-
+    console.log(req.body,"req.body")
     const { cancel } = req.params;
 
     // Function to generate a unique ID
@@ -934,5 +934,50 @@ const cancelledAndDestroyOrder = async (req, res) => {
   }
 };
 
+const raiseInvoiceAndCloseOrder = async (req, res) => {
+  const { organization_id } = req.user;
+  const { id } = req.params;
 
-module.exports = { labOrders, labAllOrders, labOrderAndPaymentReportGetById, searchOrders ,searchDoctor ,searchOrdersGetByDate,orderAndPaymentSearch,assignService,upsertDoctor,clearAllNotifications,getAllHospitalName,ownerUpsertOrder,getAllTechnician,getAllDeliveryBoy ,cancelledAndDestroyOrder};
+  if (!organization_id) {
+    return res.status(401).json({ message: "Unauthorized" });
+  }
+
+  try {
+    const checkOrder = await OrderReports.findOne({
+      where: {
+        id: id,
+        toOrganization: organization_id, 
+      },
+    });
+
+    if (!checkOrder) {
+      return res.status(404).json({ message: "Order not found" });
+    }
+
+    if (checkOrder.orderStatus === "completed" && checkOrder.payment_status === "unpaid") {
+      await checkOrder.update({
+        orderStatus: "completed", 
+        payment_status: "processing", 
+      });
+
+      return res.status(200).json({
+        success: true,
+        message: "Invoice process started successfully.",
+        data: checkOrder,
+      });
+    } else {
+      return res.status(400).json({
+        success: false,
+        message: "Order is not eligible for invoice generation.",
+      });
+    }
+  } catch (error) {
+    console.error("Error in raiseInvoiceAndCloseOrder:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Internal server error",
+    });
+  }
+};
+
+module.exports = { labOrders, labAllOrders, labOrderAndPaymentReportGetById, searchOrders ,searchDoctor ,searchOrdersGetByDate,orderAndPaymentSearch,assignService,upsertDoctor,clearAllNotifications,getAllHospitalName,ownerUpsertOrder,getAllTechnician,getAllDeliveryBoy ,cancelledAndDestroyOrder,raiseInvoiceAndCloseOrder};
