@@ -10,4 +10,7 @@ router.post('/login/verify-otp',authMiddleware.isAuthenticated, authController.v
 // this route for all owner,technician and delivery boy
 router.post('/login/login-mobile', authController.loginwithnumber);
 
+router.put('/user/one-subscribe',authMiddleware.isAuthenticated,authController.updateOneSignal)
+router.put('/user/remove-one-subscribe',authMiddleware.isAuthenticated,authController.removeOneSignal)
+
 module.exports=router

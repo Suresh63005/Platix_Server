@@ -147,7 +147,14 @@ const orderDetailsGetById = async (req, res) => {
         {
           model: User,
           as: 'userDetails',
-          attributes: ['id', 'firstName', 'email', 'address', 'hospital_name']
+          attributes: ['id', 'firstName', 'email', 'address', 'hospital_name'],
+          // include:[
+          //   {
+          //     model:Organization,
+          //     as:'organization',
+          //     attributes:['id','name'],
+          //   }
+          // ]
         },
         {
           model:User,
@@ -166,7 +173,7 @@ const orderDetailsGetById = async (req, res) => {
         {
           model: TblOrganization_Service,
           as: 'orgservice',
-          attributes: ['id', 'service_id'],
+          attributes: ['id', 'service_id','price'],
           include: [
             {
               model: Services,
@@ -322,7 +329,6 @@ const closedOrder = async (req, res) => {
     await OrderReports.update(
       { 
         orderStatus: "completed", 
-        payment_status: "paid" 
       },
       { where: { id } }
     );

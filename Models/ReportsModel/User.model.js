@@ -92,6 +92,10 @@ const User = sequelize.define(
       type: DataTypes.STRING,
       allowNull: true,
     },
+    one_subscription:{
+      type:DataTypes.TEXT,
+      allowNull:true
+    },
   },
   {
     tableName: "User",
