@@ -261,7 +261,9 @@ const UploadImagesByTechnician = async (req, res) => {
   const CancelAndCloseOrder = async (req, res) => {
     const uid = req.user?.id;
     const { orderId } = req.body;
-    const {action}=req.query
+    const { action } = req.query;
+  
+    // Input validation
     if (!uid) {
       return res.status(401).json({ message: "Unauthorized: User not found!" });
     }
@@ -273,23 +275,32 @@ const UploadImagesByTechnician = async (req, res) => {
     }
   
     try {
+      // Find order
       const order = await OrderReports.findOne({ where: { technician: uid, id: orderId } });
       if (!order) {
-        return res.status(404).json({ message: "Order not found! or you don't have permission to modify it!" });
+        return res.status(404).json({ message: "Order not found or you don't have permission to modify it!" });
       }
-      if (order.orderStatus === action) {
-        return res.status(400).json({ message: `Order is already marked as ${action}.` });
+  
+      // Check current status
+      if (action === "cancelled" && order.orderStatus === "processing") {
+        return res.status(400).json({ message: "Order is already marked as processing." });
+      }
+      if (action === "completed" && order.orderStatus === "completed") {
+        return res.status(400).json({ message: "Order is already marked as completed." });
       }
       if (order.orderStatus === "completed" && action === "cancelled") {
         return res.status(400).json({ message: "Completed order cannot be cancelled!" });
       }
   
-      order.orderStatus = action;
+      // Set new status
+      order.orderStatus = action === "cancelled" ? "processing" : "completed";
       await order.save();
   
-      return res.status(200).json({ message: `Order has successfully ${action}!` });
+      // Response message
+      const statusMessage = action === "cancelled" ? "set to processing" : "completed";
+      return res.status(200).json({ message: `Order has been successfully ${statusMessage}!` });
     } catch (error) {
-      console.error("Error while updating order: ", error);
+      console.error("Error while updating order:", error);
       return res.status(500).json({ message: "Internal server error: " + error.message });
     }
   };
