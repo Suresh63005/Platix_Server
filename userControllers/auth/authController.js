@@ -112,7 +112,7 @@ const RoleDetails = async (req, res) => {
         console.log(otp)
         await sendEmail(email, subject, text);
 
-        return res.status(200).json({ message: "Role details updated successfully! OTP has been sent to your email." });
+        return res.status(200).json({ message: "Role details updated successfully! OTP has been sent to your email." ,user:user});
 
     } catch (error) {
         console.error("Error assigning/updating role:", error.message);
@@ -248,5 +248,53 @@ const ListAllUsers = async()=>{
   }
   ListAllUsers();
 
+  const updateOneSignal = async (req, res) => {
 
-module.exports = { verifyMobile ,RoleDetails,verifyOtp,loginwithnumber};
+    const userId = req.user.id;
+    if(!userId){
+        return res.status(400).json({ message: "Unauthorized!" });
+    }
+   
+    const {  one_subscription } = req.body;
+
+    if ( !one_subscription) {
+        return res.status(400).json({ message: "OneSignal ID are required!" });
+    }
+
+    try {
+        const user = await User.findOne({ where: { id: userId } });
+
+        if (!user) {
+            return res.status(404).json({ message: "User not found!" });
+        }
+
+        await User.update({ one_subscription }, { where: { id: userId } });
+
+        return res.status(200).json({ message: "OneSignal ID updated successfully!" });
+    } catch (error) {
+        console.error("Error updating OneSignal ID:", error.message);
+        return res.status(500).json({ message: "Internal server error: " + error.message });
+    }
+}
+
+const removeOneSignal = async (req, res) => {
+    const userId = req.user.id;
+    if(!userId){
+        return res.status(400).json({ message: "Unauthorized!" });
+    }
+    
+    try {
+        const user = await User.findOne({ where: { id: userId } });
+        if (!user) {
+            return res.status(404).json({ message: "User not found!" });
+        }
+        await User.update({ one_subscription: null }, { where: { id: userId } });
+        return res.status(200).json({ message: "OneSignal ID removed successfully!" });
+    }
+    catch (error) {
+        console.error("Error removing OneSignal ID:", error.message);
+        return res.status(500).json({ message: "Internal server error: " + error.message });
+    }
+}
+
+module.exports = { verifyMobile ,RoleDetails,verifyOtp,loginwithnumber,updateOneSignal,removeOneSignal};

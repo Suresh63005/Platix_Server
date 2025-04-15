@@ -7,7 +7,7 @@ const TblOrganization_Service = require("../../Models/tblOrganizationService");
 const Services = require("../../Models/TblServices.model");
 const TblOrganizationType = require("../../Models/TblOrganizationType.model");
 
-// getall dashboard data
+// getall dashboard data and searching also
 const getAll = async (req, res) => {
   const uid = req.user?.id; 
   if (!uid) {
@@ -23,7 +23,7 @@ const getAll = async (req, res) => {
 
     [activeOrders, completedOrders] = await Promise.all([
       OrderReports.count({ where: { orderStatus: "processing", delivery_boy: uid } }),
-      OrderReports.count({ where: { orderStatus: "completed",payment_status:"paid", delivery_boy: uid } })
+      OrderReports.count({ where: { orderStatus: "completed", delivery_boy: uid } })
     ]);
     // If search query is provided, perform search
     if (search) {
@@ -40,6 +40,11 @@ const getAll = async (req, res) => {
           {
             model: Organization,
             as: 'toOrg',
+            attributes: ['name'],
+          },
+          {
+            model:Organization,
+            as: 'fromOrg',
             attributes: ['name'],
           }
         ]
@@ -109,7 +114,8 @@ const deliveryAllOrders = async (req, res) => {
       },
       include: [
         { model: Organization, as: 'fromOrg', attributes: ['name'] } 
-      ]
+      ],
+      order: [['createdAt', 'DESC']]
     });
 
     return res.status(200).json({
@@ -129,7 +135,7 @@ const orderDetailsGetById = async (req, res) => {
   const uid = req.user?.id; 
   const { id } = req.params; 
   if (!uid) {
-    return res.status(401).json({ success: false, message: "Unauthorized. Please log in." });
+    return res.status(401).json({ success: false, message: "Unauthorized" });
   }
 
   try {
@@ -142,8 +148,21 @@ const orderDetailsGetById = async (req, res) => {
         {
           model: User,
           as: 'userDetails',
-          attributes: ['id', 'firstName', 'email', 'address', 'hospital_name']
+          attributes: ['id', 'firstName', 'email', 'address', 'hospital_name'],
+          // include:[
+          //   {
+          //     model:Organization,
+          //     as:'organization',
+          //     attributes:['id','name'],
+          //   }
+          // ]
+        },
+        {
+          model:User,
+          as:'deliveryBoy',
+          attributes: ['id', 'firstName','lastName', 'email', ]
         }
+        // here shown doctor details mean useruuid in orderreports table
       ]
     });
 
@@ -155,7 +174,7 @@ const orderDetailsGetById = async (req, res) => {
         {
           model: TblOrganization_Service,
           as: 'orgservice',
-          attributes: ['id', 'service_id'],
+          attributes: ['id', 'service_id','price'],
           include: [
             {
               model: Services,
@@ -177,14 +196,29 @@ const orderDetailsGetById = async (req, res) => {
         }
       ]
     });
+    const fromOrganizationDetails = await Organization.findByPk(orderReport.fromOrganization, {
+      attributes: ['id', 'name'],
+      include:[
+        {
+          model:TblOrganizationType,
+          as:'organizationType',
+          attributes:['id','organizationType']
+        }
+      ]
+    });
+
+    const orderData=orderReport.toJSON()
+    orderData.doctorDetails = orderData.userDetails; //Creates a new key called doctorDetails and assigns it the value of userDetails (which was loaded from the association).
+    delete orderData.userDetails; //Removes the original userDetails key from the object, so only doctorDetails will appear in the final response.
 
     return res.status(200).json({
       success: true,
       message: "Order report found successfully!",
       data: {
-        ...orderReport.toJSON(),
+        ...orderData,
         orderServices,
-        toOrganizationDetails
+        toOrganizationDetails,
+        fromOrganizationDetails
       }
     });
 
@@ -296,7 +330,6 @@ const closedOrder = async (req, res) => {
     await OrderReports.update(
       { 
         orderStatus: "completed", 
-        payment_status: "paid" 
       },
       { where: { id } }
     );

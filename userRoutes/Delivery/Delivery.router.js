@@ -19,7 +19,8 @@ router.get("/delivery/order/getbyid/:id",authMiddleware.isAuthenticated,delivery
 router.get("/delivery/closed-order/:id", authMiddleware.isAuthenticated, deliveryBoyController.closedOrder);
 
 // upsert order
-router.route("/delivery/upsert/:cancel?").post(authMiddleware.isAuthenticated,DentistController.fromDentist).put(authMiddleware.isAuthenticated,DentistController.fromDentist);//1
+router.post("/delivery/upsert",authMiddleware.isAuthenticated,DentistController.fromDentist);
+router.put("/delivery/upsert/:cancel?",authMiddleware.isAuthenticated,DentistController.cancelledOrders);
 
 router.delete("/delivery/delete/:status",authMiddleware.isAuthenticated,DentistController.cancelledAndDestroyOrder)
 
