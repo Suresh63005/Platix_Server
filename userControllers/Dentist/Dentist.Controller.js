@@ -840,8 +840,8 @@ const payNow = async (req, res) => {
         {
           app_id: process.env.ONESIGNAL_APP_ID,
           include_player_ids: [sendUserId.one_subscription],
-          headings: { en: ""},
-          contents: {en: ``}
+          headings: { en: "Payment Confirmation"},
+          contents: {en: `Order ${amount} for bill ${orderReport.orderId} has been successfully processed.`}
         },
         {
           headers: {

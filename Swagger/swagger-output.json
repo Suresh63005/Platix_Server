@@ -555,6 +555,9 @@
             "schema": {
               "type": "object",
               "properties": {
+                "id": {
+                  "example": "any"
+                },
                 "notificationApiKey": {
                   "example": "any"
                 },
@@ -575,6 +578,9 @@
                 },
                 "termsAndConditions": {
                   "example": "any"
+                },
+                "platformFee": {
+                  "example": "any"
                 }
               }
             }
@@ -583,6 +589,9 @@
         "responses": {
           "200": {
             "description": "OK"
+          },
+          "404": {
+            "description": "Not Found"
           },
           "500": {
             "description": "Internal Server Error"
@@ -1499,11 +1508,6 @@
         "description": "",
         "parameters": [
           {
-            "name": "authorization",
-            "in": "header",
-            "type": "string"
-          },
-          {
             "name": "body",
             "in": "body",
             "schema": {
@@ -1534,12 +1538,6 @@
           },
           "400": {
             "description": "Bad Request"
-          },
-          "401": {
-            "description": "Unauthorized"
-          },
-          "403": {
-            "description": "Forbidden"
           },
           "404": {
             "description": "Not Found"
@@ -1617,6 +1615,82 @@
           },
           "400": {
             "description": "Bad Request"
+          },
+          "404": {
+            "description": "Not Found"
+          },
+          "500": {
+            "description": "Internal Server Error"
+          }
+        }
+      }
+    },
+    "/user/one-subscribe": {
+      "put": {
+        "description": "",
+        "parameters": [
+          {
+            "name": "authorization",
+            "in": "header",
+            "type": "string"
+          },
+          {
+            "name": "body",
+            "in": "body",
+            "schema": {
+              "type": "object",
+              "properties": {
+                "one_subscription": {
+                  "example": "any"
+                }
+              }
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "400": {
+            "description": "Bad Request"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          },
+          "404": {
+            "description": "Not Found"
+          },
+          "500": {
+            "description": "Internal Server Error"
+          }
+        }
+      }
+    },
+    "/user/remove-one-subscribe": {
+      "put": {
+        "description": "",
+        "parameters": [
+          {
+            "name": "authorization",
+            "in": "header",
+            "type": "string"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "400": {
+            "description": "Bad Request"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
           },
           "404": {
             "description": "Not Found"
@@ -1724,6 +1798,9 @@
         "responses": {
           "200": {
             "description": "OK"
+          },
+          "201": {
+            "description": "Created"
           },
           "401": {
             "description": "Unauthorized"
@@ -1835,6 +1912,9 @@
         "responses": {
           "200": {
             "description": "OK"
+          },
+          "201": {
+            "description": "Created"
           },
           "401": {
             "description": "Unauthorized"
@@ -2282,38 +2362,6 @@
             "name": "authorization",
             "in": "header",
             "type": "string"
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "OK"
-          },
-          "401": {
-            "description": "Unauthorized"
-          },
-          "403": {
-            "description": "Forbidden"
-          },
-          "500": {
-            "description": "Internal Server Error"
-          }
-        }
-      }
-    },
-    "/delivery/dashboard/{search}": {
-      "get": {
-        "description": "",
-        "parameters": [
-          {
-            "name": "search",
-            "in": "path",
-            "required": true,
-            "type": "string"
-          },
-          {
-            "name": "authorization",
-            "in": "header",
-            "type": "string"
           },
           {
             "name": "search",
@@ -2325,17 +2373,11 @@
           "200": {
             "description": "OK"
           },
-          "400": {
-            "description": "Bad Request"
-          },
           "401": {
             "description": "Unauthorized"
           },
           "403": {
             "description": "Forbidden"
-          },
-          "404": {
-            "description": "Not Found"
           },
           "500": {
             "description": "Internal Server Error"
@@ -2410,10 +2452,51 @@
         }
       }
     },
-    "/delivery/upsert": {
+    "/delivery/closed-order/{id}": {
+      "get": {
+        "description": "",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "authorization",
+            "in": "header",
+            "type": "string"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "400": {
+            "description": "Bad Request"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          },
+          "500": {
+            "description": "Internal Server Error"
+          }
+        }
+      }
+    },
+    "/delivery/upsert/{cancel?}": {
       "post": {
         "description": "",
         "parameters": [
+          {
+            "name": "cancel?",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
           {
             "name": "authorization",
             "in": "header",
@@ -2496,6 +2579,158 @@
                 }
               }
             }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "201": {
+            "description": "Created"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          },
+          "404": {
+            "description": "Not Found"
+          },
+          "500": {
+            "description": "Internal Server Error"
+          }
+        }
+      },
+      "put": {
+        "description": "",
+        "parameters": [
+          {
+            "name": "cancel?",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "authorization",
+            "in": "header",
+            "type": "string"
+          },
+          {
+            "name": "body",
+            "in": "body",
+            "schema": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "example": "any"
+                },
+                "fromOrganization": {
+                  "example": "any"
+                },
+                "patientName": {
+                  "example": "any"
+                },
+                "patientId": {
+                  "example": "any"
+                },
+                "orderDate": {
+                  "example": "any"
+                },
+                "transactionId": {
+                  "example": "any"
+                },
+                "delivery_boy": {
+                  "example": "any"
+                },
+                "userUUID": {
+                  "example": "any"
+                },
+                "toOrganization": {
+                  "example": "any"
+                },
+                "serviceId": {
+                  "example": "any"
+                },
+                "requiredDate": {
+                  "example": "any"
+                },
+                "toothName": {
+                  "example": "any"
+                },
+                "shades": {
+                  "example": "any"
+                },
+                "remarks": {
+                  "example": "any"
+                },
+                "reasonForScan": {
+                  "example": "any"
+                },
+                "sub_total": {
+                  "example": "any"
+                },
+                "tax": {
+                  "example": "any"
+                },
+                "service_charges": {
+                  "example": "any"
+                },
+                "paid_amount": {
+                  "example": "any"
+                },
+                "total_amount": {
+                  "example": "any"
+                },
+                "payment_method": {
+                  "example": "any"
+                },
+                "order_status": {
+                  "example": "any"
+                },
+                "address": {
+                  "example": "any"
+                }
+              }
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "201": {
+            "description": "Created"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          },
+          "404": {
+            "description": "Not Found"
+          },
+          "500": {
+            "description": "Internal Server Error"
+          }
+        }
+      }
+    },
+    "/delivery/delete/{status}": {
+      "delete": {
+        "description": "",
+        "parameters": [
+          {
+            "name": "status",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "authorization",
+            "in": "header",
+            "type": "string"
           }
         ],
         "responses": {
@@ -2789,12 +3024,24 @@
         }
       }
     },
-    "/owner/report/{report}": {
+    "/owner/report/{report}/{fromdate?}/{todate?}": {
       "get": {
         "description": "",
         "parameters": [
           {
             "name": "report",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "fromdate?",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "todate?",
             "in": "path",
             "required": true,
             "type": "string"
@@ -2817,9 +3064,6 @@
           },
           "403": {
             "description": "Forbidden"
-          },
-          "404": {
-            "description": "Not Found"
           },
           "500": {
             "description": "Internal Server Error"
@@ -2902,18 +3146,19 @@
         }
       }
     },
-    "/owner/order/payment/search-orders": {
+    "/owner/order/search/{search}": {
       "get": {
         "description": "",
         "parameters": [
-          {
-            "name": "authorization",
-            "in": "header",
-            "type": "string"
-          },
           {
             "name": "search",
-            "in": "query",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "authorization",
+            "in": "header",
             "type": "string"
           }
         ],
@@ -2933,170 +3178,20 @@
         }
       }
     },
-    "/owner/report/{orderOrPayment}/{fromdate?}/{todate?}": {
+    "/owner/doctor/search/{search}": {
       "get": {
         "description": "",
         "parameters": [
-          {
-            "name": "orderOrPayment",
-            "in": "path",
-            "required": true,
-            "type": "string"
-          },
-          {
-            "name": "fromdate?",
-            "in": "path",
-            "required": true,
-            "type": "string"
-          },
-          {
-            "name": "todate?",
-            "in": "path",
-            "required": true,
-            "type": "string"
-          },
-          {
-            "name": "authorization",
-            "in": "header",
-            "type": "string"
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "OK"
-          },
-          "400": {
-            "description": "Bad Request"
-          },
-          "401": {
-            "description": "Unauthorized"
-          },
-          "403": {
-            "description": "Forbidden"
-          },
-          "500": {
-            "description": "Internal Server Error"
-          }
-        }
-      }
-    },
-    "/owner/order/search": {
-      "get": {
-        "description": "",
-        "parameters": [
-          {
-            "name": "authorization",
-            "in": "header",
-            "type": "string"
-          },
           {
             "name": "search",
-            "in": "query",
+            "in": "path",
+            "required": true,
             "type": "string"
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "OK"
           },
-          "401": {
-            "description": "Unauthorized"
-          },
-          "403": {
-            "description": "Forbidden"
-          },
-          "500": {
-            "description": "Internal Server Error"
-          }
-        }
-      }
-    },
-    "/owner/upsert": {
-      "post": {
-        "description": "",
-        "parameters": [
           {
             "name": "authorization",
             "in": "header",
             "type": "string"
-          },
-          {
-            "name": "body",
-            "in": "body",
-            "schema": {
-              "type": "object",
-              "properties": {
-                "id": {
-                  "example": "any"
-                },
-                "fromOrganization": {
-                  "example": "any"
-                },
-                "patientName": {
-                  "example": "any"
-                },
-                "patientId": {
-                  "example": "any"
-                },
-                "orderDate": {
-                  "example": "any"
-                },
-                "transactionId": {
-                  "example": "any"
-                },
-                "delivery_boy": {
-                  "example": "any"
-                },
-                "userUUID": {
-                  "example": "any"
-                },
-                "toOrganization": {
-                  "example": "any"
-                },
-                "serviceId": {
-                  "example": "any"
-                },
-                "requiredDate": {
-                  "example": "any"
-                },
-                "toothName": {
-                  "example": "any"
-                },
-                "shades": {
-                  "example": "any"
-                },
-                "remarks": {
-                  "example": "any"
-                },
-                "reasonForScan": {
-                  "example": "any"
-                },
-                "sub_total": {
-                  "example": "any"
-                },
-                "tax": {
-                  "example": "any"
-                },
-                "service_charges": {
-                  "example": "any"
-                },
-                "paid_amount": {
-                  "example": "any"
-                },
-                "total_amount": {
-                  "example": "any"
-                },
-                "payment_method": {
-                  "example": "any"
-                },
-                "order_status": {
-                  "example": "any"
-                },
-                "address": {
-                  "example": "any"
-                }
-              }
-            }
           }
         ],
         "responses": {
@@ -3108,9 +3203,6 @@
           },
           "403": {
             "description": "Forbidden"
-          },
-          "404": {
-            "description": "Not Found"
           },
           "500": {
             "description": "Internal Server Error"
@@ -3207,6 +3299,9 @@
                 },
                 "address": {
                   "example": "any"
+                },
+                "created_by": {
+                  "example": "any"
                 }
               }
             }
@@ -3215,6 +3310,9 @@
         "responses": {
           "200": {
             "description": "OK"
+          },
+          "201": {
+            "description": "Created"
           },
           "401": {
             "description": "Unauthorized"
@@ -3317,6 +3415,380 @@
                   "example": "any"
                 },
                 "address": {
+                  "example": "any"
+                },
+                "created_by": {
+                  "example": "any"
+                }
+              }
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "201": {
+            "description": "Created"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          },
+          "404": {
+            "description": "Not Found"
+          },
+          "500": {
+            "description": "Internal Server Error"
+          }
+        }
+      }
+    },
+    "/owner/assign-service": {
+      "post": {
+        "description": "",
+        "parameters": [
+          {
+            "name": "authorization",
+            "in": "header",
+            "type": "string"
+          },
+          {
+            "name": "body",
+            "in": "body",
+            "schema": {
+              "type": "object",
+              "properties": {
+                "orderId": {
+                  "example": "any"
+                },
+                "technician": {
+                  "example": "any"
+                },
+                "delivery_boy": {
+                  "example": "any"
+                }
+              }
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "400": {
+            "description": "Bad Request"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          },
+          "404": {
+            "description": "Not Found"
+          },
+          "500": {
+            "description": "Internal Server Error"
+          }
+        }
+      }
+    },
+    "/owner/upsert-doctor": {
+      "post": {
+        "description": "",
+        "parameters": [
+          {
+            "name": "authorization",
+            "in": "header",
+            "type": "string"
+          },
+          {
+            "name": "body",
+            "in": "body",
+            "schema": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "example": "any"
+                },
+                "prefix": {
+                  "example": "any"
+                },
+                "firstName": {
+                  "example": "any"
+                },
+                "lastName": {
+                  "example": "any"
+                },
+                "email": {
+                  "example": "any"
+                },
+                "mobileNo": {
+                  "example": "any"
+                },
+                "hospital_name": {
+                  "example": "any"
+                },
+                "address": {
+                  "example": "any"
+                },
+                "googleMapLink": {
+                  "example": "any"
+                }
+              }
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "201": {
+            "description": "Created"
+          },
+          "400": {
+            "description": "Bad Request"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          },
+          "404": {
+            "description": "Not Found"
+          },
+          "500": {
+            "description": "Internal Server Error"
+          }
+        }
+      }
+    },
+    "/owner/get-hospital-name": {
+      "get": {
+        "description": "",
+        "parameters": [
+          {
+            "name": "authorization",
+            "in": "header",
+            "type": "string"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          },
+          "500": {
+            "description": "Internal Server Error"
+          }
+        }
+      }
+    },
+    "/owner/get-technician": {
+      "get": {
+        "description": "",
+        "parameters": [
+          {
+            "name": "authorization",
+            "in": "header",
+            "type": "string"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          },
+          "404": {
+            "description": "Not Found"
+          },
+          "500": {
+            "description": "Internal Server Error"
+          }
+        }
+      }
+    },
+    "/owner/get-delivery-boy": {
+      "get": {
+        "description": "",
+        "parameters": [
+          {
+            "name": "authorization",
+            "in": "header",
+            "type": "string"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          },
+          "404": {
+            "description": "Not Found"
+          },
+          "500": {
+            "description": "Internal Server Error"
+          }
+        }
+      }
+    },
+    "/owner/upload-images": {
+      "post": {
+        "description": "",
+        "parameters": [
+          {
+            "name": "authorization",
+            "in": "header",
+            "type": "string"
+          },
+          {
+            "name": "orderId",
+            "in": "query",
+            "type": "string"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "400": {
+            "description": "Bad Request"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          },
+          "404": {
+            "description": "Not Found"
+          },
+          "500": {
+            "description": "Internal Server Error"
+          }
+        }
+      }
+    },
+    "/owner/delete/{status}": {
+      "delete": {
+        "description": "",
+        "parameters": [
+          {
+            "name": "status",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "authorization",
+            "in": "header",
+            "type": "string"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "400": {
+            "description": "Bad Request"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          },
+          "404": {
+            "description": "Not Found"
+          },
+          "500": {
+            "description": "Internal Server Error"
+          }
+        }
+      }
+    },
+    "/owner/raise-invoice/{id}": {
+      "post": {
+        "description": "",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "authorization",
+            "in": "header",
+            "type": "string"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "400": {
+            "description": "Bad Request"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          },
+          "404": {
+            "description": "Not Found"
+          },
+          "500": {
+            "description": "Internal Server Error"
+          }
+        }
+      }
+    },
+    "/owner/edit-invoice/{id}": {
+      "put": {
+        "description": "",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "authorization",
+            "in": "header",
+            "type": "string"
+          },
+          {
+            "name": "body",
+            "in": "body",
+            "schema": {
+              "type": "object",
+              "properties": {
+                "totalAmount": {
+                  "example": "any"
+                },
+                "remarks": {
                   "example": "any"
                 }
               }
