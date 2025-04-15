@@ -16,17 +16,18 @@ const Roles = require("../../Models/TblRoles.model");
 const uploadToS3 = require("../../config/fileUpload.aws");
 const UploadImages = require("../../Models/ReportsModel/UploadImages.model");
 
-const moment=require("moment-timezone");
+const moment = require("moment-timezone");
+const axios  = require("axios");
 
 
 // Fetch total payable bills, active orders, closed orders, received payments, and order list
 const labOrders = async (req, res) => {
-  
+
   try {
     // console.log(req.user);
     const { organization_id, id, role_id } = req.user;
 
-    console.log(organization_id,"yyyyyyyyyyyyy")
+    console.log(organization_id, "yyyyyyyyyyyyy")
 
     const user = await User.findOne({
       where: { id, role_id },
@@ -47,7 +48,7 @@ const labOrders = async (req, res) => {
       include: [
         {
           model: Organization,
-          as: "toOrg", 
+          as: "toOrg",
           attributes: ["name"],
         },
       ],
@@ -96,8 +97,8 @@ const labOrders = async (req, res) => {
 // Fetch active, closed, and cancelled orders for the laboratory owner
 const labAllOrders = async (req, res) => {
   try {
-    const { organization_id,id:userId } = req.user;
-    console.log(userId,"req.user")
+    const { organization_id, id: userId } = req.user;
+    console.log(userId, "req.user")
     const { orderStatus } = req.params;
 
     if (!["completed", "processing", "cancelled"].includes(orderStatus)) {
@@ -108,7 +109,7 @@ const labAllOrders = async (req, res) => {
       where: { orderStatus, toOrganization: organization_id },
       include: [{ model: Organization, as: "toOrg", attributes: ["name"] }],
     });
-    console.log(allOrders,"allOrders")
+    console.log(allOrders, "allOrders")
     return res.status(200).json({
       [orderStatus]: allOrders.map(order => ({
         ...order.toJSON(),
@@ -124,14 +125,16 @@ const labAllOrders = async (req, res) => {
 
 // (dashboard) Search orders by order ID or organization name
 const searchOrders = async (req, res) => {
-  const {organization_id, id, role_id} =req.user;
+  const { organization_id, id, role_id } = req.user;
   const { search } = req.query;
-  
+
   try {
     const orders = await OrderReports.findAll({
-      where: { toOrganization:organization_id, orderStatus: "processing",
+      where: {
+        toOrganization: organization_id, orderStatus: "processing",
         delivery_boy: { [Op.is]: null },
-        technician: { [Op.is]: null },[Op.or]: [{ orderId: { [Op.like]: `%${search}%` } }, { "$toOrg.name$": { [Op.like]: `%${search}%` } }] },
+        technician: { [Op.is]: null }, [Op.or]: [{ orderId: { [Op.like]: `%${search}%` } }, { "$toOrg.name$": { [Op.like]: `%${search}%` } }]
+      },
       include: [{ model: Organization, as: "toOrg", attributes: ["name"] }]
     });
     return res.status(200).json({ success: true, orders });
@@ -160,10 +163,10 @@ const searchOrders = async (req, res) => {
 // };
 
 // Retrieve order or payment report by ID
-const labOrderAndPaymentReportGetById=async(req,res)=>{
-  const {organization_id} =req.user;
-  if(!organization_id){
-    return res.status(401).json({message:"Unauthorized"})
+const labOrderAndPaymentReportGetById = async (req, res) => {
+  const { organization_id } = req.user;
+  if (!organization_id) {
+    return res.status(401).json({ message: "Unauthorized" })
   }
   const { id, report } = req.params;
   if (!["order", "payment"].includes(report)) return res.status(400).json({ message: "Invalid report type" });
@@ -171,7 +174,7 @@ const labOrderAndPaymentReportGetById=async(req,res)=>{
   try {
     // const attributes = report === "order" ? ["orderId", "orderDate", "fromOrganization", "toOrganization", "patientId", "patientName"] : ["orderId", "orderDate", "fromOrganization", "toOrganization", "patientId", "patientName", "totalAmount", "paidAmount", "paymentMethod", "remarks"];
     const reportData = await OrderReports.findOne({
-      where: { id ,toOrganization:organization_id},
+      where: { id, toOrganization: organization_id },
       // attributes,
       include: [
         {
@@ -180,34 +183,34 @@ const labOrderAndPaymentReportGetById=async(req,res)=>{
           attributes: ['id', 'firstName', 'email', 'address', 'hospital_name'],
         },
         {
-          model:OrderServices,
+          model: OrderServices,
           as: 'orderServices',
-          attributes:["quantity"],
-          include:[
+          attributes: ["quantity"],
+          include: [
             {
-              model:TblOrganization_Service,
-              as:"orgservice",
-              attributes:["id","price"],
+              model: TblOrganization_Service,
+              as: "orgservice",
+              attributes: ["id", "price"],
               include: [
                 {
                   model: Services,
                   as: 'servicess',
-                  attributes: [ "servicename", 'servicedescription']
+                  attributes: ["servicename", 'servicedescription']
                 },
-                
+
               ],
             }
           ]
         },
         {
-          model:orderTransaction,
-          as:"transactions",
-          attributes:["transactionId","amount","createdAt"],
+          model: orderTransaction,
+          as: "transactions",
+          attributes: ["transactionId", "amount", "createdAt"],
         },
         {
-          model:UploadImages,
-          as:"orderImages",
-          attributes:["id","order_id","images"],
+          model: UploadImages,
+          as: "orderImages",
+          attributes: ["id", "order_id", "images"],
         }
       ]
     });
@@ -306,34 +309,34 @@ const searchOrdersGetByDate = async (req, res) => {
           attributes: ['id', 'name'],
         },
         {
-          model: OrderServices,  
-          as: "orderServices",   
-          attributes: [ "quantity", "price"],  
+          model: OrderServices,
+          as: "orderServices",
+          attributes: ["quantity", "price"],
           include: [
             {
-              model: TblOrganization_Service,    
-              as: "orgservice",     
-              attributes: ["id"],  
-              required: false, 
-              include:[
+              model: TblOrganization_Service,
+              as: "orgservice",
+              attributes: ["id"],
+              required: false,
+              include: [
                 {
-                  model:Services,
-                  as:"servicess",
-                  attributes:["servicename"]
+                  model: Services,
+                  as: "servicess",
+                  attributes: ["servicename"]
                 }
-              ]   
+              ]
             }
           ]
         },
         {
-          model:orderTransaction,
-          as:"transactions",
-          attributes:["transactionId","amount","createdAt"],
+          model: orderTransaction,
+          as: "transactions",
+          attributes: ["transactionId", "amount", "createdAt"],
         },
         {
-          model:UploadImages,
-          as:"orderImages",
-          attributes:["id","order_id","images"],
+          model: UploadImages,
+          as: "orderImages",
+          attributes: ["id", "order_id", "images"],
         }
       ],
     });
@@ -363,7 +366,7 @@ const orderAndPaymentSearch = async (req, res) => {
     const orderReports = await OrderReports.findAll({
       where: {
         orderStatus: "completed",
-        toOrganization:organization_id,
+        toOrganization: organization_id,
         [Op.or]: [
           { orderId: { [Op.like]: `%${search}%` } },
           { toothName: { [Op.like]: `%${search}%` } },
@@ -398,26 +401,26 @@ const orderAndPaymentSearch = async (req, res) => {
 
 // while creating order search doctor
 const searchDoctor = async (req, res) => {
-  const {organization_id, id, role_id} =req.user;
-  if(!organization_id) {
+  const { organization_id, id, role_id } = req.user;
+  if (!organization_id) {
     return res.status(401).json({ message: "Unauthorized" });
   }
   const { search } = req.params;
   try {
     const results = await User.findAll({
       where: {
-        prefix:"DR",
+        prefix: "DR",
         [Op.or]: [{ firstName: { [Op.like]: `%${search}%` } }, { lastName: { [Op.like]: `%${search}%` } }]
       },
-      include:[
+      include: [
         {
-          model:Organization,
-          as:'organization',
-          attributes:['id','name'],
+          model: Organization,
+          as: 'organization',
+          attributes: ['id', 'name'],
         }
       ]
     });
-    console.log(results,"results")
+    console.log(results, "results")
     return res.status(200).json({ success: true, results });
   } catch (error) {
     console.error("Error searching for doctors:", error);
@@ -428,7 +431,7 @@ const searchDoctor = async (req, res) => {
 // assigning service to the delivery boy or technician
 const assignService = async (req, res) => {
   const { organization_id } = req.user;
-  console.log(organization_id,"organization_id")
+  console.log(organization_id, "organization_id")
   if (!organization_id) {
     return res.status(401).json({ message: "Unauthorized" });
   }
@@ -440,41 +443,64 @@ const assignService = async (req, res) => {
   }
 
   try {
-    const order = await OrderReports.findOne({ where: { id: orderId ,toOrganization:organization_id} });
+    const order = await OrderReports.findOne({ where: { id: orderId, toOrganization: organization_id } });
     if (!order) {
       return res.status(404).json({ message: "Order not found" });
     }
 
     const updateFields = {};
-
+    let assignedUserId = null;
     if (technician) {
       updateFields.technician = technician;
 
-      const technicianuser = await User.findOne({ where: { id: technician, organization_id:organization_id } });
+      const technicianuser = await User.findOne({ where: { id: technician, organization_id: organization_id } });
 
       if (!technicianuser) {
         return res.status(404).json({ message: "Technician not found" });
       }
+      assignedUserId = technician
     }
     if (delivery_boy) {
       updateFields.delivery_boy = delivery_boy;
-      const deliveryboyuser = await User.findOne({ where: { id: delivery_boy, organization_id:organization_id } });
+      const deliveryboyuser = await User.findOne({ where: { id: delivery_boy, organization_id: organization_id } });
       if (!deliveryboyuser) {
         return res.status(404).json({ message: "Delivery Boy not found" });
-        }
+      }
+      assignedUserId=delivery_boy
     }
 
     if (Object.keys(updateFields).length > 0) {
       await OrderReports.update(updateFields, { where: { id: orderId } });
     }
-    if(delivery_boy || technician){
+    if (assignedUserId) {
+
+      const assignedUser=await User.findByPk(assignedUserId)
       await Notification.create({
-        uid:delivery_boy || technician,
+        uid: assignedUserId,
         datetime: new Date(),
         title: "Order Assigned",
-        description: `You have been assigned to order ID ${orderId}`,
+        description: `You have been assigned to order ID ${order.orderId}`,
 
       })
+
+      //send push notfication
+      if(assignedUser?.one_subscription){
+        const res=await axios.post("https://onesignal.com/api/v1/notifications",{
+          app_id:process.env.ONESIGNAL_APP_ID,
+          include_player_ids: [assignedUser.one_subscription],
+            headings: { en: "Order Assigned" },
+            contents: {
+              en: `You have been assigned to order ID ${order.orderId}.`,
+            },
+        },
+      {
+        headers:{
+          "Content-Type": "application/json",
+          Authorization: `Basic ${process.env.ONESIGNAL_API_KEY}`,
+        }
+      })
+      
+      }
     }
     return res.status(200).json({ message: "Service assigned successfully" });
   } catch (error) {
@@ -492,7 +518,7 @@ const upsertDoctor = async (req, res) => {
   }
 
   const {
-    id,          
+    id,
     prefix,
     firstName,
     lastName,
@@ -543,7 +569,7 @@ const upsertDoctor = async (req, res) => {
       hospital_name,
       address,
       googleMapLink,
-      role_id:"b83bfdf1-7a7e-4284-8da9-9e332a18f889"
+      role_id: "b83bfdf1-7a7e-4284-8da9-9e332a18f889"
     });
 
     return res.status(201).json({ message: "Doctor created successfully", doctor: newDoctor });
@@ -554,7 +580,7 @@ const upsertDoctor = async (req, res) => {
 };
 
 //get all hospital name (organization name ) where organization type is dentist
-const getAllHospitalName=async(req,res)=>{
+const getAllHospitalName = async (req, res) => {
 
   try {
     const organizations = await Organization.findAll({
@@ -564,29 +590,29 @@ const getAllHospitalName=async(req,res)=>{
         where: {
           organizationType: 'dentist',
         },
-        attributes:['id','organizationType','description'],
-        required: true, 
+        attributes: ['id', 'organizationType', 'description'],
+        required: true,
       },
-      attributes: ['id','name'], 
+      attributes: ['id', 'name'],
     });
     return res.status(200).json({ message: "Hospital name fetched successfully", hospitalName: organizations });
   } catch (error) {
     console.error("Error fetching hospital names:", error);
     return res.status(500).json({ message: "Internal Server Error" });
-    
+
   }
 }
- // for clear notifications 
- const clearAllNotifications=async(req,res)=>{
-  const  {organization_id}=req.user;
+// for clear notifications 
+const clearAllNotifications = async (req, res) => {
+  const { organization_id } = req.user;
   try {
-    const notifications=await Notification.destroy({
-      where:{toOrganization:organization_id},
+    const notifications = await Notification.destroy({
+      where: { toOrganization: organization_id },
     })
-    return res.status(200).json({success:true,notifications})
+    return res.status(200).json({ success: true, notifications })
   } catch (error) {
     console.error("Error fetching notifications:", error);
-    return res.status(500).json({ success: false,  message: "Internal Server Error",  error: error.message });
+    return res.status(500).json({ success: false, message: "Internal Server Error", error: error.message });
   }
 }
 
@@ -594,7 +620,7 @@ const getAllHospitalName=async(req,res)=>{
 const ownerUpsertOrder = async (req, res) => {
   const transaction = await sequelize.transaction({ autocommit: false });
   const { organization_id } = req.user;
-  console.log(organization_id,"organization_id")
+  console.log(organization_id, "organization_id")
   if (!organization_id) {
     return res.status(401).json({ message: "Unauthorized" });
   }
@@ -626,7 +652,7 @@ const ownerUpsertOrder = async (req, res) => {
       address,
       created_by,
     } = req.body;
-    console.log(req.body,"req.body")
+    console.log(req.body, "req.body")
     const { cancel } = req.params;
 
     // Function to generate a unique ID
@@ -645,7 +671,7 @@ const ownerUpsertOrder = async (req, res) => {
     if (id) {
       // Update existing order
       orderReport = await OrderReports.findOne({
-        where: { id:id, toOrganization:organization_id, orderStatus: "processing" },
+        where: { id: id, toOrganization: organization_id, orderStatus: "processing" },
       }, { transaction });
 
       if (!orderReport) {
@@ -668,7 +694,7 @@ const ownerUpsertOrder = async (req, res) => {
             patientName,
             orderId: orderReport.orderId,
             patientId: patientId || orderReport.patientId,
-            toOrganization:organization_id,
+            toOrganization: organization_id,
             requiredDate,
             toothName,
             orderDate: orderReport.orderDate,
@@ -699,7 +725,7 @@ const ownerUpsertOrder = async (req, res) => {
           patientName,
           orderId: orderIdValue,
           patientId,
-          toOrganization:organization_id,
+          toOrganization: organization_id,
           orderDate,
           requiredDate,
           toothName,
@@ -717,18 +743,65 @@ const ownerUpsertOrder = async (req, res) => {
           orderStatus: "processing",
           address,
           payment_status: "unpaid",
-          created_by:userUUID,
+          created_by: userUUID,
         },
         { transaction }
       );
     }
 
-    await Notification.create({
-      uid: userUUID ,
-      datetime: new Date(),
-      title: "Order Confirmation",
-      description: `Order ${orderReport.orderId} has been successfully confirmed and is now beeing processed.`
+    //send notification
+    const ownersFromOrganization = await User.findAll({
+      where: {
+        organization_id: toOrganization,
+      },
+      include: [
+        {
+          model: Roles,
+          as: "role",
+          attributes: ["id", "rolename"],
+          where: {
+            rolename: "owner"
+          }
+        }
+      ]
     })
+    // console.log(ownersFromOrganization, "ownersFromOrganization");
+    if (ownersFromOrganization.length > 0) {
+      const notifications = ownersFromOrganization.map((owner) => {
+        return {
+          organization_id: toOrganization,
+          uid: owner.id,
+          datetime: new Date(),
+          title: "New Order Received",
+          description: `New Order ${orderReport.orderId} has been received to your organization.`,
+
+        }
+      })
+      await Notification.bulkCreate(notifications, { transaction })
+
+      //// 🔹 Send push notification (OneSignal)
+      const pushNotifications = ownersFromOrganization.filter((owner) => owner.one_subscription).map((owner) => {
+        return axios.post("https://onesignal.com/api/v1/notifications", {
+          app_id: process.env.ONESIGNAL_APP_ID,
+          include_player_ids: [owner.one_subscription],
+          headings: { en: "New Order Received" },
+          contents: { en: `New Order ${orderReport.orderId} has been received to your organization.` },
+        },
+          {
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Basic ${process.env.ONESIGNAL_API_KEY}`,
+            }
+          })
+      })
+      
+      try {
+        await Promise.all(pushNotifications)
+        console.log(" Push notifications sent to all owners.");
+      } catch (pushError) {
+        console.warn("⚠️ One or more push notifications failed:", pushError.message);
+      }
+    }
 
     if (transactionId) {
       console.log("Processing transaction...");
@@ -739,11 +812,11 @@ const ownerUpsertOrder = async (req, res) => {
           orderId: orderReport.id,
           userUUID: userUUID,
           transactionId,
-          amount: total_amount, 
+          amount: total_amount,
         },
         { transaction }
       );
-      
+
       // Update order status to 'paid' IF THEY PAID FULL AMOUNT
       await orderReport.update(
         { payment_status: "paid" },
@@ -751,9 +824,9 @@ const ownerUpsertOrder = async (req, res) => {
       );
 
       // notification send
-     
-       
-      
+
+
+
     }
 
     // Update User Address
@@ -781,7 +854,7 @@ const ownerUpsertOrder = async (req, res) => {
 
           if (!service) {
             return res.status(404).json({
-              message: "Organization service not found", 
+              message: "Organization service not found",
               status: false
             });
           }
@@ -800,7 +873,7 @@ const ownerUpsertOrder = async (req, res) => {
 
     await transaction.commit();
 
-    return res.status(200).json({
+    return res.status(id ? 200 : 201).json({
       success: true,
       message: id ? "Order updated successfully." : "Order created successfully.",
       data: orderReport,
@@ -830,7 +903,7 @@ const getAllTechnician = async (req, res) => {
   try {
     const technicianRole = await Roles.findOne({
       where: {
-        rolename: 'Technician' || 'technician',  
+        rolename: 'Technician' || 'technician',
       },
     });
 
@@ -841,7 +914,7 @@ const getAllTechnician = async (req, res) => {
     const technician = await User.findAll({
       where: {
         organization_id: organization_id,
-        role_id: technicianRole.id, 
+        role_id: technicianRole.id,
       },
     });
 
@@ -872,11 +945,11 @@ const getAllDeliveryBoy = async (req, res) => {
     const DeliveryBoyRole = await Roles.findOne({
       where: {
         rolename: {
-          [Op.like]: 'delivery boy', 
+          [Op.like]: 'delivery boy',
         }
       }
     });
-    
+
 
     if (!DeliveryBoyRole) {
       return res.status(404).json({ message: "DeliveryBoy role not found" });
@@ -885,7 +958,7 @@ const getAllDeliveryBoy = async (req, res) => {
     const deliveryBoy = await User.findAll({
       where: {
         organization_id: organization_id,
-        role_id: DeliveryBoyRole.id 
+        role_id: DeliveryBoyRole.id
       },
     });
 
@@ -911,7 +984,7 @@ const getAllDeliveryBoy = async (req, res) => {
 
 const cancelledAndDestroyOrder = async (req, res) => {
   const { status } = req.params; // expected: 'completed' or 'cancelled'
-  const { organization_id,  id:userId } = req.user;
+  const { organization_id, id: userId } = req.user;
 
   if (!organization_id) {
     return res.status(401).json({ message: "Unauthorized" });
@@ -926,7 +999,7 @@ const cancelledAndDestroyOrder = async (req, res) => {
     const whereClause = {
       orderStatus: status,
       toOrganization: organization_id,
-      created_by: userId, 
+      created_by: userId,
     };
 
     if (status === "completed") {
@@ -966,7 +1039,7 @@ const raiseInvoiceAndCloseOrder = async (req, res) => {
     const checkOrder = await OrderReports.findOne({
       where: {
         id: id,
-        toOrganization: organization_id, 
+        toOrganization: organization_id,
       },
     });
 
@@ -976,8 +1049,8 @@ const raiseInvoiceAndCloseOrder = async (req, res) => {
 
     if (checkOrder.orderStatus === "completed" && checkOrder.payment_status === "unpaid") {
       await checkOrder.update({
-        orderStatus: "completed", 
-        payment_status: "processing", 
+        orderStatus: "completed",
+        payment_status: "processing",
       });
 
       return res.status(200).json({
@@ -1000,16 +1073,16 @@ const raiseInvoiceAndCloseOrder = async (req, res) => {
   }
 };
 
-const editInvoice=async(req,res)=>{
+const editInvoice = async (req, res) => {
   const { organization_id } = req.user;
   const { id } = req.params;
-  if(!organization_id) {
+  if (!organization_id) {
     return res.status(401).json({ message: "Unauthorized" });
   }
-  const {totalAmount,remarks}=req.body;
+  const { totalAmount, remarks } = req.body;
   try {
     const order = await OrderReports.findOne({
-      where: { id, toOrganization: organization_id,payment_status:{[Op.ne]: "paid" }, },
+      where: { id, toOrganization: organization_id, payment_status: { [Op.ne]: "paid" }, },
     });
     if (!order) {
       return res.status(404).json({ message: "Order not found" });
@@ -1112,5 +1185,5 @@ const uploadImagesByOwner = async (req, res) => {
   }
 };
 
-module.exports = { labOrders, labAllOrders, labOrderAndPaymentReportGetById, searchOrders ,searchDoctor ,searchOrdersGetByDate,orderAndPaymentSearch,assignService,upsertDoctor,clearAllNotifications,getAllHospitalName,ownerUpsertOrder,getAllTechnician, uploadImagesByOwner, getAllDeliveryBoy ,cancelledAndDestroyOrder,raiseInvoiceAndCloseOrder,editInvoice};
+module.exports = { labOrders, labAllOrders, labOrderAndPaymentReportGetById, searchOrders, searchDoctor, searchOrdersGetByDate, orderAndPaymentSearch, assignService, upsertDoctor, clearAllNotifications, getAllHospitalName, ownerUpsertOrder, getAllTechnician, uploadImagesByOwner, getAllDeliveryBoy, cancelledAndDestroyOrder, raiseInvoiceAndCloseOrder, editInvoice };
 
