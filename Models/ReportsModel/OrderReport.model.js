@@ -128,7 +128,18 @@ const OrderReports = sequelize.define(
     created_by: {
       type: DataTypes.UUID,
       allowNull: true,
-    }
+    },
+    assignment_status: {
+      type: DataTypes.ENUM(
+        "unassigned",
+        "assigned_to_technician",
+        "technician_completed",
+        "assigned_to_delivery_boy",
+        "delivery_boy_completed"
+      ),
+      defaultValue: "unassigned",
+      allowNull: true,
+    }    
   },
   {
     tableName: "OrderReports",
