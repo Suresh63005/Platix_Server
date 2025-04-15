@@ -49,7 +49,9 @@ const fromDentist = async (req, res) => {
       address,
     } = req.body;
 
-    const { cancel } = req.params;
+    console.log(req.body,"yyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyy")
+
+    
 
     // Function to generate a unique ID
     const generateUniqueId = async (prefix, model, field) => {
@@ -80,13 +82,7 @@ const fromDentist = async (req, res) => {
         return res.status(403).json({ success: false, message: "You are not allowed to edit or cancel this order." });
       }
 
-      if (cancel) {
-        // console.log(`Cancelling order ${id}`);
-        await orderReport.update(
-          { orderStatus: "cancelled" },
-          { transaction }
-        );
-      } else {
+      
         console.log("updte started 1");
         await orderReport.update(
           {
@@ -111,9 +107,11 @@ const fromDentist = async (req, res) => {
             orderStatus: order_status,
             address
           },
-          { transaction }
+          { where: { id: id }, transaction }
+
+          
         );
-      }
+      
     } else {
       // Create new order
       const orderIdValue = await generateUniqueId("ORD", OrderReports, "orderId");

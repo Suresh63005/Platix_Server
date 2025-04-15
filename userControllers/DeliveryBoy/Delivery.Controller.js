@@ -114,7 +114,8 @@ const deliveryAllOrders = async (req, res) => {
       },
       include: [
         { model: Organization, as: 'fromOrg', attributes: ['name'] } 
-      ]
+      ],
+      order: [['createdAt', 'DESC']]
     });
 
     return res.status(200).json({

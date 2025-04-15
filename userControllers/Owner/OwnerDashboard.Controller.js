@@ -108,6 +108,7 @@ const labAllOrders = async (req, res) => {
     const allOrders = await OrderReports.findAll({
       where: { orderStatus, toOrganization: organization_id },
       include: [{ model: Organization, as: "toOrg", attributes: ["name"] }],
+      order: [["createdAt", "DESC"]],
     });
     console.log(allOrders, "allOrders")
     return res.status(200).json({

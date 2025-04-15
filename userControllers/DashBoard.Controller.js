@@ -196,6 +196,7 @@ const statusOrder = async (req, res) => {
                       ],
                 },
             ],
+            order: [["createdAt", "DESC"]],
         });
 
         // Clean the address field if it's in stringified JSON format
