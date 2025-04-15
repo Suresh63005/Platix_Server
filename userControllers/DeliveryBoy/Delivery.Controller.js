@@ -7,7 +7,7 @@ const TblOrganization_Service = require("../../Models/tblOrganizationService");
 const Services = require("../../Models/TblServices.model");
 const TblOrganizationType = require("../../Models/TblOrganizationType.model");
 
-// getall dashboard data
+// getall dashboard data and searching also
 const getAll = async (req, res) => {
   const uid = req.user?.id; 
   if (!uid) {
@@ -23,7 +23,7 @@ const getAll = async (req, res) => {
 
     [activeOrders, completedOrders] = await Promise.all([
       OrderReports.count({ where: { orderStatus: "processing", delivery_boy: uid } }),
-      OrderReports.count({ where: { orderStatus: "completed",payment_status:"paid", delivery_boy: uid } })
+      OrderReports.count({ where: { orderStatus: "completed", delivery_boy: uid } })
     ]);
     // If search query is provided, perform search
     if (search) {
