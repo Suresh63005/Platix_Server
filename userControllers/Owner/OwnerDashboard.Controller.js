@@ -27,6 +27,8 @@ const labOrders = async (req, res) => {
     // console.log(req.user);
     const { organization_id, id, role_id } = req.user;
 
+    console.log(organization_id,"hhhhhhhhhhh")
+
     console.log(organization_id, "yyyyyyyyyyyyy")
 
     const user = await User.findOne({
@@ -59,12 +61,14 @@ const labOrders = async (req, res) => {
     }
 
     // Fetch order counts in parallel
-    const [activeOrders, totalPayableBills, totalOrders, openOrders, closedOrders] = await Promise.all([
+    const [activeOrders, closedOrders, totalOrders] = await Promise.all([
+    // const [activeOrders, totalPayableBills, totalOrders, openOrders, closedOrders] = await Promise.all([
+
       OrderReports.count({ where: { orderStatus: "processing", toOrganization: organization_id } }),
       OrderReports.count({ where: { orderStatus: "completed", toOrganization: organization_id } }),
       OrderReports.count({ where: { orderStatus: { [Op.in]: ["completed", "cancelled", "processing"] }, toOrganization: organization_id } }),
-      OrderReports.count({ where: { orderStatus: "processing", toOrganization: organization_id } }),
-      OrderReports.count({ where: { orderStatus: { [Op.in]: ["completed", "cancelled"] }, toOrganization: organization_id } }),
+      
+      
     ]);
 
     // Sum received amounts
@@ -76,9 +80,9 @@ const labOrders = async (req, res) => {
     // Format the response
     const response = {
       activeOrders,
-      totalPayableBills,
+      
       totalOrders,
-      openOrders,
+      
       closedOrders,
       totalReceivedAmount: receivedAmounts,
       orderList: orders.map((order) => ({
@@ -986,6 +990,7 @@ const getAllDeliveryBoy = async (req, res) => {
 const cancelledAndDestroyOrder = async (req, res) => {
   const { status } = req.params; // expected: 'completed' or 'cancelled'
   const { organization_id, id: userId } = req.user;
+  console.log(req.user)
 
   if (!organization_id) {
     return res.status(401).json({ message: "Unauthorized" });
@@ -1000,7 +1005,6 @@ const cancelledAndDestroyOrder = async (req, res) => {
     const whereClause = {
       orderStatus: status,
       toOrganization: organization_id,
-      created_by: userId,
     };
 
     if (status === "completed") {
