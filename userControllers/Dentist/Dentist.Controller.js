@@ -81,13 +81,13 @@ const fromDentist = async (req, res) => {
       }
 
       if (cancel) {
-        console.log(`Cancelling order ${id}`);
+        // console.log(`Cancelling order ${id}`);
         await orderReport.update(
           { orderStatus: "cancelled" },
           { transaction }
         );
       } else {
-
+        console.log("updte started 1");
         await orderReport.update(
           {
             fromOrganization,
@@ -118,7 +118,7 @@ const fromDentist = async (req, res) => {
       // Create new order
       const orderIdValue = await generateUniqueId("ORD", OrderReports, "orderId");
 
-      console.log("Creating a new order");
+      // console.log("Creating a new order");
       orderReport = await OrderReports.create(
         {
           fromOrganization,
@@ -227,14 +227,14 @@ const fromDentist = async (req, res) => {
       
       try {
         await Promise.all(pushNotifications)
-        console.log(" Push notifications sent to all owners.");
+        // console.log(" Push notifications sent to all owners.");
       } catch (pushError) {
-        console.warn("⚠️ One or more push notifications failed:", pushError.message);
+        // console.warn("⚠️ One or more push notifications failed:", pushError.message);
       }
     }
 
     if (transactionId) {
-      console.log("Processing transaction...");
+      // console.log("Processing transaction...");
 
       // Insert into orderTransaction table
       await orderTransaction.create(
@@ -323,6 +323,48 @@ const fromDentist = async (req, res) => {
   }
 };
 
+
+const cancelledOrders = async (req, res) => {
+  const userId = req.user.id;
+  if (!userId) {
+    return res.status(401).json({
+      success: false,
+      message: "Unauthorized",
+    });
+  }
+  const { cancel } = req.params;
+  const {id}=req.body
+  try {
+    if (cancel) {
+      const orderReport = await OrderReports.findByPk(id);
+      if (!orderReport) {
+        return res.status(404).json({
+          success: false,
+          message: "Order not found",
+        });
+      }
+      await orderReport.update(
+        { orderStatus: "cancelled" },
+      );
+      return res.status(200).json({
+        success: true,
+        message: "Order cancelled successfully",
+      });
+    } else {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid request",
+      });
+    }
+  } catch (error) {
+    console.error("Error cancelling order:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Internal server error",
+      error: error.message,
+    });
+  }
+};
 // order report search by date and where orders are completed  . it is working for 2 apis
 const orderReport = async (req, res) => {
 
@@ -866,4 +908,4 @@ const payNow = async (req, res) => {
   }
 };
 
-module.exports = { fromDentist, orderDetailsgetById, orderReport, PaymentReports, paymenDetailsGetById, orderAndPaymentSearch, getorganizationDetailsById, cancelledAndDestroyOrder, payNow };
+module.exports = { fromDentist, orderDetailsgetById, orderReport, PaymentReports, paymenDetailsGetById, orderAndPaymentSearch, getorganizationDetailsById, cancelledAndDestroyOrder, payNow,cancelledOrders };

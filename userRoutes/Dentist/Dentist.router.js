@@ -5,7 +5,8 @@ const authMiddleware=require("../../Middlewares/auth")
 const dashBoardController = require("../../userControllers/DashBoard.Controller")
 
 
-router.route("/dentist/upsert/:cancel?").post(authMiddleware.isAuthenticated,DentistController.fromDentist).put(authMiddleware.isAuthenticated,DentistController.fromDentist);//1
+router.post("/dentist/upsert",authMiddleware.isAuthenticated,DentistController.fromDentist)//1
+router.put("/dentist/upsert/:cancel?",authMiddleware.isAuthenticated,DentistController.cancelledOrders)//1
 router.get("/dentist/order/getbyid/:id",authMiddleware.isAuthenticated,DentistController.orderDetailsgetById);//1
 router.get("/dentist/order/report/:fromdate?/:todate?",authMiddleware.isAuthenticated,DentistController.orderReport) //1
 router.get("/dentist/order/payment-report/:fromdate?/:todate?",authMiddleware.isAuthenticated,DentistController.PaymentReports)//1
