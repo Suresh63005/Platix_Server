@@ -15,7 +15,7 @@ router.get("/dentist/order/search/:search",authMiddleware.isAuthenticated, Denti
 router.get("/dentist/organization-details/getbyid/:id",authMiddleware.isAuthenticated,DentistController.getorganizationDetailsById); 
 
 // cancelled and complted order destroy
-router.delete("/dentist/delete/:status",authMiddleware.isAuthenticated,DentistController.cancelledAndDestroyOrder)
+router.put("/dentist/delete/:status",authMiddleware.isAuthenticated,DentistController.cancelledAndDestroyOrder)
 //paynow
 router.post("/dentist/paynow",authMiddleware.isAuthenticated,DentistController.payNow)
 router.get("/dashboard/all-orders",authMiddleware.isAuthenticated,dashBoardController.allOrders)

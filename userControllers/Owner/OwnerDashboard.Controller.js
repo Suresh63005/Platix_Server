@@ -110,11 +110,11 @@ const labAllOrders = async (req, res) => {
     }
 
     const allOrders = await OrderReports.findAll({
-      where: { orderStatus, toOrganization: organization_id },
+      where: { orderStatus, toOrganization: organization_id ,is_visible_to_owner:true},
       include: [{ model: Organization, as: "toOrg", attributes: ["name"] }],
       order: [["createdAt", "DESC"]],
     });
-    console.log(allOrders, "allOrders")
+
     return res.status(200).json({
       [orderStatus]: allOrders.map(order => ({
         ...order.toJSON(),
@@ -624,8 +624,8 @@ const clearAllNotifications = async (req, res) => {
 // If I pass only the userUUID, it means the request is coming from the owner. If I pass both the userUUID and delivery_boy, it means the request is coming from the delivery boy. If I do not pass the delivery_boy and userUUID, it means the request is coming from the dentist.
 const ownerUpsertOrder = async (req, res) => {
   const transaction = await sequelize.transaction({ autocommit: false });
-  const { organization_id } = req.user;
-  console.log(organization_id, "organization_id")
+  const { organization_id, } = req.user;
+  console.log(req.user.id, "req.user")
   if (!organization_id) {
     return res.status(401).json({ message: "Unauthorized" });
   }
@@ -657,8 +657,6 @@ const ownerUpsertOrder = async (req, res) => {
       address,
       created_by,
     } = req.body;
-    console.log(req.body, "req.body")
-    const { cancel } = req.params;
 
     // Function to generate a unique ID
     const generateUniqueId = async (prefix, model, field) => {
@@ -683,7 +681,6 @@ const ownerUpsertOrder = async (req, res) => {
         return res.status(404).json({ success: false, message: "Order not found." });
       }
 
-      console.log(`Updating order ${id}`);
 
       if (cancel) {
         console.log(`Cancelling order ${id}`);
@@ -748,7 +745,7 @@ const ownerUpsertOrder = async (req, res) => {
           orderStatus: "processing",
           address,
           payment_status: "unpaid",
-          created_by: userUUID,
+          created_by: req.user.id ,
         },
         { transaction }
       );
@@ -898,6 +895,46 @@ const ownerUpsertOrder = async (req, res) => {
   }
 };
 
+const cancelledOrders = async (req, res) => {
+  const { organization_id } = req.user;
+  console.log(organization_id, "organization_id")
+  if (!organization_id) {
+    return res.status(401).json({ message: "Unauthorized" });
+  }
+  const { cancel } = req.params;
+  const {id}=req.body
+  try {
+    if (cancel) {
+      const orderReport = await OrderReports.findByPk(id);
+      if (!orderReport) {
+        return res.status(404).json({
+          success: false,
+          message: "Order not found",
+        });
+      }
+      await orderReport.update(
+        { orderStatus: "cancelled" },
+      );
+      return res.status(200).json({
+        success: true,
+        message: "Order cancelled successfully",
+      });
+    } else {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid request",
+      });
+    }
+  } catch (error) {
+    console.error("Error cancelling order:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Internal server error",
+      error: error.message,
+    });
+  }
+};
+
 // get all technician 
 const getAllTechnician = async (req, res) => {
   const { organization_id } = req.user;
@@ -988,16 +1025,22 @@ const getAllDeliveryBoy = async (req, res) => {
 
 
 const cancelledAndDestroyOrder = async (req, res) => {
-  const { status } = req.params; // expected: 'completed' or 'cancelled'
-  const { organization_id, id: userId } = req.user;
-  console.log(req.user)
+  const { status } = req.params; // Expected: 'completed' or 'cancelled'
+  const { organization_id, id } = req.user;
 
+  console.log(req.user); // You can remove this in production
+  console.log(id, "User ID");
+
+  // Check for valid organization
   if (!organization_id) {
-    return res.status(401).json({ message: "Unauthorized" });
+    return res.status(401).json({ message: "Unauthorized: No organization_id found." });
   }
 
+  // Validate status
   if (!["completed", "cancelled"].includes(status)) {
-    return res.status(400).json({ message: "Invalid status. Use 'completed' or 'cancelled'." });
+    return res.status(400).json({
+      message: "Invalid status. Use 'completed' or 'cancelled'.",
+    });
   }
 
   try {
@@ -1005,23 +1048,33 @@ const cancelledAndDestroyOrder = async (req, res) => {
     const whereClause = {
       orderStatus: status,
       toOrganization: organization_id,
+      created_by: id,
+      is_visible_to_owner: true, // Only delete if still visible
     };
 
     if (status === "completed") {
       whereClause.payment_status = "paid";
     }
 
-    const ordersToDelete = await OrderReports.findAll({ where: whereClause });
+    // Find orders that match and haven't been soft-deleted yet
+    const ordersToUpdate = await OrderReports.findAll({ where: whereClause });
 
-    if (ordersToDelete.length === 0) {
-      return res.status(404).json({ message: `No ${status} orders found to delete.` });
+    if (ordersToUpdate.length === 0) {
+      return res.status(200).json({
+        success: true,
+        message: `No ${status} orders found or they have already been deleted.`,
+      });
     }
 
-    const deletedCount = await OrderReports.destroy({ where: whereClause });
+    // Perform soft delete
+    const [updatedCount] = await OrderReports.update(
+      { is_visible_to_owner: false },
+      { where: whereClause }
+    );
 
     return res.status(200).json({
       success: true,
-      message: `${deletedCount} ${status} orders created by you have been deleted successfully.`,
+      message: `${updatedCount} ${status} orders created by you have been deleted successfully.`,
     });
   } catch (error) {
     console.error("Error deleting orders:", error.message);
@@ -1031,6 +1084,7 @@ const cancelledAndDestroyOrder = async (req, res) => {
     });
   }
 };
+
 
 const raiseInvoiceAndCloseOrder = async (req, res) => {
   const { organization_id } = req.user;
@@ -1190,5 +1244,5 @@ const uploadImagesByOwner = async (req, res) => {
   }
 };
 
-module.exports = { labOrders, labAllOrders, labOrderAndPaymentReportGetById, searchOrders, searchDoctor, searchOrdersGetByDate, orderAndPaymentSearch, assignService, upsertDoctor, clearAllNotifications, getAllHospitalName, ownerUpsertOrder, getAllTechnician, uploadImagesByOwner, getAllDeliveryBoy, cancelledAndDestroyOrder, raiseInvoiceAndCloseOrder, editInvoice };
+module.exports = { labOrders, labAllOrders, labOrderAndPaymentReportGetById, searchOrders, searchDoctor, searchOrdersGetByDate, orderAndPaymentSearch, assignService, upsertDoctor, clearAllNotifications, getAllHospitalName, ownerUpsertOrder, getAllTechnician, uploadImagesByOwner, getAllDeliveryBoy, cancelledAndDestroyOrder, raiseInvoiceAndCloseOrder, editInvoice,cancelledOrders };
 

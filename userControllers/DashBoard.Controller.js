@@ -50,7 +50,7 @@ const allOrders = async (req, res) => {
     }
 };
 
-// dashboard data shown
+// dashboard data shown (dentist all orders)
 const all = async (req, res) => {
     // const { search, page = 1, limit = 10 } = req.query;
     // const offset = (page - 1) * limit;
