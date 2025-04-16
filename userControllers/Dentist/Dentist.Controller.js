@@ -431,7 +431,8 @@ const orderReport = async (req, res) => {
           as: "transactions",
           attributes: ["transactionId", "amount", "createdAt"],
         }
-      ]
+      ],
+      order: [["createdAt", "DESC"]],
     });
 
 
@@ -595,7 +596,8 @@ const PaymentReports = async (req, res) => {
             }
           ]
         }
-      ]
+      ],
+      order: [["createdAt", "DESC"]],
     })
     return res.status(200).json({
       success: true,
@@ -750,6 +752,7 @@ const orderAndPaymentSearch = async (req, res) => {
           required: false,
         },
       ],
+      order: [["createdAt", "DESC"]],
     });
 
     return res.status(200).json({ orderReports });
@@ -799,48 +802,61 @@ const getorganizationDetailsById = async (req, res) => {
 };
 
 const cancelledAndDestroyOrder = async (req, res) => {
-  const { status } = req.params; // it should be complted or cancelled
+  const { status } = req.params; // should be "completed" or "cancelled"
   const userUUID = req.user?.id;
-  try {
-    const cancelledOrders = await OrderReports.findAll({
-      where: {
-        orderStatus: status,
-        [Op.or]: [{ userUUID }, { delivery_boy: userUUID }],
-      },
+  if(!userUUID) {
+    return res.status(401).json({ message: "Unauthorized!" });
+  }
+  if (!["completed", "cancelled"].includes(status)) {
+    return res.status(400).json({
+      message: "Invalid status. Use 'completed' or 'cancelled'.",
     });
-    if (cancelledOrders.length === 0) {
-      return res.status(404).json({ message: `No ${status} orders found to delete.` });
-    }
-    let deletedCount;
+  }
+
+  try {
+    // Build base where clause
+    let whereClause = {
+      orderStatus: status,
+      is_visible_to_customer: true, 
+      created_by:userUUID,
+    };
+    console.log(whereClause, "whereClause");
     if (status === "completed") {
-      deletedCount = await OrderReports.destroy({
-        where: {
-          orderStatus: status,
-          payment_status: "paid",
-          [Op.or]: [{ userUUID }, { delivery_boy: userUUID }]
-        },
-      });
-    } else if (status === "cancelled") {
-      deletedCount = await OrderReports.destroy({
-        where: {
-          orderStatus: status,
-          [Op.or]: [{ userUUID }, { delivery_boy: userUUID }]
-        },
+      whereClause.payment_status = "paid";
+    }
+
+    // Check if any such orders exist
+    const ordersToUpdate = await OrderReports.findAll({ where: whereClause });
+
+    if (ordersToUpdate.length === 0) {
+      return res.status(200).json({
+        success: true,
+        message: `No ${status} orders found or they have already been deleted.`,
       });
     }
 
+    // Proceed with update
+    const [updatedCount] = await OrderReports.update(
+      { is_visible_to_customer: false },
+      { where: whereClause }
+    );
+
     return res.status(200).json({
       success: true,
-      message: `${deletedCount}  ${status} orders have been deleted successfully.`,
+      message: `${updatedCount} ${status} orders created by you have been deleted successfully.`,
     });
+
   } catch (error) {
-    console.error("Error deleting cancelled orders:", error.message);
+    console.error("Error updating cancelled orders:", error.message);
     return res.status(500).json({
       success: false,
-      message: "An error occurred while deleting cancelled orders.",
+      message: "An error occurred while updating cancelled orders.",
+      error: error.message
     });
   }
 };
+
+
 
 const payNow = async (req, res) => {
   const uid = req.user?.id;

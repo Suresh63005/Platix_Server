@@ -22,6 +22,7 @@ router.get("/delivery/closed-order/:id", authMiddleware.isAuthenticated, deliver
 router.post("/delivery/upsert",authMiddleware.isAuthenticated,DentistController.fromDentist);
 router.put("/delivery/upsert/:cancel?",authMiddleware.isAuthenticated,DentistController.cancelledOrders);
 
-router.delete("/delivery/delete/:status",authMiddleware.isAuthenticated,DentistController.cancelledAndDestroyOrder)
+//clear cancel or completed order
+router.put("/delivery/delete/:status",authMiddleware.isAuthenticated,deliveryBoyController.cancelledAndDestroyOrder)
 
 module.exports=router

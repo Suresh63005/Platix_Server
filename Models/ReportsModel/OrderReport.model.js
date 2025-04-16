@@ -129,6 +129,26 @@ const OrderReports = sequelize.define(
       type: DataTypes.UUID,
       allowNull: true,
     },
+    is_visible_to_customer: {
+      type: DataTypes.BOOLEAN,
+      allowNull: false,
+      defaultValue: true,
+    },
+    is_visible_to_owner: {
+      type: DataTypes.BOOLEAN,
+      allowNull: false,
+      defaultValue: true,
+    },
+    is_visible_to_technician: {
+      type: DataTypes.BOOLEAN,
+      allowNull: false,
+      defaultValue: true,
+    },
+    is_visible_to_delivery: {
+      type: DataTypes.BOOLEAN,
+      allowNull: false,
+      defaultValue: true,
+    },    
     assignment_status: {
       type: DataTypes.ENUM(
         "unassigned",
