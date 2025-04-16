@@ -989,8 +989,10 @@ const getAllDeliveryBoy = async (req, res) => {
 
 const cancelledAndDestroyOrder = async (req, res) => {
   const { status } = req.params; // expected: 'completed' or 'cancelled'
-  const { organization_id, id: userId } = req.user;
+  const { organization_id, id } = req.user;
   console.log(req.user)
+
+  console.log(id, "iddddddddddddddddddddddddddd")
 
   if (!organization_id) {
     return res.status(401).json({ message: "Unauthorized" });
@@ -1005,6 +1007,7 @@ const cancelledAndDestroyOrder = async (req, res) => {
     const whereClause = {
       orderStatus: status,
       toOrganization: organization_id,
+      created_by: id,
     };
 
     if (status === "completed") {
