@@ -41,7 +41,7 @@ const technicianDashboardData = async(req,res)=>{
 
                 // Fetch order list
         const orderList = await OrderReports.findAll({
-          where: { technician: uid, orderStatus: "processing" },
+          where: { technician: uid, orderStatus: "processing",assignment_status: "assigned_to_technician" },
           include: [
             {
               model: Organization,
