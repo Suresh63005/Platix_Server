@@ -43,7 +43,8 @@ const editprofile = async (req, res) => {
         type,
         registrationId,
         role_id,
-        whatsappNo
+        whatsappNo,
+        is_freelancer
       };
   
       // 3. Upload profile image if available
@@ -99,7 +100,7 @@ const editprofile = async (req, res) => {
           ifscCode: "NULL",
           description: "NULL",
           upiId,
-          is_freelancer
+          
         };
   
         const existingOrg = await Organization.findOne({ where: { mobile: mobileNo } });
