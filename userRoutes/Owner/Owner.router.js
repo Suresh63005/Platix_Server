@@ -27,7 +27,8 @@ router.get("/owner/order/search/:search",authMiddleware.isOwner,ownerController.
 router.get("/owner/doctor/search/:search",authMiddleware.isOwner,ownerController.searchDoctor);
 
 // for labrotory owner create order and updating order and cancelled order also
-router.route("/owner/upsert/:cancel?").post(authMiddleware.isOwner,ownerController.ownerUpsertOrder).put(authMiddleware.isOwner,ownerController.ownerUpsertOrder);
+router.post("/owner/upsert",authMiddleware.isOwner,ownerController.ownerUpsertOrder)
+router.put("/owner/upsert/:cancel?",authMiddleware.isOwner,ownerController.cancelledOrders);
 
 // for assigning service to technician or delivery boy
 router.post("/owner/assign-service",authMiddleware.isOwner,ownerController.assignService);
@@ -53,7 +54,7 @@ router.post("/owner/upload-images",authMiddleware.isOwner,upload.array("images",
 
 
 //delete complted and cancelled order
-router.delete("/owner/delete/:status",authMiddleware.isOwner,ownerController.cancelledAndDestroyOrder)
+router.put("/owner/delete/:status",authMiddleware.isOwner,ownerController.cancelledAndDestroyOrder)
 
 
 // raiseInvoiceAndCloseOrder

@@ -47,7 +47,8 @@ const getAll = async (req, res) => {
             as: 'fromOrg',
             attributes: ['name'],
           }
-        ]
+        ],
+        order: [['createdAt', 'DESC']]
       });
 
       // if (orderList.length === 0) {
@@ -65,6 +66,7 @@ const getAll = async (req, res) => {
             required: false
           }
         ],
+        order: [['createdAt', 'DESC']],
         where: {
           delivery_boy: uid,
           orderStatus: "processing"
@@ -107,7 +109,8 @@ const deliveryAllOrders = async (req, res) => {
   try {
     const allOrders = await OrderReports.findAll({
       where: {
-        orderStatus,  
+        orderStatus,
+        is_visible_to_delivery:true,  
         [Op.or]: [
           { delivery_boy: uid }, 
         ]
@@ -341,4 +344,61 @@ const closedOrder = async (req, res) => {
   }
 }
 
-module.exports={ getAll ,deliveryAllOrders,orderDetailsGetById,upsert,closedOrder}
+
+// Clear cancelled or completed orders
+const cancelledAndDestroyOrder = async (req, res) => {
+  const { status } = req.params; // should be "completed" or "cancelled"
+  const userUUID = req.user?.id;
+  if(!userUUID) {
+    return res.status(401).json({ message: "Unauthorized!" });
+  }
+  if (!["completed", "cancelled"].includes(status)) {
+    return res.status(400).json({
+      message: "Invalid status. Use 'completed' or 'cancelled'.",
+    });
+  }
+
+  try {
+    // Build base where clause
+    let whereClause = {
+      orderStatus: status,
+      is_visible_to_delivery: true, 
+      created_by:userUUID,
+    };
+    console.log(whereClause, "whereClause");
+    if (status === "completed") {
+      whereClause.payment_status = "paid";
+    }
+
+    // Check if any such orders exist
+    const ordersToUpdate = await OrderReports.findAll({ where: whereClause });
+
+    if (ordersToUpdate.length === 0) {
+      return res.status(200).json({
+        success: true,
+        message: `No ${status} orders found or they have already been deleted.`,
+      });
+    }
+
+    // Proceed with update
+    const [updatedCount] = await OrderReports.update(
+      { is_visible_to_delivery: false },
+      { where: whereClause }
+    );
+
+    return res.status(200).json({
+      success: true,
+      message: `${updatedCount} ${status} orders created by you have been deleted successfully.`,
+    });
+
+  } catch (error) {
+    console.error("Error updating cancelled orders:", error.message);
+    return res.status(500).json({
+      success: false,
+      message: "An error occurred while updating cancelled orders.",
+      error: error.message
+    });
+  }
+};
+
+module.exports={ getAll ,deliveryAllOrders,orderDetailsGetById,upsert,closedOrder,cancelledAndDestroyOrder}

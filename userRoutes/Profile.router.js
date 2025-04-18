@@ -7,4 +7,4 @@ const authMiddleWare=require("../Middlewares/auth")
 router.put("/profile/edit",upload.single("profileImage"),authMiddleWare.isAuthenticated,profileController.editprofile);
 router.delete("/profile/delete",authMiddleWare.isAuthenticated,profileController.deleteAccount);
 
-module.exports=router
+module.exports=router;
