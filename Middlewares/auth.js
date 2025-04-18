@@ -156,4 +156,62 @@ const isAuthenticated = async(req,res,next)=>{
 
 }
 
-module.exports = { generateToken, verifyAdmin ,verifyUser, checkRoleAccess,isAuthenticated};
+const isOwner = async(req,res,next)=>{
+  const token = req.headers.authorization?.split(" ")[1];
+  
+  // console.log(token,"token from headers");
+
+  if(!token){
+    return res.status(401).json({message:"Access denied. No token provided."});
+  }
+
+  try {
+
+    const decode = jwt.verify(token, process.env.JWT_TOKEN);
+
+    // console.log(decode ,"decode from token");
+
+    const user = await User.findByPk(decode?.userId, {
+      include:[
+        {
+          model:Roles,
+          as:"role"
+        }
+      ]
+    });
+
+
+    // console.log(user,"userrrrrrrrrrrrrrrrrrrrr")
+
+    // console.log(user, "user from decode");
+
+    if(!user){
+      return res.status(401).json({message:"Access denied. User not found."});
+    }
+
+
+
+    if(user.role.rolename === "Owner" || "owner"  ){
+      req.user = user;
+    }
+    else{
+      return res.status(403).json({message:"Access denied. You are not the owner."})
+    }
+
+   
+
+    next();
+    
+
+  } catch (error) {
+    console.log(error);
+    if(error.name === "TokenExpiredError"){
+      return res.status(403).json({message:"Token expired."})
+    }
+    return res.status(403).json({message:"Invalid or Token Expired"})
+    
+  }
+
+}
+
+module.exports = { generateToken, verifyAdmin ,verifyUser, checkRoleAccess,isAuthenticated,isOwner};

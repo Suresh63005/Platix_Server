@@ -20,18 +20,6 @@ TblOrganizationType.hasMany(Organization, {
 
 
 
-
-Organization.hasMany(OrderReports, {
-  foreignKey: "fromOrganization",
-  as: "fromOrders",
-});
-
-// Organization.hasMany(OrderReports, {
-//   foreignKey: "toOrganization",
-//   as: "toOrders",
-// });
-
-
 OrderReports.belongsTo(Organization, {
   foreignKey: "fromOrganization",
   as: "fromOrg",
@@ -42,7 +30,7 @@ OrderReports.belongsTo(Organization, {
   as: "toOrg",
 });
 
-// OrderReports.belongsTo(Organization,{foreignKey:'toOrganization',as: "toOrganizationDetails" })
+
 Organization.hasMany(OrderReports,{foreignKey:'toOrganization'})
 Organization.hasMany(OrderReports,{foreignKey:'fromOrganization'})
 OrderReports.belongsTo(Services,{foreignKey: "serviceId", as: "service"})
@@ -95,12 +83,12 @@ Services.hasMany(TblOrganization_Service,{foreignKey:"service_id"});
 
 TblOrganization_Service.belongsTo(Organization, {
   foreignKey: 'organization_id',
-  as: 'organization'
+  as: 'organization_service'
 });
 
 Organization.hasMany(TblOrganization_Service, {
   foreignKey: 'organization_id',
-  as: 'organization'
+  as: 'organization_service'
 });
 
 Services.belongsToMany(TblOrganizationType, {
@@ -113,11 +101,11 @@ TblOrganizationType.belongsToMany(Services, {
   foreignKey: 'organizationType_id', // The foreign key in the junction table
 });
 
-OrderServices.belongsTo(OrderReports,{foreignKey:'orderId',as:"orderReport"})
+OrderServices.belongsTo(OrderReports,{foreignKey:'orderId',as:"orderServices"})
 OrderReports.hasMany(OrderServices,{foreignKey:'orderId',as: "orderServices",})
 
-// OrderServices.belongsTo(Services,{foreignKey:'orgserviceId',as:"serviceDetails"})
-// Services.hasMany(OrderServices,{foreignKey:'orgserviceId'})
+OrderServices.belongsTo(Services,{foreignKey:'orgserviceId',as:"serviceDetails"})
+Services.hasMany(OrderServices,{foreignKey:'orgserviceId'})
 
 OrderReports.belongsTo(User,{foreignKey:"userUUID",as:"userDetails"})
 User.hasMany(OrderReports,{foreignKey:"userUUID"}) 
