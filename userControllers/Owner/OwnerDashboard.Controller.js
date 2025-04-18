@@ -1287,6 +1287,40 @@ const fetchDentistOrganizations = async(req,res)=>{
   }
 }
 
+
+// Fetching orders based on order status for the owner( cancelled, completed, processing)
+const getRadilogyOwnerOrdersByStatus = async (req, res) => {
+  try {
+    const { organization_id, id: userId } = req.user;
+    console.log(userId, "req.user")
+    const { orderStatus } = req.params;
+
+    if (!["completed", "processing", "cancelled"].includes(orderStatus)) {
+      return res.status(400).json({ message: "Invalid order status" });
+    }
+
+    let allOrders;
+    if(orderStatus === "processing") {
+       allOrders = await OrderReports.findAll({
+        where: { orderStatus, toOrganization: organization_id ,is_visible_to_owner:true},
+        include: [{ model: Organization, as: "toOrg", attributes: ["name"] }],
+        order: [["createdAt", "DESC"]],
+      });
+    }
+
+    return res.status(200).json({
+      [orderStatus]: allOrders.map(order => ({
+        ...order.toJSON(),
+        fromOrganizationName: order.fromOrganization?.name || null,
+      })),
+    });
+
+  } catch (error) {
+    console.error("Error fetching orders:", error);
+    return res.status(500).json({ message: "Server error" });
+  }
+};
+
 module.exports = {
   labOrders,
   labAllOrders,

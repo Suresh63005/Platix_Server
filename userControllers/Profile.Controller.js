@@ -20,7 +20,8 @@ const editprofile = async (req, res) => {
         type,
         businessName,
         googleCoordinates,
-        upiId
+        upiId,
+        is_freelancer
       } = req.body;
   
       // 1. Fetch user
@@ -96,6 +97,7 @@ const editprofile = async (req, res) => {
           ifscCode: "NULL",
           description: "NULL",
           upiId,
+          is_freelancer
         };
   
         const existingOrg = await Organization.findOne({ where: { mobile: mobileNo } });

@@ -180,7 +180,7 @@ const loginwithnumber = async (req, res) => {
                 {
                   model: Organization,
                   as: 'organization',
-                  attributes: ['id', 'name'],
+                  attributes: ['id', 'name','upiId'],
                   include: [
                     {
                       model: TblOrganizationType,
@@ -222,9 +222,24 @@ const loginwithnumber = async (req, res) => {
             { expiresIn: "7d" } // Set an expiration time
         );
 
+        const userJson=userRecord.toJSON();
+        const upiId=userJson.organization?.upiId || null;
+
+        if (userJson.organization) {
+            delete userJson.organization.upiId;
+        }
+
+        const reorderedUser = {};
+        for(let key in userJson){
+            reorderedUser[key] = userJson[key];
+            if(key === 'deletedAt'){
+                reorderedUser['upiId'] = upiId;
+            }
+        }
+
         return res.status(200).json({
             message: "Login successful!",
-            user: userRecord,
+            user: reorderedUser,
             token,
         });
 
