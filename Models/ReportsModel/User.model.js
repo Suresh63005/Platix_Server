@@ -25,6 +25,11 @@ const User = sequelize.define(
       type: DataTypes.STRING,
       allowNull: true,
     },
+    is_freelancer:{
+      type: DataTypes.BOOLEAN,
+      allowNull: true,
+      defaultValue: false,
+    },
     email: {
       type: DataTypes.STRING,
       allowNull: true,
