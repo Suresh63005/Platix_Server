@@ -1244,49 +1244,6 @@ const uploadImagesByOwner = async (req, res) => {
   }
 };
 
-
-const fetchDentistOrganizations = async(req,res)=>{
-  try {
-    const organizations = await Organization.findAll({
-      include:[
-        {
-          model:User,
-          as:"users",
-          required:true,
-          include:[
-            {
-              model:Roles,
-              as:"role",
-              where:{rolename:"Dentist"},
-              attributes:["id","rolename"]
-            }
-          ]
-        },
-      ]
-    })
-
-    if(!organizations || organizations.length === 0){
-      return res.status(404).json({
-        success: false,
-        message: "No organizations with Dentist role found",
-      });
-    }
-
-    return res.status(200).json({
-      success:true,
-      message:"Dentist organizations fetched successfully",
-      data:organizations
-    })
-  } catch (error) {
-    console.error("Error fetching Dentist organizations:", error);
-    return res.status(500).json({
-      success: false,
-      message: "Internal server error",
-      error: error.message,
-    });
-  }
-}
-
 module.exports = {
   labOrders,
   labAllOrders,
@@ -1306,7 +1263,9 @@ module.exports = {
   cancelledAndDestroyOrder,
   raiseInvoiceAndCloseOrder,
   editInvoice,
+
   fetchDentistOrganizations,
+
   cancelledOrders
 };
 
