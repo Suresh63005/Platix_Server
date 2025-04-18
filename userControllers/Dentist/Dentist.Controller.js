@@ -923,4 +923,118 @@ const payNow = async (req, res) => {
 };
 
 
-module.exports = { fromDentist, orderDetailsgetById, orderReport, PaymentReports, paymenDetailsGetById, orderAndPaymentSearch, getorganizationDetailsById, cancelledAndDestroyOrder, payNow,cancelledOrders };
+const fetchDentistOrganizations = async (req, res) => {
+  try {
+    const organizations = await Organization.findAll({
+      include: [
+        {
+          model: TblOrganizationType,
+          as: "organizationType",
+          where: { organizationType: "Dentist" },
+          attributes:["id","organizationType"]
+        },
+      ],
+      attributes: [
+        "id",
+        "name",
+        "organizationType_id",
+        "address",
+        "googleCoordinates",
+        "mobile",
+        "whatsapp",
+        "email",
+        "description",
+        "gstNumber",
+        "designation",
+        "businessName",
+        "registrationId",
+        "file1",
+        "file2",
+        "admin_id",
+        "bankName",
+        "accountNumber",
+        "accountHolder",
+        "ifscCode",
+        "upiId",
+        "createdAt",
+        "updatedAt",
+        "deletedAt",
+      ],
+    });
+
+    if (!organizations || organizations.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: "No organizations with Dentist role found",
+      });
+    }
+
+    // Transform the data to clean up address and googleCoordinates
+    const cleanedOrganizations = organizations.map((org) => {
+      let address = org.address;
+      let googleCoordinates = org.googleCoordinates;
+
+      // Parse address if it's a stringified JSON
+      if (typeof address === "string") {
+        try {
+          address = JSON.parse(address);
+          // Ensure address is an array; if it's a string, wrap it in an array
+          address = Array.isArray(address) ? address : [address];
+        } catch (e) {
+          console.warn(`Invalid JSON in address for org ${org.id}:`, address);
+          address = []; // Fallback to empty array if parsing fails
+        }
+      } else if (!Array.isArray(address)) {
+        address = []; // Fallback to empty array if not an array
+      }
+
+      // Parse googleCoordinates if it's a stringified JSON
+      if (typeof googleCoordinates === "string") {
+        try {
+          googleCoordinates = JSON.parse(googleCoordinates);
+        } catch (e) {
+          console.warn(`Invalid JSON in googleCoordinates for org ${org.id}:`, googleCoordinates);
+          googleCoordinates = { latitude: null, longitude: null }; // Fallback
+        }
+      }
+
+      // Ensure googleCoordinates is an object with latitude and longitude
+      if (!googleCoordinates || typeof googleCoordinates !== "object") {
+        googleCoordinates = { latitude: null, longitude: null };
+      }
+
+      return {
+        ...org.toJSON(), // Convert Sequelize instance to plain object
+        address, // Cleaned address array
+        googleCoordinates, // Cleaned coordinates object
+      };
+    });
+
+    return res.status(200).json({
+      success: true,
+      message: "Dentist organizations fetched successfully",
+      data: cleanedOrganizations,
+    });
+  } catch (error) {
+    console.error("Error fetching Dentist organizations:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Internal server error",
+      error: error.message,
+    });
+  }
+};
+
+module.exports = {
+  fromDentist,
+  orderDetailsgetById,
+  orderReport,
+  PaymentReports,
+  paymenDetailsGetById,
+  orderAndPaymentSearch,
+  getorganizationDetailsById,
+  cancelledAndDestroyOrder,
+  payNow,
+  cancelledOrders,
+  fetchDentistOrganizations,
+};
