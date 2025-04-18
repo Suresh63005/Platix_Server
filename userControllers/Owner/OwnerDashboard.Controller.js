@@ -1288,25 +1288,57 @@ const fetchDentistOrganizations = async(req,res)=>{
 }
 
 
-// Fetching orders based on order status for the owner( cancelled, completed, processing)
-const getRadilogyOwnerOrdersByStatus = async (req, res) => {
+// Fetching orders based on order status for the owner( cancelled, completed, active(processing and completed))
+const getRadiologyOwnerOrdersByStatus = async (req, res) => {
   try {
-    const { organization_id, id: userId } = req.user;
-    console.log(userId, "req.user")
+    const { organization_id } = req.user;
     const { orderStatus } = req.params;
 
-    if (!["completed", "processing", "cancelled"].includes(orderStatus)) {
+    let whereClause = {
+      toOrganization: organization_id,
+      is_visible_to_owner: true,
+    };
+
+    // Active Orders
+    if (orderStatus === "active") {
+      whereClause = {
+        ...whereClause,
+        [Op.or]: [
+          { orderStatus: "processing" },
+          { orderStatus: "completed", payment_status: "unpaid" },
+        ],
+      };
+    }
+
+    // Completed Orders
+    else if (orderStatus === "completed") {
+      whereClause = {
+        ...whereClause,
+        orderStatus: "completed",
+        payment_status: "paid",
+      };
+    }
+
+    // Cancelled Orders
+    else if (orderStatus === "cancelled") {
+      whereClause = {
+        ...whereClause,
+        orderStatus: "cancelled",
+      };
+    } 
+    
+    else {
       return res.status(400).json({ message: "Invalid order status" });
     }
 
-    let allOrders;
-    if(orderStatus === "processing") {
-       allOrders = await OrderReports.findAll({
-        where: { orderStatus, toOrganization: organization_id ,is_visible_to_owner:true},
-        include: [{ model: Organization, as: "toOrg", attributes: ["name"] }],
-        order: [["createdAt", "DESC"]],
-      });
-    }
+    const allOrders = await OrderReports.findAll({
+      where: whereClause,
+      include: [
+        { model: Organization, as: "toOrg", attributes: ["name"] },
+
+      ],
+      order: [["createdAt", "DESC"]],
+    });
 
     return res.status(200).json({
       [orderStatus]: allOrders.map(order => ({
@@ -1321,6 +1353,9 @@ const getRadilogyOwnerOrdersByStatus = async (req, res) => {
   }
 };
 
+const payNow=async(req,res)=>{
+  
+}
 module.exports = {
   labOrders,
   labAllOrders,
@@ -1341,7 +1376,8 @@ module.exports = {
   raiseInvoiceAndCloseOrder,
   editInvoice,
   fetchDentistOrganizations,
-  cancelledOrders
+  cancelledOrders,
+  getRadiologyOwnerOrdersByStatus
 };
 
 

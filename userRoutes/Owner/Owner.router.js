@@ -66,4 +66,7 @@ router.put("/owner/edit-invoice/:id",authMiddleware.isOwner,ownerController.edit
 // fetch dentist organization list
 router.get("/owner/get-dentist-organization",authMiddleware.isOwner,ownerController.fetchDentistOrganizations)
 
+// GET orders by status (active(processing and completed), completed, cancelled) for the radiology owner
+router.get("/owner/orders/:orderStatus", authMiddleware.isOwner,ownerController.getRadiologyOwnerOrdersByStatus);
+
 module.exports=router
