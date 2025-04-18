@@ -31,7 +31,7 @@ connectDB();
 // Rate Limiting
 const limiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 500,
+  max: 50000,
   message: { error: "Too many requests, please try again later." },
   headers: true,
 });
@@ -47,7 +47,8 @@ app.use(
       "http://localhost:3001",
       "http://localhost:3002",
       "https://platix-client.vercel.app",
-      "https://platix-server.vercel.app"
+      "https://platix-server.vercel.app",
+      "https://2e06-183-82-109-252.ngrok-free.app"
     ],
     credentials: true,
     methods: "GET,POST,PUT,DELETE",
