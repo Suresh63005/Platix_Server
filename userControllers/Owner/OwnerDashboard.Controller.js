@@ -1263,6 +1263,9 @@ module.exports = {
   cancelledAndDestroyOrder,
   raiseInvoiceAndCloseOrder,
   editInvoice,
+
+  fetchDentistOrganizations,
+
   cancelledOrders
 };
 
