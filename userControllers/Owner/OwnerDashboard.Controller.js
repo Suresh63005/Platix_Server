@@ -1309,19 +1309,25 @@ const getRadiologyOwnerOrdersByStatus = async (req, res) => {
   }
 };
 
-const payNow=async(req,res)=>{
-  const { organization_id } = req.user;
-  console.log(organization_id, "req.user")
-  if(!organization_id) {
+const payNow = async (req, res) => {
+  const { organization_id, id: userId } = req.user; // Extract 'id' as 'userId' from req.user
+  console.log(req.user, "req.user");
+
+  if (!organization_id) {
     return res.status(401).json({ message: "Unauthorized" });
   }
 
   const { orderId, transactionId, amount } = req.body;
 
   try {
+    if (!userId) {
+      return res.status(400).json({ message: "User ID is required" });
+    }
+
+    // Create the transaction with userId
     const transaction = await orderTransaction.create({
       orderId,
-      userUUID: uid,
+      userUUID: userId, // Ensure this is set to the correct userId
       transactionId,
       amount
     });
@@ -1332,46 +1338,50 @@ const payNow=async(req,res)=>{
       return res.status(404).json({ message: "Order not found" });
     }
 
-    await orderReport.update(
-      {
-        payment_status: "paid"
-      }
-    );
+    await orderReport.update({
+      payment_status: "paid"
+    });
 
-
-    //send push notifications
-    const sendUserId= await User.findByPk(uid)
-    if(sendUserId?.one_subscription){
-      const response=await axios.post(
+    // Send push notification if user has OneSignal ID
+    const sendUser = await User.findByPk(userId);
+    if (sendUser?.one_subscription) {
+      await axios.post(
         "https://onesignal.com/api/v1/notifications",
         {
           app_id: process.env.ONESIGNAL_APP_ID,
-          include_player_ids: [sendUserId.one_subscription],
-          headings: { en: "Payment Confirmation"},
-          contents: {en: `Order ${amount} for bill ${orderReport.orderId} has been successfully processed.`}
+          include_player_ids: [sendUser.one_subscription],
+          headings: { en: "Payment Confirmation" },
+          contents: {
+            en: `Order ₹${amount} for bill ${orderReport.orderId} has been successfully processed.`
+          }
         },
         {
           headers: {
-            "Content-Type":"application/json",
-            Authorization:`Basic ${process.env.ONESIGNAL_API_KEY}`
+            "Content-Type": "application/json",
+            Authorization: `Basic ${process.env.ONESIGNAL_API_KEY}`
           }
         }
-      )
+      );
     }
+
+    // Save notification
     await Notification.create({
-      uid: uid,
+      uid: userId,
       datetime: new Date(),
       title: "Payment Confirmation",
-      description: `Order ${amount} for bill ${orderReport.orderId} has been successfully processed.`
+      description: `Order ₹${amount} for bill ${orderReport.orderId} has been successfully processed.`
     });
 
-    return res.status(200).json({ message: "Payment is successful", transaction: transaction });
+    return res.status(200).json({ message: "Payment is successful", transaction });
 
   } catch (error) {
     console.error("Error processing payment:", error);
     return res.status(500).json({ message: "Internal server error", error: error.message });
   }
-}
+};
+
+
+
 
 module.exports = {
   labOrders,
@@ -1394,7 +1404,8 @@ module.exports = {
   editInvoice,
   cancelledOrders,
   getRadiologyOwnerOrdersByStatus,
-  cancelledOrders
+  cancelledOrders,
+  payNow
 };
 
 
