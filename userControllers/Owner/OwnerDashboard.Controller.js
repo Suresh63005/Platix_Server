@@ -1264,7 +1264,7 @@ module.exports = {
   raiseInvoiceAndCloseOrder,
   editInvoice,
 
-  fetchDentistOrganizations,
+  
 
   cancelledOrders
 };
