@@ -26,4 +26,8 @@ router.get("/dashboard/status/:status/:userUUID",authMiddleware.isAuthenticated,
 // for settings
 router.get("/settings",dashBoardController.termAndConditions)
 
+// fetch dentist organization list
+router.get("/dentist/get-dentist-organization",authMiddleware.isOwner,DentistController.fetchDentistOrganizations)
+
+
 module.exports=router
