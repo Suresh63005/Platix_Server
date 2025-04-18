@@ -14,9 +14,9 @@ const OrderReports = sequelize.define(
       type: DataTypes.DATE,
       allowNull: false,
     },
-    paid_date:{
-      type:DataTypes.DATE,
-      allowNull:true
+    paid_date: {
+      type: DataTypes.DATE,
+      allowNull: true
     },
     orderId: {
       type: DataTypes.STRING,
@@ -25,6 +25,11 @@ const OrderReports = sequelize.define(
     requiredDate: {
       type: DataTypes.DATE,
       allowNull: true,
+    },
+    address: {
+      type: DataTypes.TEXT,
+      allowNull: true,
+
     },
     toothName: {
       type: DataTypes.STRING,
@@ -42,7 +47,7 @@ const OrderReports = sequelize.define(
       type: DataTypes.TEXT,
       allowNull: true,
     },
-    
+
     userUUID: {
       type: DataTypes.UUID,
       allowNull: false,
@@ -56,12 +61,12 @@ const OrderReports = sequelize.define(
       allowNull: false,
     },
     orderStatus: {
-      type: DataTypes.ENUM( "processing", "completed", "cancelled"),
+      type: DataTypes.ENUM("processing", "completed", "cancelled"),
       allowNull: true,
     },
-    payment_status:{
-      type: DataTypes.ENUM("unpaid","paid"),
-      allowNull:true
+    payment_status: {
+      type: DataTypes.ENUM("unpaid", "paid","processing"),
+      allowNull: true
     },
     mobileNo: {
       type: DataTypes.STRING,
@@ -107,18 +112,54 @@ const OrderReports = sequelize.define(
       type: DataTypes.STRING,
       allowNull: true,
     },
+
     patientProblem: {
       type: DataTypes.STRING,
       allowNull: true,
     },
-    technician:{
+    technician: {
       type: DataTypes.UUID,
-      allowNull:true,
+      allowNull: true,
     },
-    delivery_boy:{
+    delivery_boy: {
       type: DataTypes.UUID,
-      allowNull:true,
-    }
+      allowNull: true,
+    },
+    created_by: {
+      type: DataTypes.UUID,
+      allowNull: true,
+    },
+    is_visible_to_customer: {
+      type: DataTypes.BOOLEAN,
+      allowNull: false,
+      defaultValue: true,
+    },
+    is_visible_to_owner: {
+      type: DataTypes.BOOLEAN,
+      allowNull: false,
+      defaultValue: true,
+    },
+    is_visible_to_technician: {
+      type: DataTypes.BOOLEAN,
+      allowNull: false,
+      defaultValue: true,
+    },
+    is_visible_to_delivery: {
+      type: DataTypes.BOOLEAN,
+      allowNull: false,
+      defaultValue: true,
+    },    
+    assignment_status: {
+      type: DataTypes.ENUM(
+        "unassigned",
+        "assigned_to_technician",
+        "technician_completed",
+        "assigned_to_delivery_boy",
+        "delivery_boy_completed"
+      ),
+      defaultValue: "unassigned",
+      allowNull: true,
+    }    
   },
   {
     tableName: "OrderReports",

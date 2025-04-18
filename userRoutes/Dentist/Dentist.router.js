@@ -5,7 +5,8 @@ const authMiddleware=require("../../Middlewares/auth")
 const dashBoardController = require("../../userControllers/DashBoard.Controller")
 
 
-router.route("/dentist/upsert/:cancel?").post(authMiddleware.isAuthenticated,DentistController.fromDentist).put(authMiddleware.isAuthenticated,DentistController.fromDentist);//1
+router.post("/dentist/upsert",authMiddleware.isAuthenticated,DentistController.fromDentist)//1
+router.put("/dentist/upsert/:cancel?",authMiddleware.isAuthenticated,DentistController.cancelledOrders)//1
 router.get("/dentist/order/getbyid/:id",authMiddleware.isAuthenticated,DentistController.orderDetailsgetById);//1
 router.get("/dentist/order/report/:fromdate?/:todate?",authMiddleware.isAuthenticated,DentistController.orderReport) //1
 router.get("/dentist/order/payment-report/:fromdate?/:todate?",authMiddleware.isAuthenticated,DentistController.PaymentReports)//1
@@ -13,8 +14,8 @@ router.get("/dentist/order/payment-report-getbyid/:id",authMiddleware.isAuthenti
 router.get("/dentist/order/search/:search",authMiddleware.isAuthenticated, DentistController.orderAndPaymentSearch);//1
 router.get("/dentist/organization-details/getbyid/:id",authMiddleware.isAuthenticated,DentistController.getorganizationDetailsById); 
 
-// cancelled order destroy
-router.delete("/dentist/delete/:status",authMiddleware.isAuthenticated,DentistController.cancelledAndDestroyOrder)
+// cancelled and complted order destroy
+router.put("/dentist/delete/:status",authMiddleware.isAuthenticated,DentistController.cancelledAndDestroyOrder)
 //paynow
 router.post("/dentist/paynow",authMiddleware.isAuthenticated,DentistController.payNow)
 router.get("/dashboard/all-orders",authMiddleware.isAuthenticated,dashBoardController.allOrders)

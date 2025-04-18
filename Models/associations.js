@@ -6,6 +6,8 @@ const Roles = require("./TblRoles.model");
 const Services = require("./TblServices.model");
 const TblOrganization_Service = require("./tblOrganizationService");
 const OrderServices = require("./ReportsModel/OrderServices.model");
+const UploadImages = require("./ReportsModel/UploadImages.model");
+const orderTransaction = require("./ReportsModel/OrderTransaction.model");
 
 Organization.belongsTo(TblOrganizationType, {
   foreignKey: "organizationType_id",
@@ -108,4 +110,24 @@ OrderServices.belongsTo(Services,{foreignKey:'orgserviceId',as:"serviceDetails"}
 Services.hasMany(OrderServices,{foreignKey:'orgserviceId'})
 
 OrderReports.belongsTo(User,{foreignKey:"userUUID",as:"userDetails"})
-User.hasMany(OrderReports,{foreignKey:"userUUID"}) 
+User.hasMany(OrderReports,{foreignKey:"userUUID"})
+
+UploadImages.belongsTo(OrderReports,{foreignKey:"order_id",as:"orderDetails"})
+OrderReports.hasMany(UploadImages,{foreignKey:"order_id",as:"orderImages"})
+
+orderTransaction.belongsTo(OrderReports, {
+  foreignKey: 'orderId', 
+  as: 'transactionDetails'
+});
+
+
+OrderReports.hasMany(orderTransaction, {
+  foreignKey: 'orderId', 
+  as: 'transactions' 
+});
+
+
+OrderReports.belongsTo(User,{
+  foreignKey:'delivery_boy',
+  as:'deliveryBoy'
+})

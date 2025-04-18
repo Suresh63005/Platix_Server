@@ -9,26 +9,19 @@ const TblOrganization_Service = require("../Models/tblOrganizationService");
 const Services = require("../Models/TblServices.model");
 
 // Upsert (Create or Update) Organization
-const upsertOrganizations =async (req, res) => {
+const upsertOrganizations = async (req, res) => {
     const {
         id, addresses, businessName, description, designation, email, googleCoordinates,
-        gstNumber, mobile, name, registrationId, organizationType_id, whatsapp, bankName, accountNumber,
-        accountHolder, ifscCode, upiId, services,fileextras
+        gstNumber, mobile, name, registrationId, organizationType_id, whatsapp, bankName,
+        accountNumber, accountHolder, ifscCode, upiId, services, fileextras
     } = req.body;
 
-  
-    
-    
-console.log(req.body)
+    console.log(req.body);
     const parsedServices = typeof services === "string" ? JSON.parse(services) : services;
-    // const parsedAddress = typeof address === "string" ? JSON.parse(address) : address;
-    
+
     if (!Array.isArray(parsedServices)) {
         return res.status(400).json({ error: "Invalid services format" });
     }
-    // if (!Array.isArray(parsedAddress)) {
-    //     return res.status(400).json({ error: "Invalid addres format" });
-    // }
 
     let file1 = null;
     let files = [];
@@ -46,7 +39,7 @@ console.log(req.body)
         }
     }
 
-    const transaction = await sequelize.transaction(); // Start a transaction
+    const transaction = await sequelize.transaction();
 
     try {
         let organization;
@@ -55,107 +48,91 @@ console.log(req.body)
             // Find the organization
             organization = await Organization.findByPk(id, { transaction });
 
-
-        
             if (!organization) {
                 await transaction.rollback();
                 return res.status(404).json({ error: "Organization not found" });
             }
 
-            
+            // Update organization details
+            await organization.update({
+                address: addresses, businessName, description, designation, email,
+                googleCoordinates: JSON.parse(googleCoordinates),
+                gstNumber, mobile, name, registrationId, organizationType_id, whatsapp,
+                bankName, accountNumber, accountHolder, ifscCode, upiId,
+                file1: file1 || organization.file1,
+                file2: fileextras
+            }, { transaction });
 
-                await organization.update({
-                    address:addresses, businessName, description, designation, email,
-                    googleCoordinates: JSON.parse(googleCoordinates),
-                    gstNumber, mobile, name, registrationId, organizationType_id, whatsapp, 
-                    bankName, accountNumber, accountHolder, ifscCode, upiId,
-                    file1: file1 || organization.file1,
-                    file2:  fileextras
-                }, { transaction }); 
-
-            
-            
-            if(files.length > 0){
-
+            // Handle multiple files if provided
+            if (files.length > 0) {
                 let existingImages = organization.file2 ? organization.file2.split(",") : [];
                 let updatedImages = [...existingImages, ...files];
-          
-                // Remove duplicates and limit to 3 images
                 updatedImages = Array.from(new Set(updatedImages)).slice(0, 3);
-          
-                // Update organization details
-                await organization.update({
-                    address:addresses,
-                  businessName,
-                  description,
-                  designation,
-                  email,
-                  googleCoordinates: JSON.parse(googleCoordinates),
-                  gstNumber,
-                  mobile,
-                  name,
-                  registrationId,
-                  organizationType_id,
-                  whatsapp,
-                  bankName,
-                  accountNumber,
-                  accountHolder,
-                  ifscCode,
-                  upiId,
-                  file1: file1 || organization.file1,
-                  file2: updatedImages.join(",")
-                }, { transaction });
 
+                await organization.update({
+                    file2: updatedImages.join(",")
+                }, { transaction });
             }
 
-           if (parsedServices.length === 0) {
-
-            await TblOrganization_Service.destroy({
+            // Fetch existing services for this organization
+            const existingServices = await TblOrganization_Service.findAll({
                 where: { organization_id: id },
-                force: true,  
                 transaction
             });
 
-           }
+            // Create a map of existing services by service_id for easy lookup
+            const existingServicesMap = new Map(
+                existingServices.map(s => [s.service_id, s])
+            );
 
-            if (parsedServices.length > 0) {
-               
+            // Process the incoming services
+            for (const service of parsedServices) {
+                const existingService = existingServicesMap.get(service.id);
+
+                if (existingService) {
+                    // Update existing service if price has changed
+                    if (existingService.price !== service.price) {
+                        await existingService.update({
+                            price: service.price
+                        }, { transaction });
+                    }
+                    existingServicesMap.delete(service.id); // Remove from map to track which ones remain
+                } else {
+                    // Add new service
+                    await TblOrganization_Service.create({
+                        organization_id: id,
+                        service_id: service.id,
+                        price: service.price
+                    }, { transaction });
+                }
+            }
+
+            // Optionally: Remove services that are no longer in parsedServices
+            // If you want to keep them, skip this step
+            if (existingServicesMap.size > 0) {
+                const servicesToDelete = Array.from(existingServicesMap.keys());
                 await TblOrganization_Service.destroy({
-                    where: { organization_id: id },
-                    force: true,  
+                    where: {
+                        organization_id: id,
+                        service_id: servicesToDelete
+                    },
                     transaction
                 });
-        
-                const serviceData = parsedServices.map(service => ({
-                    organization_id: id,
-                    service_id: service.id,
-                    price: service.price
-                }));
-        
-                await TblOrganization_Service.bulkCreate(serviceData,{ transaction });
             }
-        
+
             await transaction.commit();
             return res.status(200).json({ message: "Organization updated successfully", data: organization });
-        }
-         else {
+        } else {
+            // Create new organization logic remains the same
+            const organizationWithName = await Organization.findOne({ where: { name, organizationType_id } });
+            const organizationWithNumber = await Organization.findOne({ where: { mobile }, transaction });
 
-            
-
-            const organizationwithname = await Organization.findOne({ where: {name,organizationType_id  } });
-            const organizationwithnumber = await Organization.findOne({ where: {mobile }, transaction });
-
-            if(organizationwithname){
-                
+            if (organizationWithName) {
                 return res.status(400).json({ error: "Organization with this name already exists" });
-
-            }
-            else if(organizationwithnumber){
+            } else if (organizationWithNumber) {
                 return res.status(400).json({ error: "Organization with this number already exists" });
             }
-            else{
 
-                 // Create a new organization
             organization = await Organization.create({
                 address: addresses, businessName, description, designation, email,
                 googleCoordinates: JSON.parse(googleCoordinates),
@@ -163,8 +140,6 @@ console.log(req.body)
                 bankName, accountNumber, accountHolder, ifscCode, upiId,
                 file1, file2: files.join(",")
             }, { transaction });
-
-            console.log("Created Organization:", organization); // Log new organization
 
             const organizationId = organization.id;
 
@@ -174,20 +149,11 @@ console.log(req.body)
                     service_id: service.id,
                     price: service.price
                 }));
-
                 await TblOrganization_Service.bulkCreate(serviceData, { transaction });
             }
 
             await transaction.commit();
             return res.status(201).json({ message: "Organization created successfully", data: organization });
-
-            }
-
-
-
-
-
-           
         }
     } catch (error) {
         console.error("Error inserting/updating organization:", error);

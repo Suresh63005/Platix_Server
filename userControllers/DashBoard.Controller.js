@@ -157,7 +157,7 @@ const statusOrder = async (req, res) => {
 
         
 
-        const whereCondition = {};
+        const whereCondition = {is_visible_to_customer : {[Op.eq]:true}};
         if (status) whereCondition.orderStatus = status;
         if (userId) whereCondition.userUUID = userId;
 
@@ -197,6 +197,7 @@ const statusOrder = async (req, res) => {
                 },
             ],
             order: [["createdAt", "DESC"]],
+            // logging: console.log
         });
 
         // Clean the address field if it's in stringified JSON format

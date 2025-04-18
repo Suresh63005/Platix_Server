@@ -1,31 +1,66 @@
 const express=require("express")
 const router=express.Router()
 const ownerController=require("../../userControllers/Owner/OwnerDashboard.Controller")
-const dentistController=require("../../userControllers/Dentist/Dentist.Controller")
-const authMiddleware=require("../../Middlewares/auth")
+const authMiddleware=require("../../Middlewares/auth");
+const upload = require("../../utils/multer")
 
+
+// dashboard counting data
 router.get("/owner/dashboard",authMiddleware.isOwner,ownerController.labOrders);
+
 // get all order status wise (active || close || cancelled)
 router.get("/owner/getall-order/:orderStatus",authMiddleware.isOwner,ownerController.labAllOrders)
+
 // it shown all order reports(order report and payment report) // this report should be order or payment
-router.get("/owner/report/:report",authMiddleware.isOwner,ownerController.labOrderAndPaymentReport)
+router.get("/owner/report/:report/:fromdate?/:todate?",authMiddleware.isOwner,ownerController.searchOrdersGetByDate)
+
 // retrieve id of order and payment report along with their specific details
 router.get("/owner/order/report/:id/:report",authMiddleware.isOwner, ownerController.labOrderAndPaymentReportGetById)
+
+//for dashboard search
 router.get("/owner/order/dashboard/search-orders",authMiddleware.isOwner, ownerController.searchOrders);
 
+// // this will work for both order and payment search
+router.get("/owner/order/search/:search",authMiddleware.isOwner,ownerController.orderAndPaymentSearch);
 
-
-// this will work for both order and payment reports
-router.get("/owner/order/payment/search-orders",authMiddleware.isOwner,ownerController.searchOrders);
-
-// this will work for both order and payment search by date
-router.get("/owner/report/:orderOrPayment/:fromdate?/:todate?",authMiddleware.isOwner,ownerController.searchOrdersGetByDate)
 // for labrotory owner create order searching doctor
-router.get("/owner/order/search",authMiddleware.isOwner,ownerController.searchDoctor);
+router.get("/owner/doctor/search/:search",authMiddleware.isOwner,ownerController.searchDoctor);
 
-// create order
-router.post("/owner/upsert",authMiddleware.isOwner,dentistController.fromDentist);
+// for labrotory owner create order and updating order and cancelled order also
+router.post("/owner/upsert",authMiddleware.isOwner,ownerController.ownerUpsertOrder)
+router.put("/owner/upsert/:cancel?",authMiddleware.isOwner,ownerController.cancelledOrders);
 
-router.route("/owner/upsert/:cancel?").post(authMiddleware.isAuthenticated,dentistController.fromDentist).put(authMiddleware.isAuthenticated,dentistController.fromDentist);
+// for assigning service to technician or delivery boy
+router.post("/owner/assign-service",authMiddleware.isOwner,ownerController.assignService);
+
+// create a new doctor
+router.post("/owner/upsert-doctor",authMiddleware.isOwner,ownerController.upsertDoctor);
+
+
+//get all hospital name
+router.get("/owner/get-hospital-name",authMiddleware.isOwner,ownerController.getAllHospitalName);
+//delete notfication
+// router.delete
+
+
+//get all technician 
+router.get("/owner/get-technician",authMiddleware.isOwner,ownerController.getAllTechnician);
+
+//get all delivery boy
+router.get("/owner/get-delivery-boy",authMiddleware.isOwner,ownerController.getAllDeliveryBoy);
+
+
+router.post("/owner/upload-images",authMiddleware.isOwner,upload.array("images",4),ownerController.uploadImagesByOwner)
+
+
+//delete complted and cancelled order
+router.put("/owner/delete/:status",authMiddleware.isOwner,ownerController.cancelledAndDestroyOrder)
+
+
+// raiseInvoiceAndCloseOrder
+router.post("/owner/raise-invoice/:id",authMiddleware.isOwner,ownerController.raiseInvoiceAndCloseOrder)
+
+//edit invoice
+router.put("/owner/edit-invoice/:id",authMiddleware.isOwner,ownerController.editInvoice)
 
 module.exports=router

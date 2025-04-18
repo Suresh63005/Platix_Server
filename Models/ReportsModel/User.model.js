@@ -14,7 +14,7 @@ const User = sequelize.define(
       defaultValue: DataTypes.UUIDV4,
     },
     prefix: {
-      type: DataTypes.ENUM("mr", "ms", "mrs", "dr"),
+      type: DataTypes.ENUM("MR", "MS", "MRS", "DR"),
       allowNull: true,
     },
     firstName: {
@@ -91,6 +91,10 @@ const User = sequelize.define(
     businessName: {
       type: DataTypes.STRING,
       allowNull: true,
+    },
+    one_subscription:{
+      type:DataTypes.TEXT,
+      allowNull:true
     },
   },
   {

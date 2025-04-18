@@ -130,7 +130,7 @@ const isAuthenticated = async(req,res,next)=>{
 
     const decode = jwt.verify(token, process.env.JWT_TOKEN);
 
-    console.log(decode ,"decode from token");
+    // console.log(decode ,"decode from token");
 
     const user = await User.findByPk(decode?.userId);
 
@@ -169,7 +169,7 @@ const isOwner = async(req,res,next)=>{
 
     const decode = jwt.verify(token, process.env.JWT_TOKEN);
 
-    // console.log(decode ,"decode from token");
+    console.log(decode ,"decode from token");
 
     const user = await User.findByPk(decode?.userId, {
       include:[
@@ -179,6 +179,8 @@ const isOwner = async(req,res,next)=>{
         }
       ]
     });
+
+
 
 
     // console.log(user,"userrrrrrrrrrrrrrrrrrrrr")
@@ -192,13 +194,14 @@ const isOwner = async(req,res,next)=>{
 
 
     if(user.role.rolename === "Owner" || "owner"  ){
-      req.user = user;
+      req.user = user;  
     }
+
+    
     else{
       return res.status(403).json({message:"Access denied. You are not the owner."})
     }
 
-   
 
     next();
     

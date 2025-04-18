@@ -2,6 +2,10 @@ const User = require("../../Models/ReportsModel/User.model");
 const admin = require("../../config/firebase-config");
 const jwt = require("jsonwebtoken");
 const {sendEmail,subscribeUser} = require("../../utils/sendEmail");
+const TblOrganizationType = require("../../Models/TblOrganizationType.model");
+const Organization = require("../../Models/Organization.model");
+const TblOrganization_Service = require("../../Models/tblOrganizationService");
+const Services = require("../../Models/TblServices.model");
 
 let otpStore={};
 
@@ -108,7 +112,7 @@ const RoleDetails = async (req, res) => {
         console.log(otp)
         await sendEmail(email, subject, text);
 
-        return res.status(200).json({ message: "Role details updated successfully! OTP has been sent to your email." });
+        return res.status(200).json({ message: "Role details updated successfully! OTP has been sent to your email." ,user:user});
 
     } catch (error) {
         console.error("Error assigning/updating role:", error.message);
@@ -149,7 +153,6 @@ const verifyOtp = async(req, res) => {
 };
 
 // delivery boy , owner, technician  login controller
-
 const loginwithnumber = async (req, res) => {
     let { mobileNo, registerId } = req.body;
 
@@ -172,7 +175,34 @@ const loginwithnumber = async (req, res) => {
         }
 
         // Check if the user exists in the local database
-        const userRecord = await User.findOne({ where: { mobileNo } });
+        const userRecord = await User.findOne({ where: { mobileNo },
+            include: [
+                {
+                  model: Organization,
+                  as: 'organization',
+                  attributes: ['id', 'name'],
+                  include: [
+                    {
+                      model: TblOrganizationType,
+                      as: 'organizationType',
+                      attributes: ['id', 'organizationType'],
+                    },
+                    {
+                      model: TblOrganization_Service,
+                      as: 'organization_service',
+                      attributes: ['id', 'price'],
+                      include: [
+                        {
+                          model: Services,
+                          as: 'servicess',
+                          attributes: ['id', 'servicename', 'servicedescription'],
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+         });
 
         if (!userRecord) {
             return res.status(404).json({ message: "User not found in the database." });
@@ -199,7 +229,7 @@ const loginwithnumber = async (req, res) => {
         });
 
     } catch (error) {
-        console.error("Error during login:", error.message);
+        console.error("Error during login:", error.message); 
 
         if (error.code === "auth/user-not-found") {
             return res.status(404).json({ message: "Mobile number not registered in Firebase." });
@@ -210,13 +240,62 @@ const loginwithnumber = async (req, res) => {
 };
 
 
-const ListAllUsers = async()=>{
-    const listUsersResult = await admin.auth().listUsers();
-    // console.log("All Firebase Users:", listUsersResult.users.map(user => user.phoneNumber));
-    // console.log("All Firebase Users Registrating Id:", listUsersResult.users.map(user => user.uid));
 
-  }
-  ListAllUsers();
+// const ListAllUsers = async()=>{
+//     const listUsersResult = await admin.auth().listUsers();
+//     // console.log("All Firebase Users:", listUsersResult.users.map(user => user.phoneNumber));
+//     // console.log("All Firebase Users Registrating Id:", listUsersResult.users.map(user => user.uid));
 
+//   }
+//   ListAllUsers();
 
-module.exports = { verifyMobile ,RoleDetails,verifyOtp,loginwithnumber};
+  const updateOneSignal = async (req, res) => {
+
+    const userId = req.user.id;
+    if(!userId){
+        return res.status(400).json({ message: "Unauthorized!" });
+    }
+   
+    const {  one_subscription } = req.body;
+
+    if ( !one_subscription) {
+        return res.status(400).json({ message: "OneSignal ID are required!" });
+    }
+
+    try {
+        const user = await User.findOne({ where: { id: userId } });
+
+        if (!user) {
+            return res.status(404).json({ message: "User not found!" });
+        }
+
+        await User.update({ one_subscription }, { where: { id: userId } });
+
+        return res.status(200).json({ message: "OneSignal ID updated successfully!" });
+    } catch (error) {
+        console.error("Error updating OneSignal ID:", error.message);
+        return res.status(500).json({ message: "Internal server error: " + error.message });
+    }
+}
+
+const removeOneSignal = async (req, res) => {
+    const userId = req.user.id;
+    if(!userId){
+        return res.status(400).json({ message: "Unauthorized!" });
+    }
+    
+    try {
+        const user = await User.findOne({ where: { id: userId } });
+        if (!user) {
+            return res.status(404).json({ message: "User not found!" });
+        }
+        await User.update({ one_subscription: null }, { where: { id: userId } });
+        return res.status(200).json({ message: "OneSignal ID removed successfully!" });
+    }
+    catch (error) {
+        console.error("Error removing OneSignal ID:", error.message);
+        return res.status(500).json({ message: "Internal server error: " + error.message });
+    }
+}
+
+module.exports = { verifyMobile ,RoleDetails,verifyOtp,loginwithnumber,updateOneSignal,removeOneSignal};

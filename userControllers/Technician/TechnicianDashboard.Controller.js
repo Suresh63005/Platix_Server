@@ -14,40 +14,72 @@ const technicianDashboardData = async(req,res)=>{
         res.status(401).json({message:"Unauthorized: User not found!"})
     }
     try {
-        const orders = await OrderReports.findOne({
-            where:{technician:uid}
-        })
+      const ordersExist = await OrderReports.findOne({
+        where: { technician: uid },
+      });
 
-        if(!orders){
+        if(!ordersExist){
             return res.status(404).json({message:"No Orders found"})
         }
+        // Count active and completed orders
         const orderCounts = await Promise.all([
-            OrderReports.count({where:{technician:uid,orderStatus:"processing"}}),
-            OrderReports.count({where:{technician:uid,orderStatus:"completed"}})
-        ])
+          OrderReports.count({
+            where: {
+              technician: uid,
+              orderStatus: "processing",
+              assignment_status: "assigned_to_technician",
+            },
+          }),
+          OrderReports.count({
+            where: {
+              technician: uid,
+              orderStatus: "processing",
+              assignment_status: "technician_completed",
+            },
+          }),
+        ]);
+
+                // Fetch order list
         const orderList = await OrderReports.findAll({
-            where:{technician:uid,orderStatus:"processing"},
-            include:[
-                {
-                    model:Organization,
-                    as:"fromOrg",
-                    attributes:['name']
-                }
-            ]
-        })
+          where: { technician: uid, orderStatus: "processing",assignment_status: "assigned_to_technician" },
+          include: [
+            {
+              model: Organization,
+              as: "fromOrg",
+              attributes: ["name"],
+            },
+          ],
+        });
+
         // const orderStausWithNames = orderList.map((order)=>({
         //     ...order.toJSON(),
         //     fromOrganizationName: order.fromOrg ? order.fromOrg.name : "Unknown"
         // }))
-        const response ={
-            activeOrders:orderCounts[0],
-            totalCompletedOrders:orderCounts[1],
-            orderList,
-        }
+
+        // const response ={
+        //     activeOrders:orderCounts[0],
+        //     totalCompletedOrders:orderCounts[1],
+        //     orderList,
+        // }
+        // return res.status(200).json({
+        //     message:"Technician Dashboard Fetched Successfully!",
+        //     response
+        // })
+
+        const response = {
+          activeOrders: orderCounts[0],
+          totalCompletedOrders: orderCounts[1],
+          orderList: orderList.map((order) => ({
+            ...order.toJSON(),
+            fromOrganizationName: order.fromOrg ? order.fromOrg.name : "Unknown",
+          })),
+        };
+    
         return res.status(200).json({
-            message:"Technician Dashboard Fetched Successfully!",
-            response
-        })
+          message: "Technician Dashboard Fetched Successfully!",
+          response,
+        });
+
     } catch (error) {
         console.error("Error fetching order counts:", error);
       return res.status(500).json({ message: "Internal Server Error" }); 
@@ -55,231 +87,283 @@ const technicianDashboardData = async(req,res)=>{
 }
 
 const FetchTechnicianOrdersByStatus = async (req, res) => {
-    const uid = req.user?.id;
-    console.log("Technician ID:", uid);
-        
-    if (!uid) {
-        return res.status(401).json({ message: "Unauthorized: User not found!" });
+  const uid = req.user?.id;
+  console.log("Technician ID:", uid);
+
+  if (!uid) {
+    return res.status(401).json({ message: "Unauthorized: User not found!" });
+  }
+
+  let { orderStatus } = req.query;
+  console.log("Order Status Query:", orderStatus);
+
+  if (!orderStatus) {
+    return res.status(400).json({ message: "orderStatus is required." });
+  }
+
+  if (!["processing", "completed", "cancelled"].includes(orderStatus)) {
+    return res.status(400).json({
+      message: "Order status is required and should be either processing, completed, or cancelled!",
+    });
+  }
+
+  try {
+    const whereClause = {
+      technician: uid,
+      orderStatus,
+    };
+
+    // For processing, include assignment_status filter
+    if (orderStatus === "processing") {
+      whereClause.assignment_status = {
+        [Op.in]: ["assigned_to_technician", "technician_completed"],
+      };
     }
 
-    let { orderStatus } = req.query;
-    console.log("Order Status Query:", orderStatus);
+    const orders = await OrderReports.findAll({
+      where: whereClause,
+      include: [
+        {
+          model: Organization,
+          as: "fromOrg",
+          attributes: ["name"],
+        },
+      ],
+    });
 
-    if (!orderStatus) {
-        return res.status(400).json({ message: "orderStatus is required." });
+    if (!orders.length) {
+      return res.status(404).json({ message: "No orders found with the specified status!" });
     }
 
-    if (!["processing", "completed", "cancelled"].includes(orderStatus)) {
-        return res.status(400).json({
-            message: "Order status is required and should be either processing, completed, or cancelled!"
-        });
-    }
+    const formattedOrders = orders.map((order) => ({
+      ...order.toJSON(),
+      fromOrganizationName: order.fromOrg ? order.fromOrg.name : "Unknown",
+    }));
 
-    try {
-        orderStatus = [orderStatus];
-
-        const orders = await OrderReports.findAll({
-            where: { technician: uid, orderStatus: { [Op.in]: orderStatus } },
-            include:[
-                {
-                    model:Organization,
-                    as:"fromOrg",
-                    attributes:['name']
-                }
-            ]
-        });
-
-        if (!orders.length) {
-            return res.status(404).json({ message: "No orders found with the specified status!" });
-        }
-
-        res.status(200).json({ message: "Orders fetched successfully!", orders });
-    } catch (error) {
-        console.error("Error fetching orders:", error);
-        res.status(500).json({ message: "Internal Server Error", error: error.message });
-    }
+    res.status(200).json({ message: "Orders fetched successfully!", orders: formattedOrders });
+  } catch (error) {
+    console.error("Error fetching orders:", error);
+    res.status(500).json({ message: "Internal Server Error", error: error.message });
+  }
 };
 
 const ViewOrderDetails = async (req, res) => {
-    try {
-        const uid = req.user?.id;
-        if (!uid) {
-            return res.status(401).json({ message: "Unauthorized: User not found!" });
-        }
-
-        const { orderId } = req.params;
-
-        const order = await OrderReports.findOne({
-            where: { id: orderId, technician: uid },
-            include: [
-                {
-                    model: Organization,
-                    as: "fromOrg",
-                    attributes: ["id", "name"]
-                },
-                {
-                    model: Organization,
-                    as: "toOrg",
-                    attributes: ["id", "name"]
-                },
-                {
-                    model: User,
-                    as: "userDetails",
-                    attributes: ["id", "firstName"]
-                },
-                {
-                    model: OrderServices,
-                    as: "orderServices",
-                    attributes: ["id", "orderId", "quantity"],
-                    include: [
-                        {
-                            model: Services,
-                            as: "serviceDetails",
-                            attributes: ["id", "servicename"],
-                        }
-                    ]
-                }
-            ],
-        });
-
-        if (!order) {
-            return res.status(404).json({ message: "Order not found or access denied!" });
-        }
-
-        const orderDetails = {
-            id: order.id,
-            orderId: order.orderId,
-            orderStatus: order.orderStatus,
-            orderDate: order.orderDate,
-            requiredDate: order.requiredDate,
-            toothName: order.toothName,
-            shades: order.shades,
-            remarks: order.remarks,
-            payment_status: order.payment_status,
-            subTotal: order.subTotal,
-            tax: order.tax,
-            serviceCharges: order.serviceCharges,
-            totalAmount: order.totalAmount,
-            paidAmount: order.paidAmount,
-            paymentMethod: order.paymentMethod,
-            patientId: order.patientId,
-            patientName: order.patientName,
-            technician: order.technician,
-            doctorName: order.user ? order.user.firstName : "Unknown Doctor",
-            hospitalName: order.fromOrg ? order.fromOrg.name : "Unknown Hospital",
-            laboratoryName: order.toOrg ? order.toOrg.name : "Unknown Laboratory",
-
-            orderServices: order.orderServices.map(service => {
-                console.log("Service Details:", service.serviceDetails);
-                return {
-                    id: service.id,
-                    quantity: service.quantity,
-                    servicename: service.serviceDetails?.servicename || "Unknown"
-                };
-            })
-                       
-        };
-
-        return res.status(200).json({
-            message: "Order fetched successfully!",
-            order: orderDetails
-        });
-
-    } catch (error) {
-        console.error("Error fetching order details:", error);
-        return res.status(500).json({ message: "Internal Server Error", error: error.message });
+  try {
+    const uid = req.user?.id;
+    if (!uid) {
+      return res.status(401).json({ message: "Unauthorized: User not found!" });
     }
+
+    const { orderId } = req.params;
+
+    const order = await OrderReports.findOne({
+      where: { id: orderId, technician: uid },
+      include: [
+        {
+          model: Organization,
+          as: "fromOrg",
+          attributes: ["id", "name"],
+        },
+        {
+          model: Organization,
+          as: "toOrg",
+          attributes: ["id", "name"],
+        },
+        {
+          model: User,
+          as: "userDetails",
+          attributes: ["id", "firstName"],
+        },
+        {
+          model: OrderServices,
+          as: "orderServices",
+          attributes: ["id", "orderId", "quantity"],
+          include: [
+            {
+              model: Services,
+              as: "serviceDetails",
+              attributes: ["id", "servicename"],
+            },
+          ],
+        },
+        {
+          model: UploadImages,
+          as: "orderImages",
+          attributes: ["id", "images", "order_id"],
+          required: false,
+        },
+      ],
+    });
+
+    if (!order) {
+      return res.status(404).json({ message: "Order not found or access denied!" });
+    }
+
+    console.log("Raw assignment_status:", order.assignment_status); // Debug
+
+    const orderDetails = {
+      id: order.id,
+      orderId: order.orderId,
+      orderStatus: order.orderStatus,
+      assignment_status: order.assignment_status || "unassigned", // Default if NULL
+      orderDate: order.orderDate,
+      requiredDate: order.requiredDate,
+      toothName: order.toothName,
+      shades: order.shades,
+      remarks: order.remarks,
+      payment_status: order.payment_status,
+      subTotal: order.subTotal,
+      tax: order.tax,
+      serviceCharges: order.serviceCharges,
+      totalAmount: order.totalAmount,
+      paidAmount: order.paidAmount,
+      paymentMethod: order.paymentMethod,
+      patientId: order.patientId,
+      patientName: order.patientName,
+      technician: order.technician,
+      doctorName: order.userDetails ? order.userDetails.firstName : "Unknown Doctor",
+      hospitalName: order.fromOrg ? order.fromOrg.name : "Unknown Hospital",
+      laboratoryName: order.toOrg ? order.toOrg.name : "Unknown Laboratory",
+      orderServices: order.orderServices.map((service) => ({
+        id: service.id,
+        quantity: service.quantity,
+        servicename: service.serviceDetails?.servicename || "Unknown",
+      })),
+      orderImages: order.orderImages.map((image) => ({
+        id: image.id,
+        images: JSON.parse(image.images),
+        order_id: image.order_id,
+      })),
+    };
+
+    console.log("Formatted orderDetails:", JSON.stringify(orderDetails, null, 2));
+
+    return res.status(200).json({
+      message: "Order fetched successfully!",
+      order: orderDetails,
+    });
+  } catch (error) {
+    console.error("Error fetching order details:", error);
+    return res.status(500).json({ message: "Internal Server Error", error: error.message });
+  }
 };
 
 const UploadImagesByTechnician = async (req, res) => {
-    const uid = req.user?.id;
-  
-    if (!uid) {
-      return res.status(401).json({ message: "Unauthorized: User not found!" });
-    }
-  
-    const { orderId } = req.query;
-    if (!orderId) {
-      return res.status(400).json({ message: "Order ID is required!" });
-    }
-  
-    if (!req.files || req.files.length === 0) {
-      return res.status(400).json({ message: "At least one image is required!" });
-    }
-  
-    try {
-      const order = await OrderReports.findOne({
-        where: { technician: uid, id: orderId,orderStatus:{[Op.or]:["processing", "completed"]}},
-      });
-      if (!order) {
-        return res.status(404).json({
-          message: "Order not found or you don't have permission to upload images for it!",
-        });
-      }
-  
-      const imageUploadPromises = req.files.map((file) =>
-        uploadToS3(file, "technician-uploads")
-      );
-      const imageUrls = await Promise.all(imageUploadPromises);
-  
-      const uploadRecord = await UploadImages.create({
-        id: uuidv4(),
-        uid: uid,
-        order_id: orderId,
-        images: JSON.stringify(imageUrls), 
-      });
-  
-      return res.status(200).json({
-        message: "Images uploaded successfully!",
-        data: {
-          orderId: orderId,
-          imageUrls: imageUrls,
-          uploadRecordId: uploadRecord.id,
-        },
-      });
-    } catch (error) {
-      console.error("Error in UploadImagesByTechnician:", error);
-      return res.status(500).json({
-        message: "Internal server error: " + error.message,
+  const uid = req.user?.id;
+
+  if (!uid) {
+    return res.status(401).json({ message: "Unauthorized: User not found!" });
+  }
+
+  const { orderId } = req.query;
+  if (!orderId) {
+    return res.status(400).json({ message: "Order ID is required!" });
+  }
+
+  if (!req.files || req.files.length === 0) {
+    return res.status(400).json({ message: "At least one image is required!" });
+  }
+
+  try {
+    const order = await OrderReports.findOne({
+      where: {
+        technician: uid,
+        id: orderId,
+        orderStatus:{[Op.in]:[ "processing","completed"]},
+        assignment_status: { [Op.in]: ["assigned_to_technician", "technician_completed"] },
+      },
+    });
+    if (!order) {
+      return res.status(404).json({
+        message: "Order not found, not in valid status, or you don't have permission to upload images for it!",
       });
     }
-  };
+
+    const imageUploadPromises = req.files.map((file) =>
+      uploadToS3(file, "technician-uploads")
+    );
+    const imageUrls = await Promise.all(imageUploadPromises);
+
+    const uploadRecord = await UploadImages.create({
+      id: uuidv4(),
+      uid: uid,
+      order_id: orderId,
+      images: JSON.stringify(imageUrls),
+    });
+
+    return res.status(200).json({
+      message: "Images uploaded successfully!",
+      data: {
+        orderId: orderId,
+        imageUrls: imageUrls,
+        uploadRecordId: uploadRecord.id,
+      },
+    });
+  } catch (error) {
+    console.error("Error in UploadImagesByTechnician:", error);
+    return res.status(500).json({
+      message: "Internal server error: " + error.message,
+    });
+  }
+};
   
-  const CancelAndCloseOrder = async (req, res) => {
-    const uid = req.user?.id;
-    const { orderId } = req.body;
-    const {action}=req.query
-    if (!uid) {
-      return res.status(401).json({ message: "Unauthorized: User not found!" });
+const CancelAndCloseOrder = async (req, res) => {
+  const uid = req.user?.id;
+  const { orderId } = req.body;
+  const { action } = req.query;
+
+  // Input validation
+  if (!uid) {
+    return res.status(401).json({ message: "Unauthorized: User not found!" });
+  }
+  if (!orderId) {
+    return res.status(400).json({ message: "Order ID is required!" });
+  }
+  if (!action || !["cancelled", "completed"].includes(action)) {
+    return res.status(400).json({ message: "Invalid action! Action must be 'cancelled' or 'completed'." });
+  }
+
+  try {
+    // Find order
+    const order = await OrderReports.findOne({
+      where: { technician: uid, id: orderId },
+    });
+    if (!order) {
+      return res.status(404).json({
+        message: "Order not found or you don't have permission to modify it!",
+      });
     }
-    if (!orderId) {
-      return res.status(400).json({ message: "Order ID is required!" });
+
+    // Check current status
+    if (action === "cancelled" && order.orderStatus === "processing" && order.assignment_status === "assigned_to_technician") {
+      return res.status(400).json({ message: "Order is already in processing status." });
     }
-    if (!action || !["cancelled", "completed"].includes(action)) {
-      return res.status(400).json({ message: "Invalid action! Action must be 'cancelled' or 'completed'." });
+    if (action === "completed" && order.orderStatus === "processing" && order.assignment_status === "technician_completed") {
+      return res.status(400).json({ message: "Order is already marked as technician completed." });
     }
-  
-    try {
-      const order = await OrderReports.findOne({ where: { technician: uid, id: orderId } });
-      if (!order) {
-        return res.status(404).json({ message: "Order not found! or you don't have permission to modify it!" });
-      }
-      if (order.orderStatus === action) {
-        return res.status(400).json({ message: `Order is already marked as ${action}.` });
-      }
-      if (order.orderStatus === "completed" && action === "cancelled") {
-        return res.status(400).json({ message: "Completed order cannot be cancelled!" });
-      }
-  
-      order.orderStatus = action;
-      await order.save();
-  
-      return res.status(200).json({ message: `Order has successfully ${action}!` });
-    } catch (error) {
-      console.error("Error while updating order: ", error);
-      return res.status(500).json({ message: "Internal server error: " + error.message });
+    if (order.orderStatus === "completed" && action === "cancelled") {
+      return res.status(400).json({ message: "Fully completed order cannot be cancelled!" });
     }
-  };
+
+    // Update status
+    if (action === "cancelled") {
+      order.orderStatus = "processing";
+      // assignment_status remains unchanged (e.g., assigned_to_technician)
+    } else if (action === "completed") {
+      order.orderStatus = "processing";
+      order.assignment_status = "technician_completed";
+    }
+
+    await order.save();
+
+    // Response message
+    const statusMessage = action === "cancelled" ? "set to processing" : "marked as technician completed";
+    return res.status(200).json({ message: `Order has been successfully ${statusMessage}!` });
+  } catch (error) {
+    console.error("Error while updating order:", error);
+    return res.status(500).json({ message: "Internal server error: " + error.message });
+  }
+};
 
   const SearchAPI = async(req,res)=>{
     const uid = req.user?.id;
@@ -338,12 +422,152 @@ const UploadImagesByTechnician = async (req, res) => {
     }
   }
 
+  const TechnicianDashboardOrderSearch = async (req, res) => {
+    const uid = req.user?.id;
+    if (!uid) {
+      return res.status(401).json({ message: "Unauthorized: User not found!" });
+    }
+  
+    // Extract the search term from the first query parameter key
+    const searchTerm = Object.keys(req.query)[0];
+    console.log("Search Term:", searchTerm);
+  
+    if (!searchTerm || searchTerm.trim() === "") {
+      return res.status(400).json({ message: "A valid search term is required" });
+    }
+  
+    try {
+      // Define the where clause for the database query
+      const whereClause = {
+        technician: uid,
+        [Op.or]: [
+          { orderId: { [Op.like]: `%${searchTerm}%` } },
+          { orderDate: { [Op.like]: `%${searchTerm}%` } },
+        ],
+      };
+  
+      // Fetch orders from the database
+      const orders = await OrderReports.findAll({
+        where: whereClause,
+        include: [
+          {
+            model: Organization,
+            as: "fromOrg",
+            attributes: ["name"],
+            required: false,
+          },
+        ],
+        order: [["orderDate", "DESC"]],
+      });
+  
+      console.log("Raw Orders:", JSON.stringify(orders, null, 2));
+  
+      // Filter orders to ensure search term matches
+      const filteredOrders = orders.filter((order) => {
+        const orderIdMatch = order.orderId.toLowerCase().includes(searchTerm.toLowerCase());
+        const orderDateMatch = order.orderDate.toString().toLowerCase().includes(searchTerm.toLowerCase());
+        const orgNameMatch =
+          order.fromOrg && order.fromOrg.name.toLowerCase().includes(searchTerm.toLowerCase());
+  
+        return orderIdMatch || orderDateMatch || orgNameMatch;
+      });
+  
+      if (!filteredOrders || filteredOrders.length === 0) {
+        return res.status(404).json({ message: "No orders found matching the search criteria!" });
+      }
+  
+      // Format the filtered orders for the response
+      const formattedOrders = filteredOrders.map((order) => ({
+        id: order.id,
+        orderId: order.orderId,
+        orderDate: order.orderDate,
+        orderStatus: order.orderStatus,
+        assignment_status: order.assignment_status,
+        fromOrganizationName: order.fromOrg ? order.fromOrg.name : "Unknown",
+        toothName: order.toothName,
+        shades: order.shades,
+        totalAmount: order.totalAmount,
+        patientName: order.patientName,
+        createdAt: order.createdAt,
+        updatedAt: order.updatedAt,
+      }));
+  
+      return res.status(200).json({
+        message: "Orders fetched successfully!",
+        totalResults: formattedOrders.length,
+        orders: formattedOrders,
+      });
+    } catch (error) {
+      console.error("Error in SearchAPI:", error);
+      return res.status(500).json({ message: "Internal Server Error: " + error.message });
+    }
+  };
+
+  const ClearAllCompletedOrders = async (req, res) => {
+    const uid = req.user?.id;
+    if (!uid) {
+      return res.status(401).json({ message: "Unauthorized: User not found!" });
+    }
+  
+    try {
+      const [affectedRows] = await OrderReports.update(
+        { technician: null },
+        {
+          where: {
+            technician: uid,
+            orderStatus: "processing",
+            assignment_status: "technician_completed",
+          },
+        }
+      );
+  
+      if (affectedRows === 0) {
+        return res.status(404).json({ message: "No technician-completed orders found!" });
+      }
+  
+      return res.status(200).json({ message: "All technician-completed orders cleared successfully" });
+    } catch (error) {
+      console.error("Error in ClearAllCompletedOrders:", error);
+      return res.status(500).json({ message: "Internal Server Error: " + error.message });
+    }
+  };
+  
+  const ClearAllCancelledOrders = async (req, res) => {
+    const uid = req.user?.id;
+    if (!uid) {
+      return res.status(401).json({ message: "Unauthorized: User not found!" });
+    }
+  
+    try {
+      const [affectedRows] = await OrderReports.update(
+        { technician: null },
+        {
+          where: {
+            technician: uid,
+            orderStatus: "cancelled",
+          },
+        }
+      );
+  
+      if (affectedRows === 0) {
+        return res.status(404).json({ message: "No cancelled orders found for this technician!" });
+      }
+  
+      return res.status(200).json({ message: "All cancelled orders cleared successfully" });
+    } catch (error) {
+      console.error("Error in ClearAllCancelledOrders:", error);
+      return res.status(500).json({ message: "Internal Server Error: " + error.message });
+    }
+  };
+
 module.exports = {
   technicianDashboardData,
   FetchTechnicianOrdersByStatus,
   ViewOrderDetails,
   CancelAndCloseOrder,
   UploadImagesByTechnician,
-  SearchAPI
-  
+  SearchAPI,
+  TechnicianDashboardOrderSearch,
+  ClearAllCompletedOrders,
+  ClearAllCancelledOrders
 };

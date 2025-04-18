@@ -5,32 +5,74 @@ const User = require("../../Models/ReportsModel/User.model");
 const OrderServices = require("../../Models/ReportsModel/OrderServices.model");
 const TblOrganization_Service = require("../../Models/tblOrganizationService");
 const Services = require("../../Models/TblServices.model");
+const TblOrganizationType = require("../../Models/TblOrganizationType.model");
 
-// getall dashboard data
+// getall dashboard data and searching also
 const getAll = async (req, res) => {
-  const uid = req.user?.id;
-  if(!uid){
-    return res.status(401).json({message: "Unauthorized"})
+  const uid = req.user?.id; 
+  if (!uid) {
+    return res.status(401).json({ message: "Unauthorized" });
   }
-  try {
-    const [activeOrders, completedOrders] = await Promise.all([
-      OrderReports.count({ where: { orderStatus: "processing",delivery_boy:uid } }),
-      OrderReports.count({ where: { orderStatus: "completed" , delivery_boy:uid} })
-    ]);
 
-    const orderList = await OrderReports.findAll({
-      include: [
-        {
-          model: Organization, 
-          attributes: ['name'], 
-          as: 'toOrg',
-          required: false 
+  const { search } = req.query;  
+
+  try {
+    let orderList = [];
+    let activeOrders = 0;
+    let completedOrders = 0;
+
+    [activeOrders, completedOrders] = await Promise.all([
+      OrderReports.count({ where: { orderStatus: "processing", delivery_boy: uid } }),
+      OrderReports.count({ where: { orderStatus: "completed", delivery_boy: uid } })
+    ]);
+    // If search query is provided, perform search
+    if (search) {
+      orderList = await OrderReports.findAll({
+        where: {
+          [Op.or]: [
+            { orderId: { [Op.like]: `%${search}%` } },
+            { "$toOrg.name$": { [Op.like]: `%${search}%` } }
+          ],
+          delivery_boy: uid,
+          orderStatus: "processing"
+        },
+        include: [
+          {
+            model: Organization,
+            as: 'toOrg',
+            attributes: ['name'],
+          },
+          {
+            model:Organization,
+            as: 'fromOrg',
+            attributes: ['name'],
+          }
+        ],
+        order: [['createdAt', 'DESC']]
+      });
+
+      // if (orderList.length === 0) {
+      //   return res.status(404).json({ message: "No orders found matching your search." });
+      // }
+
+    } else {
+      // If no search term is provided, retrieve active orders and completed orders 
+      orderList = await OrderReports.findAll({
+        include: [
+          {
+            model: Organization,
+            attributes: ['name'],
+            as: 'toOrg',
+            required: false
+          }
+        ],
+        order: [['createdAt', 'DESC']],
+        where: {
+          delivery_boy: uid,
+          orderStatus: "processing"
         }
-      ],
-      where:{
-        delivery_boy: uid
-      }
-    });
+      });
+    }
 
     const response = {
       activeOrders,
@@ -41,59 +83,13 @@ const getAll = async (req, res) => {
     };
 
     return res.status(200).json(response);
+
   } catch (error) {
     console.error('Error fetching order counts:', error);
-
     return res.status(500).json({
       message: 'Failed to retrieve order counts. Please try again later.',
       error: error.message
     });
-  }
-};
-
-// Search orders by order ID or organization name
-const dashboardSearch = async (req, res) => {
-  const uid = req.user?.id; 
-  const { search } = req.query;
-
-  if (!uid) {
-    return res.status(401).json({ message: "Unauthorized. Please log in." });
-  }
-
-  if (!search) {
-    return res.status(400).json({ message: "Search term is required." });
-  }
-
-  try {
-    const orders = await OrderReports.findAll({
-      where: {
-        [Op.or]: [
-          { orderId: { [Op.like]: `%${search}%` } },
-          { "$toOrg.name$": { [Op.like]: `%${search}%` } }
-        ],
-        // Filtering by delivery_boy or technician (depends on your schema)
-        [Op.or]: [
-          { delivery_boy: uid },
-          // { technician: uid }
-        ]
-      },
-      include: [
-        { 
-          model: Organization, 
-          as: "toOrg", 
-          attributes: ["name"] 
-        }
-      ]
-    });
-
-    if (orders.length === 0) {
-      return res.status(404).json({ message: "No orders found matching your search." });
-    }
-
-    return res.status(200).json({ success: true, orders });
-  } catch (error) {
-    console.error("Error during order search:", error);
-    return res.status(500).json({ message: "An error occurred while searching for orders" });
   }
 };
 
@@ -113,14 +109,16 @@ const deliveryAllOrders = async (req, res) => {
   try {
     const allOrders = await OrderReports.findAll({
       where: {
-        orderStatus,  
+        orderStatus,
+        is_visible_to_delivery:true,  
         [Op.or]: [
           { delivery_boy: uid }, 
         ]
       },
       include: [
         { model: Organization, as: 'fromOrg', attributes: ['name'] } 
-      ]
+      ],
+      order: [['createdAt', 'DESC']]
     });
 
     return res.status(200).json({
@@ -140,7 +138,7 @@ const orderDetailsGetById = async (req, res) => {
   const uid = req.user?.id; 
   const { id } = req.params; 
   if (!uid) {
-    return res.status(401).json({ success: false, message: "Unauthorized. Please log in." });
+    return res.status(401).json({ success: false, message: "Unauthorized" });
   }
 
   try {
@@ -153,8 +151,21 @@ const orderDetailsGetById = async (req, res) => {
         {
           model: User,
           as: 'userDetails',
-          attributes: ['id', 'firstName', 'email', 'address', 'hospital_name']
+          attributes: ['id', 'firstName', 'email', 'address', 'hospital_name'],
+          // include:[
+          //   {
+          //     model:Organization,
+          //     as:'organization',
+          //     attributes:['id','name'],
+          //   }
+          // ]
+        },
+        {
+          model:User,
+          as:'deliveryBoy',
+          attributes: ['id', 'firstName','lastName', 'email', ]
         }
+        // here shown doctor details mean useruuid in orderreports table
       ]
     });
 
@@ -166,7 +177,7 @@ const orderDetailsGetById = async (req, res) => {
         {
           model: TblOrganization_Service,
           as: 'orgservice',
-          attributes: ['id', 'service_id'],
+          attributes: ['id', 'service_id','price'],
           include: [
             {
               model: Services,
@@ -179,16 +190,38 @@ const orderDetailsGetById = async (req, res) => {
     });
 
     const toOrganizationDetails = await Organization.findByPk(orderReport.toOrganization, {
-      attributes: ['id', 'name']
+      attributes: ['id', 'name'],
+      include:[
+        {
+          model:TblOrganizationType,
+          as:'organizationType',
+          attributes:['id','organizationType']
+        }
+      ]
     });
+    const fromOrganizationDetails = await Organization.findByPk(orderReport.fromOrganization, {
+      attributes: ['id', 'name'],
+      include:[
+        {
+          model:TblOrganizationType,
+          as:'organizationType',
+          attributes:['id','organizationType']
+        }
+      ]
+    });
+
+    const orderData=orderReport.toJSON()
+    orderData.doctorDetails = orderData.userDetails; //Creates a new key called doctorDetails and assigns it the value of userDetails (which was loaded from the association).
+    delete orderData.userDetails; //Removes the original userDetails key from the object, so only doctorDetails will appear in the final response.
 
     return res.status(200).json({
       success: true,
       message: "Order report found successfully!",
       data: {
-        ...orderReport.toJSON(),
+        ...orderData,
         orderServices,
-        toOrganizationDetails
+        toOrganizationDetails,
+        fromOrganizationDetails
       }
     });
 
@@ -272,4 +305,100 @@ const upsert = async (req, res) => {
   }
 };
 
-module.exports={ getAll,dashboardSearch ,deliveryAllOrders,orderDetailsGetById,upsert}
+const closedOrder = async (req, res) => {
+  const uid = req.user?.id; 
+
+  console.log(uid)
+  if (!uid) {
+    return res.status(401).json({ message: "Unauthorized" });
+  }
+
+  const { id } = req.params;
+  console.log(id);
+
+  try {
+    const order = await OrderReports.findOne({
+      where: { 
+        id: id,  
+        delivery_boy: uid,
+        
+      }
+    });
+    console.log(order)
+
+    if (order.orderStatus === "completed") {
+      return res.status(400).json({ message: "Order already closed" });
+    }
+
+    await OrderReports.update(
+      { 
+        orderStatus: "completed", 
+      },
+      { where: { id } }
+    );
+
+    return res.status(200).json({ success: true, message: "Order closed successfully!" });
+  } catch (error) {
+    console.error("Error closing orders:", error);
+    return res.status(500).json({ message: "Server error" });
+  }
+}
+
+
+// Clear cancelled or completed orders
+const cancelledAndDestroyOrder = async (req, res) => {
+  const { status } = req.params; // should be "completed" or "cancelled"
+  const userUUID = req.user?.id;
+  if(!userUUID) {
+    return res.status(401).json({ message: "Unauthorized!" });
+  }
+  if (!["completed", "cancelled"].includes(status)) {
+    return res.status(400).json({
+      message: "Invalid status. Use 'completed' or 'cancelled'.",
+    });
+  }
+
+  try {
+    // Build base where clause
+    let whereClause = {
+      orderStatus: status,
+      is_visible_to_delivery: true, 
+      created_by:userUUID,
+    };
+    console.log(whereClause, "whereClause");
+    if (status === "completed") {
+      whereClause.payment_status = "paid";
+    }
+
+    // Check if any such orders exist
+    const ordersToUpdate = await OrderReports.findAll({ where: whereClause });
+
+    if (ordersToUpdate.length === 0) {
+      return res.status(200).json({
+        success: true,
+        message: `No ${status} orders found or they have already been deleted.`,
+      });
+    }
+
+    // Proceed with update
+    const [updatedCount] = await OrderReports.update(
+      { is_visible_to_delivery: false },
+      { where: whereClause }
+    );
+
+    return res.status(200).json({
+      success: true,
+      message: `${updatedCount} ${status} orders created by you have been deleted successfully.`,
+    });
+
+  } catch (error) {
+    console.error("Error updating cancelled orders:", error.message);
+    return res.status(500).json({
+      success: false,
+      message: "An error occurred while updating cancelled orders.",
+      error: error.message
+    });
+  }
+};
+
+module.exports={ getAll ,deliveryAllOrders,orderDetailsGetById,upsert,closedOrder,cancelledAndDestroyOrder}
