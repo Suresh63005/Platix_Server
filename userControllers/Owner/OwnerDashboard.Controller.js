@@ -1249,7 +1249,7 @@ const getRadiologyOwnerOrdersByStatus = async (req, res) => {
   try {
     const { organization_id } = req.user;
     const { orderStatus } = req.params;
-
+    console.log(req.user, "organization_id")
     let whereClause = {
       toOrganization: organization_id,
       is_visible_to_owner: true,
@@ -1310,7 +1310,67 @@ const getRadiologyOwnerOrdersByStatus = async (req, res) => {
 };
 
 const payNow=async(req,res)=>{
-  
+  const { organization_id } = req.user;
+  console.log(organization_id, "req.user")
+  if(!organization_id) {
+    return res.status(401).json({ message: "Unauthorized" });
+  }
+
+  const { orderId, transactionId, amount } = req.body;
+
+  try {
+    const transaction = await orderTransaction.create({
+      orderId,
+      userUUID: uid,
+      transactionId,
+      amount
+    });
+
+    const orderReport = await OrderReports.findByPk(orderId);
+
+    if (!orderReport) {
+      return res.status(404).json({ message: "Order not found" });
+    }
+
+    await orderReport.update(
+      {
+        payment_status: "paid"
+      }
+    );
+
+
+    //send push notifications
+    const sendUserId= await User.findByPk(uid)
+    if(sendUserId?.one_subscription){
+      const response=await axios.post(
+        "https://onesignal.com/api/v1/notifications",
+        {
+          app_id: process.env.ONESIGNAL_APP_ID,
+          include_player_ids: [sendUserId.one_subscription],
+          headings: { en: "Payment Confirmation"},
+          contents: {en: `Order ${amount} for bill ${orderReport.orderId} has been successfully processed.`}
+        },
+        {
+          headers: {
+            "Content-Type":"application/json",
+            Authorization:`Basic ${process.env.ONESIGNAL_API_KEY}`
+          }
+        }
+      )
+    }
+    await Notification.create({
+      uid: uid,
+      datetime: new Date(),
+      title: "Payment Confirmation",
+      description: `Order ${amount} for bill ${orderReport.orderId} has been successfully processed.`
+    });
+
+    return res.status(200).json({ message: "Payment is successful", transaction: transaction });
+
+  } catch (error) {
+    console.error("Error processing payment:", error);
+    return res.status(500).json({ message: "Internal server error", error: error.message });
+  }
 }
 
 module.exports = {

@@ -60,11 +60,24 @@ const verifyMobile = async (req, res) => {
             process.env.JWT_TOKEN,
         );
 
-       
+        const userJson=userRecord.toJSON();
+        const upiId=userJson.organization?.upiId || null;
+
+        if (userJson.organization) {
+            delete userJson.organization.upiId;
+        }
+
+        const reorderedUser = {};
+        for(let key in userJson){
+            reorderedUser[key] = userJson[key];
+            if(key === 'deletedAt'){
+                reorderedUser['upiId'] = upiId;
+            }
+        }
 
         return res.status(200).json({
             message: "Mobile number verified successfully!",
-            userRecord,
+            userRecord:reorderedUser,
             token,
             firebaseUID,  
         });
