@@ -17,6 +17,7 @@ const editprofile = async (req, res) => {
         googleMapLink,
         email,
         mobileNo,
+        whatsappNo,
         type,
         businessName,
         googleCoordinates,
@@ -42,6 +43,7 @@ const editprofile = async (req, res) => {
         type,
         registrationId,
         role_id,
+        whatsappNo
       };
   
       // 3. Upload profile image if available
@@ -86,7 +88,7 @@ const editprofile = async (req, res) => {
           address,
           mobile:mobileNo,
           email,
-          whatsapp: mobileNo,
+          whatsapp:whatsappNo,
           organizationType_id: orgType.id,
           businessName: businessName || null,
           googleCoordinates,
