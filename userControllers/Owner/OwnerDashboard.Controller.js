@@ -1244,6 +1244,74 @@ const uploadImagesByOwner = async (req, res) => {
   }
 };
 
+// Fetching orders based on order status for the owner( cancelled, completed, active(processing and completed))
+const getRadiologyOwnerOrdersByStatus = async (req, res) => {
+  try {
+    const { organization_id } = req.user;
+    const { orderStatus } = req.params;
+
+    let whereClause = {
+      toOrganization: organization_id,
+      is_visible_to_owner: true,
+    };
+
+    // Active Orders
+    if (orderStatus === "active") {
+      whereClause = {
+        ...whereClause,
+        [Op.or]: [
+          { orderStatus: "processing" },
+          { orderStatus: "completed", payment_status: "unpaid" },
+        ],
+      };
+    }
+
+    // Completed Orders
+    else if (orderStatus === "completed") {
+      whereClause = {
+        ...whereClause,
+        orderStatus: "completed",
+        payment_status: "paid",
+      };
+    }
+
+    // Cancelled Orders
+    else if (orderStatus === "cancelled") {
+      whereClause = {
+        ...whereClause,
+        orderStatus: "cancelled",
+      };
+    } 
+    
+    else {
+      return res.status(400).json({ message: "Invalid order status" });
+    }
+
+    const allOrders = await OrderReports.findAll({
+      where: whereClause,
+      include: [
+        { model: Organization, as: "toOrg", attributes: ["name"] },
+
+      ],
+      order: [["createdAt", "DESC"]],
+    });
+
+    return res.status(200).json({
+      [orderStatus]: allOrders.map(order => ({
+        ...order.toJSON(),
+        fromOrganizationName: order.fromOrganization?.name || null,
+      })),
+    });
+
+  } catch (error) {
+    console.error("Error fetching orders:", error);
+    return res.status(500).json({ message: "Server error" });
+  }
+};
+
+const payNow=async(req,res)=>{
+  
+}
 
 module.exports = {
   labOrders,
@@ -1264,9 +1332,8 @@ module.exports = {
   cancelledAndDestroyOrder,
   raiseInvoiceAndCloseOrder,
   editInvoice,
-
-  
-
+  cancelledOrders,
+  getRadiologyOwnerOrdersByStatus,
   cancelledOrders
 };
 
