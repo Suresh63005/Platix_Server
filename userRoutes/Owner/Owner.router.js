@@ -62,4 +62,7 @@ router.post("/owner/raise-invoice/:id",authMiddleware.isOwner,ownerController.ra
 //edit invoice
 router.put("/owner/edit-invoice/:id",authMiddleware.isOwner,ownerController.editInvoice)
 
+// fetch dentist organization list
+router.get("/owner/get-dentist-organization",authMiddleware.isOwner,ownerController.fetchDentistOrganizations)
+
 module.exports=router
