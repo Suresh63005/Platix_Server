@@ -131,5 +131,3 @@ OrderReports.belongsTo(User,{
   foreignKey:'delivery_boy',
   as:'deliveryBoy'
 })
-
-

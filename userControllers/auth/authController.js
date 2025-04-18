@@ -241,11 +241,6 @@ const loginwithnumber = async (req, res) => {
 
 
 
-// const ListAllUsers = async()=>{
-//     const listUsersResult = await admin.auth().listUsers();
-//     // console.log("All Firebase Users:", listUsersResult.users.map(user => user.phoneNumber));
-//     // console.log("All Firebase Users Registrating Id:", listUsersResult.users.map(user => user.uid));
-
 //   }
 //   ListAllUsers();
 

@@ -922,4 +922,5 @@ const payNow = async (req, res) => {
   }
 };
 
+
 module.exports = { fromDentist, orderDetailsgetById, orderReport, PaymentReports, paymenDetailsGetById, orderAndPaymentSearch, getorganizationDetailsById, cancelledAndDestroyOrder, payNow,cancelledOrders };
