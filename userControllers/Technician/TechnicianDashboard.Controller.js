@@ -7,6 +7,7 @@ const OrderServices = require("../../Models/ReportsModel/OrderServices.model");
 const Services = require("../../Models/TblServices.model");
 const uploadToS3 = require("../../config/fileUpload.aws");
 const UploadImages = require("../../Models/ReportsModel/UploadImages.model");
+const TblOrganization_Service = require("../../Models/tblOrganizationService");
 
 const technicianDashboardData = async(req,res)=>{
     const uid = req.user?.id;
@@ -110,7 +111,7 @@ const FetchTechnicianOrdersByStatus = async (req, res) => {
   try {
     const whereClause = {
       technician: uid,
-      orderStatus,
+      orderStatus:"processing",
     };
 
     // For processing, include assignment_status filter
@@ -120,14 +121,34 @@ const FetchTechnicianOrdersByStatus = async (req, res) => {
       };
     }
 
+    if (orderStatus === "completed") {
+      whereClause.assignment_status = {
+        [Op.in]: ["technician_completed"],
+      };
+    }
+    
+    if (orderStatus === "cancelled") {
+      whereClause.assignment_status = {
+        [Op.in]: ["cancelled"],
+      };
+    }
+
     const orders = await OrderReports.findAll({
       where: whereClause,
       include: [
         {
-          model: Organization,
-          as: "fromOrg",
-          attributes: ["name"],
+          model:User,
+          as: "userDetails",
+          attributes: ["id","firstName"],
+          include:[
+            {
+              model: Organization,
+              as: "organization",
+              attributes: ["name"],
+            },
+          ]
         },
+
       ],
     });
 
@@ -135,12 +156,7 @@ const FetchTechnicianOrdersByStatus = async (req, res) => {
       return res.status(404).json({ message: "No orders found with the specified status!" });
     }
 
-    const formattedOrders = orders.map((order) => ({
-      ...order.toJSON(),
-      fromOrganizationName: order.fromOrg ? order.fromOrg.name : "Unknown",
-    }));
-
-    res.status(200).json({ message: "Orders fetched successfully!", orders: formattedOrders });
+    res.status(200).json({ message: "Orders fetched successfully!", orders: orders });
   } catch (error) {
     console.error("Error fetching orders:", error);
     res.status(500).json({ message: "Internal Server Error", error: error.message });
@@ -159,11 +175,7 @@ const ViewOrderDetails = async (req, res) => {
     const order = await OrderReports.findOne({
       where: { id: orderId, technician: uid },
       include: [
-        {
-          model: Organization,
-          as: "fromOrg",
-          attributes: ["id", "name"],
-        },
+       
         {
           model: Organization,
           as: "toOrg",
@@ -180,10 +192,17 @@ const ViewOrderDetails = async (req, res) => {
           attributes: ["id", "orderId", "quantity"],
           include: [
             {
-              model: Services,
-              as: "serviceDetails",
-              attributes: ["id", "servicename"],
-            },
+              model:TblOrganization_Service,
+              as:"orgservice",
+              attributes: ["id", "organization_id", "service_id"],
+              include:[
+                {
+                  model: Services,
+                  as: "servicess",
+                  attributes: ["id", "servicename"],
+                },
+              ]
+            }
           ],
         },
         {
@@ -222,7 +241,6 @@ const ViewOrderDetails = async (req, res) => {
       patientName: order.patientName,
       technician: order.technician,
       doctorName: order.userDetails ? order.userDetails.firstName : "Unknown Doctor",
-      hospitalName: order.fromOrg ? order.fromOrg.name : "Unknown Hospital",
       laboratoryName: order.toOrg ? order.toOrg.name : "Unknown Laboratory",
       orderServices: order.orderServices.map((service) => ({
         id: service.id,
