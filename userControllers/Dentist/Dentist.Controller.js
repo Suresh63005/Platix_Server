@@ -173,7 +173,7 @@ const fromDentist = async (req, res) => {
     await Notification.create({
       uid: userUUID || userId,
       datetime: new Date(),
-      title: "Order Confirmation",
+      title: `${id ? "Order Updated":"Order Confirmation"}`,
       description: ` ${id ? `Order ${orderReport.orderId} has been successfully Updated `:`Order ${orderReport.orderId} has been successfully confirmed and is now beeing processed`}.`
     })
 
