@@ -457,6 +457,7 @@ const assignService = async (req, res) => {
     let assignedUserId = null;
     if (technician) {
       updateFields.technician = technician;
+      updateFields.assignment_status="assigned_to_technician";
 
       const technicianuser = await User.findOne({ where: { id: technician, organization_id: organization_id } });
 
@@ -467,6 +468,8 @@ const assignService = async (req, res) => {
     }
     if (delivery_boy) {
       updateFields.delivery_boy = delivery_boy;
+      updateFields.assignment_status="assigned_to_delivery_boy"
+      
       const deliveryboyuser = await User.findOne({ where: { id: delivery_boy, organization_id: organization_id } });
       if (!deliveryboyuser) {
         return res.status(404).json({ message: "Delivery Boy not found" });
