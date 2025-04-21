@@ -63,4 +63,8 @@ router.post("/owner/raise-invoice/:id",authMiddleware.isOwner,ownerController.ra
 //edit invoice
 router.put("/owner/edit-invoice/:id",authMiddleware.isOwner,ownerController.editInvoice)
 
+// GET orders by status (active(processing and completed), completed, cancelled) for the radiology owner
+router.get("/owner/orders/:orderStatus", authMiddleware.isOwner,ownerController.getRadiologyOwnerOrdersByStatus);
+
+router.post("/owner/paynow",authMiddleware.isOwner,ownerController.payNow)
 module.exports=router

@@ -128,20 +128,69 @@ const labAllOrders = async (req, res) => {
   }
 };
 
-// (dashboard) Search orders by order ID or organization name
+// (dashboard) Search orders by order ID or organization name or doctor name or servicename or orderdate(createdat)
 const searchOrders = async (req, res) => {
-  const { organization_id, id, role_id } = req.user;
+  const { organization_id } = req.user;
   const { search } = req.query;
 
   try {
+    const whereConditions = {
+      toOrganization: organization_id,
+      orderStatus: "processing",
+      delivery_boy: { [Op.is]: null },
+      technician: { [Op.is]: null },
+      [Op.or]: [
+        { orderId: { [Op.like]: `%${search}%` } },
+        { "$toOrg.name$": { [Op.like]: `%${search}%` } },
+        { "$toOrg.organization_service.servicess.servicename$": { [Op.like]: `%${search}%` } },
+        { "$userDetails.firstName$": { [Op.like]: `%${search}%` } },
+        { "$userDetails.lastName$": { [Op.like]: `%${search}%` } }
+      ]
+    };
+
+    const isDate = moment(search, "YYYY-MM-DD", true).isValid();
+    if (isDate) {
+      whereConditions[Op.or].push({
+        createdAt: {
+          [Op.between]: [
+            moment(search, "YYYY-MM-DD").startOf("day").toDate(),
+            moment(search, "YYYY-MM-DD").endOf("day").toDate()
+          ]
+        }
+      });
+    }
+
     const orders = await OrderReports.findAll({
-      where: {
-        toOrganization: organization_id, orderStatus: "processing",
-        delivery_boy: { [Op.is]: null },
-        technician: { [Op.is]: null }, [Op.or]: [{ orderId: { [Op.like]: `%${search}%` } }, { "$toOrg.name$": { [Op.like]: `%${search}%` } }]
-      },
-      include: [{ model: Organization, as: "toOrg", attributes: ["name"] }]
+      where: whereConditions,
+      order: [["createdAt", "DESC"]],
+      include: [
+        {
+          model: Organization,
+          as: "toOrg",
+          attributes: ["name"],
+          include: [
+            {
+              model: TblOrganization_Service,
+              as: "organization_service",
+              attributes: ["service_id", "price"],
+              include: [
+                {
+                  model: Services,
+                  as: "servicess",
+                  attributes: ["servicename"],
+                },
+              ],
+            },
+          ]
+        },
+        {
+          model: User,
+          as: "userDetails", // doctor name
+          attributes: ["prefix","firstName", "lastName"]
+        }
+      ]
     });
+
     return res.status(200).json({ success: true, orders });
   } catch (error) {
     console.error("Error during order search:", error);
@@ -457,6 +506,7 @@ const assignService = async (req, res) => {
     let assignedUserId = null;
     if (technician) {
       updateFields.technician = technician;
+      updateFields.assignment_status="assigned_to_technician";
 
       const technicianuser = await User.findOne({ where: { id: technician, organization_id: organization_id } });
 
@@ -467,6 +517,8 @@ const assignService = async (req, res) => {
     }
     if (delivery_boy) {
       updateFields.delivery_boy = delivery_boy;
+      updateFields.assignment_status="assigned_to_delivery_boy"
+
       const deliveryboyuser = await User.findOne({ where: { id: delivery_boy, organization_id: organization_id } });
       if (!deliveryboyuser) {
         return res.status(404).json({ message: "Delivery Boy not found" });
@@ -1049,7 +1101,7 @@ const cancelledAndDestroyOrder = async (req, res) => {
       orderStatus: status,
       toOrganization: organization_id,
       created_by: id,
-      is_visible_to_owner: true, // Only delete if still visible
+      is_visible_to_owner: true, 
     };
 
     if (status === "completed") {
@@ -1244,6 +1296,142 @@ const uploadImagesByOwner = async (req, res) => {
   }
 };
 
+// Fetching orders based on order status for the owner( cancelled, completed, active(processing and completed))
+const getRadiologyOwnerOrdersByStatus = async (req, res) => {
+  try {
+    const { organization_id } = req.user;
+    const { orderStatus } = req.params;
+    console.log(req.user, "organization_id")
+    let whereClause = {
+      toOrganization: organization_id,
+      is_visible_to_owner: true,
+    };
+
+    // Active Orders
+    if (orderStatus === "active") {
+      whereClause = {
+        ...whereClause,
+        [Op.or]: [
+          { orderStatus: "processing" },
+          { orderStatus: "completed", payment_status: "unpaid" },
+        ],
+      };
+    }
+
+    // Completed Orders
+    else if (orderStatus === "completed") {
+      whereClause = {
+        ...whereClause,
+        orderStatus: "completed",
+        payment_status: "paid",
+      };
+    }
+
+    // Cancelled Orders
+    else if (orderStatus === "cancelled") {
+      whereClause = {
+        ...whereClause,
+        orderStatus: "cancelled",
+      };
+    } 
+    
+    else {
+      return res.status(400).json({ message: "Invalid order status" });
+    }
+
+    const allOrders = await OrderReports.findAll({
+      where: whereClause,
+      include: [
+        { model: Organization, as: "toOrg", attributes: ["name"] },
+
+      ],
+      order: [["createdAt", "DESC"]],
+    });
+
+    return res.status(200).json({
+      [orderStatus]: allOrders.map(order => ({
+        ...order.toJSON(),
+        fromOrganizationName: order.fromOrganization?.name || null,
+      })),
+    });
+
+  } catch (error) {
+    console.error("Error fetching orders:", error);
+    return res.status(500).json({ message: "Server error" });
+  }
+};
+
+const payNow = async (req, res) => {
+  const { organization_id, id: userId } = req.user; // Extract 'id' as 'userId' from req.user
+  console.log(req.user, "req.user");
+
+  if (!organization_id) {
+    return res.status(401).json({ message: "Unauthorized" });
+  }
+
+  const { orderId, transactionId, amount } = req.body;
+
+  try {
+    if (!userId) {
+      return res.status(400).json({ message: "User ID is required" });
+    }
+
+    // Create the transaction with userId
+    const [transaction,orderReport] = await Promise.all([
+      orderTransaction.create({orderId,userUUID:userId,transactionId,amount}),
+      OrderReports.findByPk(orderId)
+    ])
+
+    if (!orderReport) {
+      return res.status(404).json({ message: "Order not found" });
+    }
+
+    await orderReport.update({ payment_status: "paid" });
+
+    // Send push notification if user has OneSignal ID
+    (async () => {
+      const sendUser = await User.findByPk(userId);
+      const pushPromise = sendUser?.one_subscription
+        ? axios.post(
+            "https://onesignal.com/api/v1/notifications",
+            {
+              app_id: process.env.ONESIGNAL_APP_ID,
+              include_player_ids: [sendUser.one_subscription],
+              headings: { en: "Payment Confirmation" },
+              contents: {
+                en: `Order ₹${amount} for bill ${orderReport.orderId} has been successfully processed.`,
+              },
+            },
+            {
+              headers: {
+                "Content-Type": "application/json",
+                Authorization: `Basic ${process.env.ONESIGNAL_API_KEY}`,
+              },
+            }
+          )
+        : Promise.resolve();
+
+      const notifPromise = Notification.create({
+        uid: userId,
+        datetime: new Date(),
+        title: "Payment Confirmation",
+        description: `Order ₹${amount} for bill ${orderReport.orderId} has been successfully processed.`,
+      });
+
+      await Promise.allSettled([pushPromise, notifPromise]); // No need to wait in main flow
+    })();
+
+    return res.status(200).json({ message: "Payment is successful", transaction });
+
+  } catch (error) {
+    console.error("Error processing payment:", error);
+    return res.status(500).json({ message: "Internal server error", error: error.message });
+  }
+};
+
+
+
+
 module.exports = {
   labOrders,
   labAllOrders,
@@ -1263,7 +1451,12 @@ module.exports = {
   cancelledAndDestroyOrder,
   raiseInvoiceAndCloseOrder,
   editInvoice,
-  cancelledOrders
+
+  cancelledOrders,
+  getRadiologyOwnerOrdersByStatus,
+  cancelledOrders,
+  payNow
+
 };
 
 

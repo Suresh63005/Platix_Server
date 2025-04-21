@@ -34,7 +34,35 @@ const verifyMobile = async (req, res) => {
             return res.status(404).json({ message: "Mobile number not found in Firebase." });
         }
 
-        let userRecord = await User.findOne({ where: { mobileNo } });
+        let userRecord = await User.findOne(
+            { where: { mobileNo },
+            include: [
+                {
+                    model: Organization,
+                    as: 'organization',
+                    attributes: ['id', 'name', 'upiId', 'deletedAt', 'mobile', 'email', 'whatsapp'],
+                    include: [
+                        {
+                            model: TblOrganizationType,
+                            as: 'organizationType',
+                            attributes: ['id', 'organizationType'],
+                        },
+                        {
+                            model: TblOrganization_Service,
+                            as: 'organization_service',
+                            attributes: ['id', 'price'],
+                            include: [
+                                {
+                                    model: Services,
+                                    as: 'servicess',
+                                    attributes: ['id', 'servicename', 'servicedescription'],
+                                }
+                            ]
+                        }
+                    ]
+                }
+            ]
+        });
 
         if (!userRecord) {
             userRecord = await User.create({
@@ -44,7 +72,7 @@ const verifyMobile = async (req, res) => {
             });
             console.log("New user created in the database!", userRecord);
         } else {
-            console.log("User already exists in the database!", userRecord);
+            // console.log("User already exists in the database!", userRecord);
         }
 
         const firebaseUID = userRecord.uid || user.uid;
@@ -60,11 +88,24 @@ const verifyMobile = async (req, res) => {
             process.env.JWT_TOKEN,
         );
 
-       
+        const userJson=userRecord.toJSON();
+        const upiId=userJson.organization?.upiId || null;
+
+        if (userJson.organization) {
+            delete userJson.organization.upiId;
+        }
+
+        const reorderedUser = {};
+        for(let key in userJson){
+            reorderedUser[key] = userJson[key];
+            if(key === 'deletedAt'){
+                reorderedUser['upiId'] = upiId;
+            }
+        }
 
         return res.status(200).json({
             message: "Mobile number verified successfully!",
-            userRecord,
+            userRecord:reorderedUser,
             token,
             firebaseUID,  
         });
@@ -165,7 +206,7 @@ const loginwithnumber = async (req, res) => {
     }
 
     try {
-        // Check if the user exists in Firebase
+        // 1. Check Firebase
         let firebaseUser;
         try {
             firebaseUser = await admin.auth().getUserByPhoneNumber(mobileNo);
@@ -174,62 +215,84 @@ const loginwithnumber = async (req, res) => {
             return res.status(404).json({ message: "Mobile number not found in Firebase." });
         }
 
-        // Check if the user exists in the local database
-        const userRecord = await User.findOne({ where: { mobileNo },
+        // 2. Check local DB
+        const userRecord = await User.findOne({
+            where: { mobileNo },
             include: [
                 {
-                  model: Organization,
-                  as: 'organization',
-                  attributes: ['id', 'name'],
-                  include: [
-                    {
-                      model: TblOrganizationType,
-                      as: 'organizationType',
-                      attributes: ['id', 'organizationType'],
-                    },
-                    {
-                      model: TblOrganization_Service,
-                      as: 'organization_service',
-                      attributes: ['id', 'price'],
-                      include: [
+                    model: Organization,
+                    as: 'organization',
+                    attributes: ['id', 'name', 'upiId', 'deletedAt', 'mobile', 'email', 'whatsapp'],
+                    include: [
                         {
-                          model: Services,
-                          as: 'servicess',
-                          attributes: ['id', 'servicename', 'servicedescription'],
+                            model: TblOrganizationType,
+                            as: 'organizationType',
+                            attributes: ['id', 'organizationType'],
+                        },
+                        {
+                            model: TblOrganization_Service,
+                            as: 'organization_service',
+                            attributes: ['id', 'price'],
+                            include: [
+                                {
+                                    model: Services,
+                                    as: 'servicess',
+                                    attributes: ['id', 'servicename', 'servicedescription'],
+                                }
+                            ]
                         }
-                      ]
-                    }
-                  ]
+                    ]
                 }
-              ]
-         });
-
+            ]
+        });
+        console.log(userRecord,"User Record");
         if (!userRecord) {
             return res.status(404).json({ message: "User not found in the database." });
         }
 
-        // Extract UID from Firebase or Database
         const firebaseUID = userRecord.uid || firebaseUser.uid;
 
         if (registerId !== firebaseUID) {
             return res.status(400).json({ message: "Invalid register ID. It does not match the Firebase UID." });
         }
 
-        // Generate JWT Token
+        // 3. Generate Token
         const token = jwt.sign(
             { userId: userRecord.id, mobileNo: userRecord.mobileNo, firebaseUID },
-            process.env.JWT_TOKEN, 
-            { expiresIn: "7d" } // Set an expiration time
+            process.env.JWT_TOKEN,
+            { expiresIn: "7d" }
         );
+
+        // 4. Reformat user and attach UPI ID separately
+        const userJson = userRecord.toJSON();
+        const upiId = userJson.organization?.upiId || null;
+
+        // Clean up organization before attaching
+        if (userJson.organization) {
+            delete userJson.organization.upiId;
+        }
+
+        const reorderedUser = {};
+        for (let key in userJson) {
+            reorderedUser[key] = userJson[key];
+            if (key === 'deletedAt') {
+                reorderedUser['upiId'] = upiId;
+            }
+        }
+
+        // Attach cleaned organization separately
+        if (userJson.organization) {
+            reorderedUser.organization = userJson.organization;
+        }
 
         return res.status(200).json({
             message: "Login successful!",
-            user: userRecord,
+            user: reorderedUser,
             token,
         });
 
     } catch (error) {
-        console.error("Error during login:", error.message); 
+        console.error("Error during login:", error.message);
 
         if (error.code === "auth/user-not-found") {
             return res.status(404).json({ message: "Mobile number not registered in Firebase." });
@@ -238,6 +301,7 @@ const loginwithnumber = async (req, res) => {
         return res.status(500).json({ message: "Internal server error: " + error.message });
     }
 };
+
 
 
 
