@@ -1451,10 +1451,12 @@ module.exports = {
   cancelledAndDestroyOrder,
   raiseInvoiceAndCloseOrder,
   editInvoice,
+
   cancelledOrders,
   getRadiologyOwnerOrdersByStatus,
   cancelledOrders,
   payNow
+
 };
 
 
