@@ -114,7 +114,7 @@ const labAllOrders = async (req, res) => {
       include: [{ model: Organization, as: "toOrg", attributes: ["name"] }],
       order: [["createdAt", "DESC"]],
     });
-    
+
     return res.status(200).json({
       [orderStatus]: allOrders.map(order => ({
         ...order.toJSON(),
