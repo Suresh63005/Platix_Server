@@ -160,7 +160,8 @@ const statusOrder = async (req, res) => {
         const whereCondition = {};
         if (status) whereCondition.orderStatus = status;
         if (userId) whereCondition.userUUID = userId;
-
+        whereCondition.is_visible_to_customer = true;
+        
         const orderStatus = await OrderReports.findAll({
             where: whereCondition,
             include: [
