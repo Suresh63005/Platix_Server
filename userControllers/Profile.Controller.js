@@ -6,7 +6,7 @@ const TblOrganizationType = require("../Models/TblOrganizationType.model");
 const editprofile = async (req, res) => {
   try {
     const {
-      id,
+     
       prefix,
       firstName,
       lastName,
@@ -20,10 +20,12 @@ const editprofile = async (req, res) => {
       whatsappNo,
       type,
       businessName,
-      googleCoordinates,
       upiId,
       is_freelancer
     } = req.body;
+
+    const id = req.user.id; 
+    console.log(id, "id from token");
 
     const user = await User.findByPk(id);
     if (!user) {
@@ -87,7 +89,7 @@ const editprofile = async (req, res) => {
         whatsapp: whatsappNo,
         organizationType_id: orgType.id,
         businessName: businessName || null,
-        googleCoordinates,
+        googleCoordinates:{"latitude": "00.000", "longitude": "00.000"},
         file1: "https://media.istockphoto.com/id/1363477135/vector/cartoon-dentist-mascot-holding-teeth-and-celebrating-national-dentist-day.jpg?s=612x612&w=0&k=20&c=xLEh88Hu_UH0X2V5b5lWd8ZrBMP6kUIjV6XRuCkGjb0=",
         bankName: "NULL",
         accountNumber: "NULL",
@@ -109,6 +111,12 @@ const editprofile = async (req, res) => {
         message += " and organization created";
       } else {
         finalOrganization = existingOrg;
+
+        existingOrg.name = hospital_name;
+        existingOrg.upiId = upiId;
+
+        existingOrg.save();
+
       }
     }
 
