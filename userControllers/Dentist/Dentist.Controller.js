@@ -154,8 +154,8 @@ const fromDentist = async (req, res) => {
         {
           app_id: process.env.ONESIGNAL_APP_ID,
           include_player_ids: [sendUserId.one_subscription],
-          headings: { en: "Order Confirmation" },
-          contents: { en: `Order ${orderReport.orderId} has been successfully confirmed and is now beeing processed.` },
+          headings: { en: `${id ? "Order Updated":"Order Confirmation"}` },
+          contents: { en:  ` ${id ? `Order ${orderReport.orderId} has been successfully Updated `:`Order ${orderReport.orderId} has been successfully confirmed and is now beeing processed`}.` },
         },
         {
           headers: {
@@ -174,7 +174,7 @@ const fromDentist = async (req, res) => {
       uid: userUUID || userId,
       datetime: new Date(),
       title: "Order Confirmation",
-      description: `Order ${orderReport.orderId} has been successfully confirmed and is now beeing processed.`
+      description: ` ${id ? `Order ${orderReport.orderId} has been successfully Updated `:`Order ${orderReport.orderId} has been successfully confirmed and is now beeing processed`}.`
     })
 
 

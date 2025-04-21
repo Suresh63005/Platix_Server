@@ -128,20 +128,69 @@ const labAllOrders = async (req, res) => {
   }
 };
 
-// (dashboard) Search orders by order ID or organization name
+// (dashboard) Search orders by order ID or organization name or doctor name or servicename or orderdate(createdat)
 const searchOrders = async (req, res) => {
-  const { organization_id, id, role_id } = req.user;
+  const { organization_id } = req.user;
   const { search } = req.query;
 
   try {
+    const whereConditions = {
+      toOrganization: organization_id,
+      orderStatus: "processing",
+      delivery_boy: { [Op.is]: null },
+      technician: { [Op.is]: null },
+      [Op.or]: [
+        { orderId: { [Op.like]: `%${search}%` } },
+        { "$toOrg.name$": { [Op.like]: `%${search}%` } },
+        { "$toOrg.organization_service.servicess.servicename$": { [Op.like]: `%${search}%` } },
+        { "$userDetails.firstName$": { [Op.like]: `%${search}%` } },
+        { "$userDetails.lastName$": { [Op.like]: `%${search}%` } }
+      ]
+    };
+
+    const isDate = moment(search, "YYYY-MM-DD", true).isValid();
+    if (isDate) {
+      whereConditions[Op.or].push({
+        createdAt: {
+          [Op.between]: [
+            moment(search, "YYYY-MM-DD").startOf("day").toDate(),
+            moment(search, "YYYY-MM-DD").endOf("day").toDate()
+          ]
+        }
+      });
+    }
+
     const orders = await OrderReports.findAll({
-      where: {
-        toOrganization: organization_id, orderStatus: "processing",
-        delivery_boy: { [Op.is]: null },
-        technician: { [Op.is]: null }, [Op.or]: [{ orderId: { [Op.like]: `%${search}%` } }, { "$toOrg.name$": { [Op.like]: `%${search}%` } }]
-      },
-      include: [{ model: Organization, as: "toOrg", attributes: ["name"] }]
+      where: whereConditions,
+      order: [["createdAt", "DESC"]],
+      include: [
+        {
+          model: Organization,
+          as: "toOrg",
+          attributes: ["name"],
+          include: [
+            {
+              model: TblOrganization_Service,
+              as: "organization_service",
+              attributes: ["service_id", "price"],
+              include: [
+                {
+                  model: Services,
+                  as: "servicess",
+                  attributes: ["servicename"],
+                },
+              ],
+            },
+          ]
+        },
+        {
+          model: User,
+          as: "userDetails", // doctor name
+          attributes: ["prefix","firstName", "lastName"]
+        }
+      ]
     });
+
     return res.status(200).json({ success: true, orders });
   } catch (error) {
     console.error("Error during order search:", error);
@@ -469,7 +518,7 @@ const assignService = async (req, res) => {
     if (delivery_boy) {
       updateFields.delivery_boy = delivery_boy;
       updateFields.assignment_status="assigned_to_delivery_boy"
-      
+
       const deliveryboyuser = await User.findOne({ where: { id: delivery_boy, organization_id: organization_id } });
       if (!deliveryboyuser) {
         return res.status(404).json({ message: "Delivery Boy not found" });
