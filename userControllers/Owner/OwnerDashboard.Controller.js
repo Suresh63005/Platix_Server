@@ -1049,7 +1049,7 @@ const cancelledAndDestroyOrder = async (req, res) => {
       orderStatus: status,
       toOrganization: organization_id,
       created_by: id,
-      is_visible_to_owner: true, // Only delete if still visible
+      is_visible_to_owner: true, 
     };
 
     if (status === "completed") {
@@ -1325,52 +1325,49 @@ const payNow = async (req, res) => {
     }
 
     // Create the transaction with userId
-    const transaction = await orderTransaction.create({
-      orderId,
-      userUUID: userId, // Ensure this is set to the correct userId
-      transactionId,
-      amount
-    });
-
-    const orderReport = await OrderReports.findByPk(orderId);
+    const [transaction,orderReport] = await Promise.all([
+      orderTransaction.create({orderId,userUUID:userId,transactionId,amount}),
+      OrderReports.findByPk(orderId)
+    ])
 
     if (!orderReport) {
       return res.status(404).json({ message: "Order not found" });
     }
 
-    await orderReport.update({
-      payment_status: "paid"
-    });
+    await orderReport.update({ payment_status: "paid" });
 
     // Send push notification if user has OneSignal ID
-    const sendUser = await User.findByPk(userId);
-    if (sendUser?.one_subscription) {
-      await axios.post(
-        "https://onesignal.com/api/v1/notifications",
-        {
-          app_id: process.env.ONESIGNAL_APP_ID,
-          include_player_ids: [sendUser.one_subscription],
-          headings: { en: "Payment Confirmation" },
-          contents: {
-            en: `Order ₹${amount} for bill ${orderReport.orderId} has been successfully processed.`
-          }
-        },
-        {
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Basic ${process.env.ONESIGNAL_API_KEY}`
-          }
-        }
-      );
-    }
+    (async () => {
+      const sendUser = await User.findByPk(userId);
+      const pushPromise = sendUser?.one_subscription
+        ? axios.post(
+            "https://onesignal.com/api/v1/notifications",
+            {
+              app_id: process.env.ONESIGNAL_APP_ID,
+              include_player_ids: [sendUser.one_subscription],
+              headings: { en: "Payment Confirmation" },
+              contents: {
+                en: `Order ₹${amount} for bill ${orderReport.orderId} has been successfully processed.`,
+              },
+            },
+            {
+              headers: {
+                "Content-Type": "application/json",
+                Authorization: `Basic ${process.env.ONESIGNAL_API_KEY}`,
+              },
+            }
+          )
+        : Promise.resolve();
 
-    // Save notification
-    await Notification.create({
-      uid: userId,
-      datetime: new Date(),
-      title: "Payment Confirmation",
-      description: `Order ₹${amount} for bill ${orderReport.orderId} has been successfully processed.`
-    });
+      const notifPromise = Notification.create({
+        uid: userId,
+        datetime: new Date(),
+        title: "Payment Confirmation",
+        description: `Order ₹${amount} for bill ${orderReport.orderId} has been successfully processed.`,
+      });
+
+      await Promise.allSettled([pushPromise, notifPromise]); // No need to wait in main flow
+    })();
 
     return res.status(200).json({ message: "Payment is successful", transaction });
 
