@@ -117,7 +117,7 @@ const FetchTechnicianOrdersByStatus = async (req, res) => {
     // For processing, include assignment_status filter
     if (orderStatus === "processing") {
       whereClause.assignment_status = {
-        [Op.in]: ["assigned_to_technician", "technician_completed"],
+        [Op.in]: ["assigned_to_technician"],
       };
     }
 
@@ -175,7 +175,6 @@ const ViewOrderDetails = async (req, res) => {
     const order = await OrderReports.findOne({
       where: { id: orderId, technician: uid },
       include: [
-       
         {
           model: Organization,
           as: "toOrg",
@@ -192,17 +191,17 @@ const ViewOrderDetails = async (req, res) => {
           attributes: ["id", "orderId", "quantity"],
           include: [
             {
-              model:TblOrganization_Service,
-              as:"orgservice",
+              model: TblOrganization_Service,
+              as: "orgservice",
               attributes: ["id", "organization_id", "service_id"],
-              include:[
+              include: [
                 {
                   model: Services,
                   as: "servicess",
                   attributes: ["id", "servicename"],
                 },
-              ]
-            }
+              ],
+            },
           ],
         },
         {
@@ -218,13 +217,13 @@ const ViewOrderDetails = async (req, res) => {
       return res.status(404).json({ message: "Order not found or access denied!" });
     }
 
-    console.log("Raw assignment_status:", order.assignment_status); // Debug
+    console.log("Raw assignment_status:", order.assignment_status);
 
     const orderDetails = {
       id: order.id,
       orderId: order.orderId,
       orderStatus: order.orderStatus,
-      assignment_status: order.assignment_status || "unassigned", // Default if NULL
+      assignment_status: order.assignment_status || "unassigned",
       orderDate: order.orderDate,
       requiredDate: order.requiredDate,
       toothName: order.toothName,
@@ -245,7 +244,7 @@ const ViewOrderDetails = async (req, res) => {
       orderServices: order.orderServices.map((service) => ({
         id: service.id,
         quantity: service.quantity,
-        servicename: service.serviceDetails?.servicename || "Unknown",
+        servicename: service.orgservice?.servicess?.servicename || "Unknown",
       })),
       orderImages: order.orderImages.map((image) => ({
         id: image.id,
