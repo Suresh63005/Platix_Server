@@ -1,8 +1,8 @@
-GET http://localhost:5000/
 
-POST http://localhost:5000/admin/register
+METHOD          URL                                                             BODY                                                                                                        DESCRIPTION
+======          =====                                                           ====                                                                                                        ===========
+POST            https://platix-server.vercel.app/login/verify-mobile            {"mobileNo":"917416170328","registerId":"LaLzdDLSMZZfyB1lfMEqr5bCLtA2"}                                     Verify mobile number for user authentication and registerid is firbasuid (this for only dentist login)
 
-POST http://localhost:5000/admin/login
+POST            http://localhost:5001/login/create-role                         {"firstName":"","lastName":"","email":"","role_id":"","id":""}                                              assign role role may be dentist or radilogy or  material supplier
 
-POST http://localhost:5000/forgotpass/forgotpassword
-
+POST            http://localhost:5001/login/verify-otp                          {"id":"","otp":""}                                                                                          Verify the one-time password (OTP) for user authentication
