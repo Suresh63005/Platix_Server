@@ -252,7 +252,8 @@ const ownerOrTechnicianProfileEdit=async(req,res)=>{
       }
 
       await user.update(updatedData);
-      return res.status(200).json({ success: true, message: "Profile updated successfully" });
+      const userData=await User.findByPk(id)
+      return res.status(200).json({ success: true, message: "Profile updated successfully",userData:userData });
     } catch (error) {
       console.error("Error updating user profile:", error);
       return res.status(500).json({ success: false, message: "Internal Server Error" });
