@@ -1,13 +1,15 @@
 const uploadToS3 = require("../config/fileUpload.aws");
 const Organization = require("../Models/Organization.model");
 const User = require("../Models/ReportsModel/User.model");
+const TblOrganization_Service = require("../Models/tblOrganizationService");
 const TblOrganizationType = require("../Models/TblOrganizationType.model");
+const Services = require("../Models/TblServices.model");
 
 //this is for working only dentist profile
 const editprofile = async (req, res) => {
   try {
     const {
-     
+
       prefix,
       firstName,
       lastName,
@@ -25,7 +27,7 @@ const editprofile = async (req, res) => {
       is_freelancer
     } = req.body;
 
-    const id = req.user.id; 
+    const id = req.user.id;
     console.log(id, "id from token");
 
     const user = await User.findByPk(id);
@@ -90,7 +92,7 @@ const editprofile = async (req, res) => {
         whatsapp: whatsappNo,
         organizationType_id: orgType.id,
         businessName: businessName || null,
-        googleCoordinates:{"latitude": "00.000", "longitude": "00.000"},
+        googleCoordinates: { "latitude": "00.000", "longitude": "00.000" },
         file1: "https://media.istockphoto.com/id/1363477135/vector/cartoon-dentist-mascot-holding-teeth-and-celebrating-national-dentist-day.jpg?s=612x612&w=0&k=20&c=xLEh88Hu_UH0X2V5b5lWd8ZrBMP6kUIjV6XRuCkGjb0=",
         bankName: "NULL",
         accountNumber: "NULL",
@@ -161,48 +163,98 @@ const editprofile = async (req, res) => {
   }
 };
 
-  
 
-const deleteAccount=async(req,res)=>{
-    const { email,forceDelete } = req.body;
-    try {
-        const user = await User.findOne({ where: { email } });
-        if (!user) {
-            return res.status(404).json({
-                success: false,
-                message: "User not found!",
-            });
-        }
 
-        if (forceDelete === "true") {
-            await user.destroy({ force: true });
-
-            return res.status(200).json({
-                success: true,
-                message: "Account permanently deleted!",
-            });
-
-        } else {
-            await user.destroy();
-
-            return res.status(200).json({
-                success: true,
-                message: "Account soft deleted! You can restore it later if needed.",
-            });
-        }
-    } catch (error) {
-        console.error("Error deleting account:", error);
-        return res.status(500).json({
-            success: false,
-            message: "Internal Server Error",
-            error: error.message,
-        });
+const deleteAccount = async (req, res) => {
+  const { email, forceDelete } = req.body;
+  try {
+    const user = await User.findOne({ where: { email } });
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: "User not found!",
+      });
     }
+
+    if (forceDelete === "true") {
+      await user.destroy({ force: true });
+
+      return res.status(200).json({
+        success: true,
+        message: "Account permanently deleted!",
+      });
+
+    } else {
+      await user.destroy();
+
+      return res.status(200).json({
+        success: true,
+        message: "Account soft deleted! You can restore it later if needed.",
+      });
+    }
+  } catch (error) {
+    console.error("Error deleting account:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Internal Server Error",
+      error: error.message,
+    });
+  }
 }
 
 //edit profile for owner and technician
-const ownerOrTechnicianProfileEdit=async(req,res)=>{
+const ownerOrTechnicianProfileEdit = async (req, res) => {
   const {
+    prefix,
+    firstName,
+    lastName,
+    businessName,
+    mobileNo,
+    whatsappNo,
+    email,
+    address,
+    googleMapLink,
+    designation
+  } = req.body;
+
+  const id = req.user.id;
+  console.log(id, "id from token");
+
+  const user = await User.findByPk(id, {
+    include: [
+      {
+        model: Organization,
+        as: 'organization',
+        attributes: ['id', 'name', 'upiId', 'deletedAt', 'mobile', 'email', 'whatsapp'],
+        include: [
+          {
+            model: TblOrganizationType,
+            as: 'organizationType',
+            attributes: ['id', 'organizationType'],
+          },
+          {
+            model: TblOrganization_Service,
+            as: 'organization_service',
+            attributes: ['id', 'price'],
+            include: [
+              {
+                model: Services,
+                as: 'servicess',
+                attributes: ['id', 'servicename', 'servicedescription'],
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  })
+
+  if (!user) {
+    return res.status(404).json({ success: false, message: "User not found" })
+  }
+  try {
+
+    const updatedData = {
       prefix,
       firstName,
       lastName,
@@ -210,55 +262,32 @@ const ownerOrTechnicianProfileEdit=async(req,res)=>{
       mobileNo,
       whatsappNo,
       email,
-      address,        
+      address,
       googleMapLink,
       designation
-    } = req.body;
+    };
 
-    const id=req.user.id;
-    console.log(id, "id from token");
-    
-    const user=await User.findByPk(id)
-
-    if(!user){
-      return res.status(404).json({success:false,message:"User not found"})
-    }
-    try {
-       
-      const updatedData = {
-          prefix,
-          firstName,
-          lastName,
-          businessName,
-          mobileNo,
-          whatsappNo,
-          email,
-          address,        
-          googleMapLink,
-          designation
-      };
-
-      if (req.file) {
-          try {
-              const profileImage = await uploadToS3(req.file, "profileImage");
-              updatedData.profileImage = profileImage;
-          } catch (error) {
-              return res.status(500).json({
-                  success: false,
-                  message: "Error uploading profile image",
-                  error: error.message
-              });
-          }
+    if (req.file) {
+      try {
+        const profileImage = await uploadToS3(req.file, "profileImage");
+        updatedData.profileImage = profileImage;
+      } catch (error) {
+        return res.status(500).json({
+          success: false,
+          message: "Error uploading profile image",
+          error: error.message
+        });
       }
-
-      await user.update(updatedData);
-      const userData=await User.findByPk(id)
-      return res.status(200).json({ success: true, message: "Profile updated successfully",userData:userData });
-    } catch (error) {
-      console.error("Error updating user profile:", error);
-      return res.status(500).json({ success: false, message: "Internal Server Error" });
-      
     }
+
+    await user.update(updatedData);
+    const userData = user;
+    return res.status(200).json({ success: true, message: "Profile updated successfully", userData: userData });
+  } catch (error) {
+    console.error("Error updating user profile:", error);
+    return res.status(500).json({ success: false, message: "Internal Server Error" });
+
+  }
 }
 
-module.exports ={ editprofile , deleteAccount,ownerOrTechnicianProfileEdit}
+module.exports = { editprofile, deleteAccount, ownerOrTechnicianProfileEdit }
