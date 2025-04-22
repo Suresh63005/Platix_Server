@@ -116,7 +116,18 @@ const deliveryAllOrders = async (req, res) => {
         ]
       },
       include: [
-        { model: Organization, as: 'fromOrg', attributes: ['name'] } 
+        { 
+          model: User, 
+          as: 'userDetails', 
+          attributes: ['id', 'firstName', 'email', 'address', 'hospital_name'],
+          include:[
+            {
+              model:Organization, // from organization
+              as:"organization",
+              attributes:["id","name"]
+            }
+          ]
+        } 
       ],
       order: [['createdAt', 'DESC']]
     });
@@ -124,7 +135,7 @@ const deliveryAllOrders = async (req, res) => {
     return res.status(200).json({
       [orderStatus]: allOrders.map(order => ({
         ...order.toJSON(),
-        fromOrganizationName: order.fromOrg?.name || "N/A"  
+        
       }))
     });
   } catch (error) {
