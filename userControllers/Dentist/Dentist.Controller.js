@@ -30,7 +30,6 @@ const fromDentist = async (req, res) => {
       patientId,
       orderDate,
       transactionId,
-      delivery_boy,
       userUUID,   //doctor id
       toOrganization,
       serviceId = [],
@@ -49,7 +48,7 @@ const fromDentist = async (req, res) => {
       address,
     } = req.body;
 
-    console.log(req.body,"yyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyy")
+
 
     
 
@@ -77,10 +76,12 @@ const fromDentist = async (req, res) => {
         return res.status(404).json({ success: false, message: "Order not found." });
       }
 
-      // Check if the user is the creator
-      if (orderReport.created_by !== userId) {
-        return res.status(403).json({ success: false, message: "You are not allowed to edit or cancel this order." });
-      }
+      // // Check if the user is the creator
+      // if (orderReport.created_by !== userId) {
+      //   return res.status(403).json({ success: false, message: "You are not allowed to edit or cancel this order." });
+      // }
+
+      
 
       
         console.log("updte started 1");
@@ -127,7 +128,7 @@ const fromDentist = async (req, res) => {
           orderDate,
           requiredDate,
           toothName,
-          delivery_boy,
+          
           shades,
           remarks,
           reasonForScan,
