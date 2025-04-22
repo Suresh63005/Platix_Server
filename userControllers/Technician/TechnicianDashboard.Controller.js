@@ -9,83 +9,83 @@ const uploadToS3 = require("../../config/fileUpload.aws");
 const UploadImages = require("../../Models/ReportsModel/UploadImages.model");
 const TblOrganization_Service = require("../../Models/tblOrganizationService");
 
-const technicianDashboardData = async(req,res)=>{
-    const uid = req.user?.id;
-    if(!uid){
-        res.status(401).json({message:"Unauthorized: User not found!"})
+const technicianDashboardData = async (req, res) => {
+  const uid = req.user?.id;
+  if (!uid) {
+    return res.status(401).json({ message: "Unauthorized: User not found!" });
+  }
+
+  try {
+    const ordersExist = await OrderReports.findOne({
+      where: { technician: uid },
+    });
+
+    if (!ordersExist) {
+      return res.status(404).json({ message: "No Orders found" });
     }
-    try {
-      const ordersExist = await OrderReports.findOne({
-        where: { technician: uid },
-      });
 
-        if(!ordersExist){
-            return res.status(404).json({message:"No Orders found"})
-        }
-        // Count active and completed orders
-        const orderCounts = await Promise.all([
-          OrderReports.count({
-            where: {
-              technician: uid,
-              orderStatus: "processing",
-              assignment_status: "assigned_to_technician",
-            },
-          }),
-          OrderReports.count({
-            where: {
-              technician: uid,
-              orderStatus: "processing",
-              assignment_status: "technician_completed",
-            },
-          }),
-        ]);
+    // Count active and completed orders
+    const orderCounts = await Promise.all([
+      OrderReports.count({
+        where: {
+          technician: uid,
+          orderStatus: "processing",
+          assignment_status: "assigned_to_technician",
+        },
+      }),
+      OrderReports.count({
+        where: {
+          technician: uid,
+          orderStatus: "processing",
+          assignment_status: "technician_completed",
+        },
+      }),
+    ]);
 
-                // Fetch order list
-        const orderList = await OrderReports.findAll({
-          where: { technician: uid, orderStatus: "processing",assignment_status: "assigned_to_technician" },
-          include: [
+    // Fetch order list
+    const orderList = await OrderReports.findAll({
+      where: {
+        technician: uid,
+        orderStatus: "processing",
+        assignment_status: "assigned_to_technician",
+      },
+      include: [
+        {
+          model:User,
+          as: "userDetails",
+          attributes: ["id","firstName"],
+          include:[
             {
               model: Organization,
-              as: "fromOrg",
+              as: "organization",
               attributes: ["name"],
             },
-          ],
-        });
+          ]
+        }
+      ],
+    });
 
-        // const orderStausWithNames = orderList.map((order)=>({
-        //     ...order.toJSON(),
-        //     fromOrganizationName: order.fromOrg ? order.fromOrg.name : "Unknown"
-        // }))
+    // Log fromOrganization values
+    console.log(
+      "Order fromOrganization values:",
+      orderList.map((o) => o.fromOrganization)
+    );
 
-        // const response ={
-        //     activeOrders:orderCounts[0],
-        //     totalCompletedOrders:orderCounts[1],
-        //     orderList,
-        // }
-        // return res.status(200).json({
-        //     message:"Technician Dashboard Fetched Successfully!",
-        //     response
-        // })
+    const response = {
+      activeOrders: orderCounts[0],
+      totalCompletedOrders: orderCounts[1],
+      orderList,
+    };
 
-        const response = {
-          activeOrders: orderCounts[0],
-          totalCompletedOrders: orderCounts[1],
-          orderList: orderList.map((order) => ({
-            ...order.toJSON(),
-            fromOrganizationName: order.fromOrg ? order.fromOrg.name : "Unknown",
-          })),
-        };
-    
-        return res.status(200).json({
-          message: "Technician Dashboard Fetched Successfully!",
-          response,
-        });
-
-    } catch (error) {
-        console.error("Error fetching order counts:", error);
-      return res.status(500).json({ message: "Internal Server Error" }); 
-    }
-}
+    return res.status(200).json({
+      message: "Technician Dashboard Fetched Successfully!",
+      response,
+    });
+  } catch (error) {
+    console.error("Error fetching technician dashboard:", error);
+    return res.status(500).json({ message: "Internal Server Error", error: error.message });
+  }
+};
 
 const FetchTechnicianOrdersByStatus = async (req, res) => {
   const uid = req.user?.id;
@@ -445,81 +445,159 @@ const CancelAndCloseOrder = async (req, res) => {
       return res.status(401).json({ message: "Unauthorized: User not found!" });
     }
   
-    // Extract the search term from the first query parameter key
-    const searchTerm = Object.keys(req.query)[0];
+    // Extract search term from query
+    const searchTerm = Object.keys(req.query)[0]?.trim();
     console.log("Search Term:", searchTerm);
   
-    if (!searchTerm || searchTerm.trim() === "") {
+    if (!searchTerm || searchTerm === "") {
       return res.status(400).json({ message: "A valid search term is required" });
     }
   
     try {
-      // Define the where clause for the database query
-      const whereClause = {
-        technician: uid,
-        [Op.or]: [
-          { orderId: { [Op.like]: `%${searchTerm}%` } },
-          { orderDate: { [Op.like]: `%${searchTerm}%` } },
-        ],
-      };
+      // Safe search term for SQL
+      const searchPattern = `%${searchTerm}%`;
   
-      // Fetch orders from the database
+      // Fetch orders with search across orderId, orderDate, organization name, and service name
       const orders = await OrderReports.findAll({
-        where: whereClause,
+        where: {
+          technician: uid,
+          [Op.or]: [
+            { orderId: { [Op.like]: searchPattern } },
+            // Cast orderDate to YYYY-MM-DD for search
+            OrderReports.sequelize.where(
+              OrderReports.sequelize.fn(
+                "DATE_FORMAT",
+                OrderReports.sequelize.col("order_date"),
+                "%Y-%m-%d"
+              ),
+              { [Op.like]: searchPattern }
+            ),
+            // Subquery for organization name
+            {
+              userUUID: {
+                [Op.in]: [
+                  OrderReports.sequelize.literal(`
+                    SELECT id FROM User
+                    WHERE organization_id IN (
+                      SELECT id FROM Organization
+                      WHERE name LIKE :searchPattern
+                    )
+                  `),
+                ],
+              },
+            },
+            // Subquery for service name
+            {
+              id: {
+                [Op.in]: [
+                  OrderReports.sequelize.literal(`
+                    SELECT order_id FROM OrderServices
+                    WHERE orgservice_id IN (
+                      SELECT id FROM Organization_Service
+                      WHERE service_id IN (
+                        SELECT id FROM Services
+                        WHERE servicename LIKE :searchPattern
+                      )
+                    )
+                  `),
+                ],
+              },
+            },
+          ],
+        },
         include: [
           {
-            model: Organization,
-            as: "fromOrg",
-            attributes: ["name"],
+            model: User,
+            as: "userDetails",
+            attributes: ["id", "firstName"],
             required: false,
+            include: [
+              {
+                model: Organization,
+                as: "organization",
+                attributes: ["id", "name"],
+                required: false,
+              },
+            ],
+          },
+          {
+            model: OrderServices,
+            as: "orderServices",
+            attributes: ["id"],
+            required: false,
+            include: [
+              {
+                model: TblOrganization_Service,
+                as: "orgservice",
+                attributes: ["id", "organization_id", "service_id"],
+                include: [
+                  {
+                    model: Services,
+                    as: "servicess",
+                    attributes: ["id", "servicename"],
+                  },
+                ],
+              },
+            ],
           },
         ],
+        attributes: [
+          "id",
+          "orderId",
+          "orderDate",
+          "requiredDate",
+          "toothName",
+          "shades",
+          "remarks",
+          "patientId",
+          "patientName",
+          "subTotal",
+          "totalAmount",
+          "payment_status",
+          "fromOrganization",
+        ],
         order: [["orderDate", "DESC"]],
+        replacements: { searchPattern },
       });
   
       console.log("Raw Orders:", JSON.stringify(orders, null, 2));
   
-      // Filter orders to ensure search term matches
-      const filteredOrders = orders.filter((order) => {
-        const orderIdMatch = order.orderId.toLowerCase().includes(searchTerm.toLowerCase());
-        const orderDateMatch = order.orderDate.toString().toLowerCase().includes(searchTerm.toLowerCase());
-        const orgNameMatch =
-          order.fromOrg && order.fromOrg.name.toLowerCase().includes(searchTerm.toLowerCase());
-  
-        return orderIdMatch || orderDateMatch || orgNameMatch;
-      });
-  
-      if (!filteredOrders || filteredOrders.length === 0) {
+      if (!orders || orders.length === 0) {
         return res.status(404).json({ message: "No orders found matching the search criteria!" });
       }
   
-      // Format the filtered orders for the response
-      const formattedOrders = filteredOrders.map((order) => ({
+      // Map orders to response format
+      const filteredOrders = orders.map((order) => ({
         id: order.id,
         orderId: order.orderId,
         orderDate: order.orderDate,
-        orderStatus: order.orderStatus,
-        assignment_status: order.assignment_status,
-        fromOrganizationName: order.fromOrg ? order.fromOrg.name : "Unknown",
+        requiredDate: order.requiredDate,
         toothName: order.toothName,
         shades: order.shades,
-        totalAmount: order.totalAmount,
+        remarks: order.remarks,
+        patientId: order.patientId,
         patientName: order.patientName,
-        createdAt: order.createdAt,
-        updatedAt: order.updatedAt,
+        subTotal: order.subTotal,
+        totalAmount: order.totalAmount,
+        payment_status: order.payment_status,
+        fromOrganizationId: order.userDetails?.organization?.id || order.fromOrganization || null,
+        fromOrganizationName: order.userDetails?.organization?.name || "Unknown",
+        doctorName: order.userDetails?.firstName || "Unknown",
+        services: order.orderServices.map((service) => ({
+          id: service.id,
+          servicename: service.orgservice?.servicess?.servicename || "Unknown",
+        })),
       }));
   
       return res.status(200).json({
         message: "Orders fetched successfully!",
-        totalResults: formattedOrders.length,
-        orders: formattedOrders,
+        filteredOrders,
       });
     } catch (error) {
       console.error("Error in SearchAPI:", error);
       return res.status(500).json({ message: "Internal Server Error: " + error.message });
     }
   };
-
   const ClearAllCompletedOrders = async (req, res) => {
     const uid = req.user?.id;
     if (!uid) {
