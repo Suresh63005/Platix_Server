@@ -1178,7 +1178,7 @@ const editInvoice = async (req, res) => {
   if (!organization_id) {
     return res.status(401).json({ message: "Unauthorized" });
   }
-  const { totalAmount, remarks } = req.body;
+  const { totalAmount, remarks,subTotal } = req.body;
   try {
     const order = await OrderReports.findOne({
       where: { id, toOrganization: organization_id, payment_status: { [Op.ne]: "paid" }, },
@@ -1186,7 +1186,7 @@ const editInvoice = async (req, res) => {
     if (!order) {
       return res.status(404).json({ message: "Order not found" });
     }
-    await order.update({ totalAmount, remarks });
+    await order.update({ totalAmount, remarks,subTotal });
     return res.status(200).json({ message: "Invoice updated successfully", order });
   } catch (error) {
     console.error("Error updating invoice:", error);
