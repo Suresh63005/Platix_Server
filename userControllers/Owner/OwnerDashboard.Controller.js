@@ -1,4 +1,4 @@
-const { Op, literal } = require("sequelize");
+const { Op, literal, where, fn, col } = require("sequelize");
 const { v4: uuidv4 } = require("uuid");
 const OrderReports = require("../../Models/ReportsModel/OrderReport.model");
 const Organization = require("../../Models/Organization.model");
@@ -458,7 +458,13 @@ const searchDoctor = async (req, res) => {
     const results = await User.findAll({
       where: {
         prefix: "DR",
-        [Op.or]: [{ firstName: { [Op.like]: `%${search}%` } }, { lastName: { [Op.like]: `%${search}%` } }]
+        [Op.or]: [
+          { firstName: { [Op.like]: `%${search}%` } },
+          { lastName: { [Op.like]: `%${search}%` } },
+          where(fn("concat", col("firstName"), " ", col("lastName")), {
+            [Op.like]: `%${search}%`
+          }),
+        ]
       },
       include: [
         {
