@@ -3,6 +3,7 @@ const Organization = require("../Models/Organization.model");
 const User = require("../Models/ReportsModel/User.model");
 const TblOrganizationType = require("../Models/TblOrganizationType.model");
 
+//this is for working only dentist profile
 const editprofile = async (req, res) => {
   try {
     const {
@@ -198,4 +199,65 @@ const deleteAccount=async(req,res)=>{
         });
     }
 }
-module.exports ={ editprofile , deleteAccount}
+
+//edit profile for owner and technician
+const ownerOrTechnicianProfileEdit=async(req,res)=>{
+  const {
+      prefix,
+      firstName,
+      lastName,
+      businessName,
+      mobileNo,
+      whatsappNo,
+      email,
+      address,        
+      googleMapLink,
+      designation
+    } = req.body;
+
+    const id=req.user.id;
+    console.log(id, "id from token");
+    
+    const user=await User.findByPk(id)
+
+    if(!user){
+      return res.status(404).json({success:false,message:"User not found"})
+    }
+    try {
+       
+      const updatedData = {
+          prefix,
+          firstName,
+          lastName,
+          businessName,
+          mobileNo,
+          whatsappNo,
+          email,
+          address,        
+          googleMapLink,
+          designation
+      };
+
+      if (req.file) {
+          try {
+              const profileImage = await uploadToS3(req.file, "profileImage");
+              updatedData.profileImage = profileImage;
+          } catch (error) {
+              return res.status(500).json({
+                  success: false,
+                  message: "Error uploading profile image",
+                  error: error.message
+              });
+          }
+      }
+
+      await user.update(updatedData);
+      return res.status(200).json({ success: true, message: "Profile updated successfully" });
+    } catch (error) {
+      console.error("Error updating user profile:", error);
+      return res.status(500).json({ success: false, message: "Internal Server Error" });
+      
+    }
+}
+
+module.exports ={ editprofile , deleteAccount,ownerOrTechnicianProfileEdit}

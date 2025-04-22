@@ -7,6 +7,8 @@ const Services = require("../Models/TblServices.model");
 const TblOrganization_Service = require("../Models/tblOrganizationService");
 const OrderServices = require("../Models/ReportsModel/OrderServices.model");
 const Settings = require("../Models/TblSettings.model");
+const User = require("../Models/ReportsModel/User.model");
+const uploadToS3 = require("../config/fileUpload.aws");
 
 const allOrders = async (req, res) => {
     const uid = req.user?.id; 
