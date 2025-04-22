@@ -184,6 +184,13 @@ const ViewOrderDetails = async (req, res) => {
           model: User,
           as: "userDetails",
           attributes: ["id", "firstName"],
+          include:[
+            {
+              model:Organization,
+              as:"organization",
+              attributes:["id","name"]
+            }
+          ]
         },
         {
           model: OrderServices,
