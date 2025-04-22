@@ -27,10 +27,6 @@ const labOrders = async (req, res) => {
     // console.log(req.user);
     const { organization_id, id, role_id } = req.user;
 
-    console.log(organization_id,"hhhhhhhhhhh")
-
-    console.log(organization_id, "yyyyyyyyyyyyy")
-
     const user = await User.findOne({
       where: { id, role_id },
     });
@@ -56,9 +52,9 @@ const labOrders = async (req, res) => {
       ],
     });
 
-    if (orders.length === 0) {
-      return res.status(404).json({ message: "No orders found" });
-    }
+    // if (orders.length === 0) {
+    //   return res.status(404).json({ message: "No orders found" });
+    // }
 
     // Fetch order counts in parallel
     const [activeOrders, closedOrders, totalOrders] = await Promise.all([
