@@ -734,13 +734,7 @@ const ownerUpsertOrder = async (req, res) => {
       }
 
 
-      if (cancel) {
-        console.log(`Cancelling order ${id}`);
-        await orderReport.update(
-          { orderStatus: "cancelled" },
-          { transaction }
-        );
-      } else {
+      
 
         await orderReport.update(
           {
@@ -767,7 +761,7 @@ const ownerUpsertOrder = async (req, res) => {
           },
           { transaction }
         );
-      }
+      
     } else {
       // Create new order
       const orderIdValue = await generateUniqueId("ORD", OrderReports, "orderId");
