@@ -235,6 +235,13 @@ const labOrderAndPaymentReportGetById = async (req, res) => {
           model: User,
           as: 'userDetails',
           attributes: ['id', 'firstName', 'email', 'address', 'hospital_name'],
+          include:[
+            {
+              model:Organization, // from organization
+              as:"organization",
+              attributes:["id","name"]
+            }
+          ]
         },
         {
           model: OrderServices,
@@ -281,18 +288,9 @@ const labOrderAndPaymentReportGetById = async (req, res) => {
       ]
     });
 
-    const fromOrganizationDetails = await Organization.findByPk(reportData.fromOrganization, {
-      attributes: ["id", "name"],
-      include: [
-        {
-          model: TblOrganizationType,
-          as: 'organizationType',
-          attributes: ["id", "organizationType"],
-        }
-      ]
-    });
+    // const fromOrganizationDetails = await
 
-    return res.status(200).json({ message: `${report} report retrieved successfully`, data: reportData, toOrganizationDetails, fromOrganizationDetails });
+    return res.status(200).json({ message: `${report} report retrieved successfully`, data: reportData, toOrganizationDetails,  });
   } catch (error) {
     console.error(`Error fetching ${report} report with ID ${id}:`, error);
     return res.status(500).json({ message: "Internal Server Error" });

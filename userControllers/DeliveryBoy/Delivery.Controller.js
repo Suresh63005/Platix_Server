@@ -136,7 +136,9 @@ const deliveryAllOrders = async (req, res) => {
 // get specific id by details
 const orderDetailsGetById = async (req, res) => {
   const uid = req.user?.id; 
+  console.log(uid)
   const { id } = req.params; 
+  console.log(id)
   if (!uid) {
     return res.status(401).json({ success: false, message: "Unauthorized" });
   }
@@ -152,13 +154,13 @@ const orderDetailsGetById = async (req, res) => {
           model: User,
           as: 'userDetails',
           attributes: ['id', 'firstName', 'email', 'address', 'hospital_name'],
-          // include:[
-          //   {
-          //     model:Organization,
-          //     as:'organization',
-          //     attributes:['id','name'],
-          //   }
-          // ]
+          include:[
+            {
+              model:Organization,
+              as:'organization',
+              attributes:['id','name'],
+            }
+          ]
         },
         {
           model:User,
