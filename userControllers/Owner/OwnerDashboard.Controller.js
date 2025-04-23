@@ -1015,14 +1015,20 @@ const ownerUpsertOrder = async (req, res) => {
 };
 
 const cancelledOrders = async (req, res) => {
-  const { organization_id , id: userId} = req.user;
-  console.log(id,"id")
-  console.log(organization_id, "organization_id")
-  if (!organization_id) {
-    return res.status(401).json({ message: "Unauthorized" });
-  }
+  const user = req.user; // this is the full Sequelize User object
+  const userId = user.id; // ID from Sequelize model (not JWT)
+  const organization_id = user.organization_id;
+
   const { cancel } = req.params;
-  const { id } = req.body
+  const { id } = req.body;
+
+  console.log("User ID:", userId);
+  console.log("Organization ID:", organization_id);
+
+  if (!organization_id) {
+    return res.status(401).json({ message: "Unauthorized: No organization found." });
+  }
+
   try {
     if (cancel) {
       const orderReport = await OrderReports.findByPk(id);
@@ -1032,41 +1038,44 @@ const cancelledOrders = async (req, res) => {
           message: "Order not found",
         });
       }
-      await orderReport.update(
-        { orderStatus: "cancelled" },
-      );
-      // Send push notification if user has OneSignal ID
-    (async () => {
-      const sendUser = await User.findByPk(userId);
-      const pushPromise = sendUser?.one_subscription
-        ? axios.post(
-          "https://onesignal.com/api/v1/notifications",
-          {
-            app_id: process.env.ONESIGNAL_APP_ID,
-            include_player_ids: [sendUser.one_subscription],
-            headings: { en: "Order Cancelled" },
-            contents: {
-              en: `Order ${orderReport.orderId} } has been Cancelled.`,
-            },
-          },
-          {
-            headers: {
-              "Content-Type": "application/json",
-              Authorization: `Basic ${process.env.ONESIGNAL_API_KEY}`,
-            },
-          }
-        )
-        : Promise.resolve();
 
-      const notifPromise = Notification.create({
-        uid: userId,
-        datetime: new Date(),
-        title: "Order Cancelled",
-        description: `Order ${orderReport.orderId} } has been Cancelled.`,
-      });
+      await orderReport.update({ orderStatus: "cancelled" });
 
-      await Promise.allSettled([pushPromise, notifPromise]); // No need to wait in main flow
-    })();
+      // Push Notification
+      (async () => {
+        const pushPromise = user?.one_subscription
+          ? axios.post(
+              "https://onesignal.com/api/v1/notifications",
+              {
+                app_id: process.env.ONESIGNAL_APP_ID,
+                include_player_ids: [user.one_subscription],
+                headings: { en: "Order Cancelled" },
+                contents: {
+                  en: `Order ${orderReport.orderId} has been Cancelled.`,
+                },
+              },
+              {
+                headers: {
+                  "Content-Type": "application/json",
+                  Authorization: `Basic ${process.env.ONESIGNAL_API_KEY}`,
+                },
+              }
+            )
+          : Promise.resolve();
+
+        console.log("🔔 Push notification sent");
+
+        const notifPromise = Notification.create({
+          uid: userId,
+          datetime: new Date(),
+          title: "Order Cancelled",
+          description: `Order ${orderReport.orderId} has been Cancelled.`,
+        });
+
+        console.log("📝 Notification stored");
+
+        await Promise.allSettled([pushPromise, notifPromise]);
+      })();
 
       return res.status(200).json({
         success: true,
@@ -1079,14 +1088,14 @@ const cancelledOrders = async (req, res) => {
       });
     }
   } catch (error) {
-    console.error("Error cancelling order:", error);
+    console.error("❌ Error cancelling order:", error.message);
     return res.status(500).json({
       success: false,
       message: "Internal server error",
-      error: error.message,
     });
   }
 };
+
 
 // get all technician 
 const getAllTechnician = async (req, res) => {
