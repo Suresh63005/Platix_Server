@@ -3,6 +3,7 @@ const { sequelize } = require("../../config/db");
 const TblOrganizationType = require("../TblOrganizationType.model");
 const Organization = require("../Organization.model");
 const TblRoles = require("../TblRoles.model");
+const { allow } = require("joi");
 
 const User = sequelize.define(
   "User",
@@ -101,6 +102,11 @@ const User = sequelize.define(
       type:DataTypes.TEXT,
       allowNull:true
     },
+    Email_verification:{
+      type:DataTypes.BOOLEAN,
+      allowNull:false,
+      defaultValue:false
+    }
   },
   {
     tableName: "User",
