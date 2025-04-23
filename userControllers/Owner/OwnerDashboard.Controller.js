@@ -1441,6 +1441,43 @@ const getRadiologyOwnerOrdersByStatus = async (req, res) => {
 
     const allOrders = await OrderReports.findAll({
       where: whereClause,
+
+      include: [
+        { model: Organization, as: "toOrg", attributes: ["name"] },
+        {
+          model:User,
+          as: "userDetails",
+          attributes: ["id","firstName"],
+          include:[
+            {
+              model: Organization,
+              as: "organization",
+              attributes: ["name"],
+            },
+          ]
+        },{
+          model: OrderServices,
+          as: "orderServices",
+          attributes: ["quantity", "price"],
+          include: [
+            {
+              model: TblOrganization_Service,
+              as: "orgservice",
+              attributes: ["id"],
+              required: false,
+              include: [
+                {
+                  model: Services,
+                  as: "servicess",
+                  attributes: ["servicename"]
+                }
+              ]
+            }
+          ]
+        },
+
+      ],
+
       order: [["createdAt", "DESC"]],
       include: [
         {
