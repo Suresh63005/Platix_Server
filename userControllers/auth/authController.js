@@ -188,7 +188,7 @@ const sentEmailverify = async (req, res)=>{
         const otp = generateOTP();
 
         // Store OTP in memory with expiration time
-        otpStore[id] = { otp, expiry: Date.now() + 5 * 60 * 1000 };  // Expiry after 5 minutes
+        otpStore[id] = { otp, expiry: Date.now() + 10 * 60 * 1000 };  // Expiry after 10 minutes
 
         const subject = 'Your OTP Code';
         const text = `Your 6-digit OTP code is: ${otp}`;
