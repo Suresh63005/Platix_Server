@@ -113,7 +113,7 @@ const FetchTechnicianOrdersByStatus = async (req, res) => {
   try {
     const whereClause = {
       technician: uid,
-      orderStatus:"processing",
+      orderStatus,
     };
 
     // For processing, include assignment_status filter
@@ -131,7 +131,7 @@ const FetchTechnicianOrdersByStatus = async (req, res) => {
     
     if (orderStatus === "cancelled") {
       whereClause.assignment_status = {
-        [Op.in]: ["cancelled"],
+        [Op.in]: ["assigned_to_technician"],
       };
     }
 
