@@ -8,6 +8,7 @@ const Services = require("../../Models/TblServices.model");
 const uploadToS3 = require("../../config/fileUpload.aws");
 const UploadImages = require("../../Models/ReportsModel/UploadImages.model");
 const TblOrganization_Service = require("../../Models/tblOrganizationService");
+const TblOrganizationType = require("../../Models/TblOrganizationType.model");
 
 const technicianDashboardData = async (req, res) => {
   const uid = req.user?.id;
@@ -64,7 +65,7 @@ const technicianDashboardData = async (req, res) => {
         }
       ],
       limit: 10,
-      order: [['createdAt', 'DESC']]
+      order: [['created_at', 'DESC']]
     });
 
     // Log fromOrganization values
@@ -151,7 +152,7 @@ const FetchTechnicianOrdersByStatus = async (req, res) => {
           ],
         },
       ],
-      order: [["createdAt", "DESC"]],
+      order: [["created_at", "DESC"]],
     });
 
     if (!orders.length) {
@@ -343,6 +344,31 @@ const CloseOrder = async (req, res) => {
   }
 
   try {
+
+    const technician = await User.findOne({
+      where:{id:uid},
+      include:[
+        {
+          model:Organization,
+          as:"organization",
+          attributes:['id'],
+          include:[
+            {
+              model:TblOrganizationType,
+              as:"organizationType",
+              attributes:["organizationType"]
+            }
+          ]
+        }
+      ]
+    })
+
+    if(!technician || !technician.organization || !technician.organization.organizationType){
+      return res.status(404).json({ message: "User, organization, or organization type not found!" });
+    }
+
+    const isRadiology = technician.organization.organizationType.organizationType === "Radiology";
+
     // Find order
     const order = await OrderReports.findOne({
       where: { technician: uid, id: orderId },
@@ -359,14 +385,15 @@ const CloseOrder = async (req, res) => {
     }
 
     // Update status
-    order.orderStatus = "processing";
+    order.orderStatus = isRadiology ? "completed" : "processing";
     order.assignment_status = "technician_completed";
 
     await order.save();
 
     // Response message
-    return res.status(200).json({ message: "Order has been successfully marked as completed!" });
-  } catch (error) {
+    const statusMessage = isRadiology ? "completed" : "technician completed";
+    return res.status(200).json({ message: `Order has been successfully ${statusMessage}!` });
+    } catch (error) {
     console.error("Error while updating order:", error);
     return res.status(500).json({ message: "Internal server error: " + error.message });
   }
