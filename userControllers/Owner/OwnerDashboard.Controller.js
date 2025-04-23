@@ -15,7 +15,7 @@ const Roles = require("../../Models/TblRoles.model");
 const uploadToS3 = require("../../config/fileUpload.aws");
 const UploadImages = require("../../Models/ReportsModel/UploadImages.model");
 const moment = require("moment-timezone");
-const axios  = require("axios");
+const axios = require("axios");
 
 
 // Fetch total payable bills, active orders, closed orders, received payments, and order list
@@ -56,13 +56,13 @@ const labOrders = async (req, res) => {
 
     // Fetch order counts in parallel
     const [activeOrders, closedOrders, totalOrders] = await Promise.all([
-    // const [activeOrders, totalPayableBills, totalOrders, openOrders, closedOrders] = await Promise.all([
+      // const [activeOrders, totalPayableBills, totalOrders, openOrders, closedOrders] = await Promise.all([
 
       OrderReports.count({ where: { orderStatus: "processing", toOrganization: organization_id } }),
       OrderReports.count({ where: { orderStatus: "completed", toOrganization: organization_id } }),
       OrderReports.count({ where: { orderStatus: { [Op.in]: ["completed", "cancelled", "processing"] }, toOrganization: organization_id } }),
-      
-      
+
+
     ]);
 
     // Sum received amounts
@@ -102,6 +102,7 @@ const labAllOrders = async (req, res) => {
     }
 
     const allOrders = await OrderReports.findAll({
+
       where: { orderStatus, toOrganization: organization_id ,is_visible_to_owner:true},
 
       include: [
@@ -139,6 +140,7 @@ const labAllOrders = async (req, res) => {
           ]
         },
       ],
+
       order: [["createdAt", "DESC"]],
     });
 
@@ -213,7 +215,7 @@ const searchOrders = async (req, res) => {
         {
           model: User,
           as: "userDetails", // doctor name
-          attributes: ["prefix","firstName", "lastName"]
+          attributes: ["prefix", "firstName", "lastName"]
         }
       ]
     });
@@ -262,11 +264,11 @@ const labOrderAndPaymentReportGetById = async (req, res) => {
           model: User,
           as: 'userDetails',
           attributes: ['id', 'firstName', 'email', 'address', 'hospital_name'],
-          include:[
+          include: [
             {
-              model:Organization, // from organization
-              as:"organization",
-              attributes:["id","name"]
+              model: Organization, // from organization
+              as: "organization",
+              attributes: ["id", "name"]
             }
           ]
         },
@@ -317,7 +319,7 @@ const labOrderAndPaymentReportGetById = async (req, res) => {
 
     // const fromOrganizationDetails = await
 
-    return res.status(200).json({ message: `${report} report retrieved successfully`, data: reportData, toOrganizationDetails,  });
+    return res.status(200).json({ message: `${report} report retrieved successfully`, data: reportData, toOrganizationDetails, });
   } catch (error) {
     console.error(`Error fetching ${report} report with ID ${id}:`, error);
     return res.status(500).json({ message: "Internal Server Error" });
@@ -440,33 +442,73 @@ const searchOrdersGetByDate = async (req, res) => {
 const orderAndPaymentSearch = async (req, res) => {
   const { organization_id } = req.user;
   const { search } = req.params;
-
+  console.log(search)
   try {
+    const whereConditions = {
+      toOrganization: organization_id,
+      orderStatus: "completed",
+      // delivery_boy: { [Op.is]: null },
+      // technician: { [Op.is]: null },
+      [Op.or]: [
+        { orderId: { [Op.like]: `%${search}%` } },
+        { toothName: { [Op.like]: `%${search}%` } },
+        { shades: { [Op.like]: `%${search}%` } },
+        { remarks: { [Op.like]: `%${search}%` } },
+        { reasonForScan: { [Op.like]: `%${search}%` } },
+        // { mobileNo: { [Op.like]: `%${search}%` } },
+        { patientName: { [Op.like]: `%${search}%` } },
+        { patientProblem: { [Op.like]: `%${search}%` } },
+        { paymentMethod: { [Op.like]: `%${search}%` } },
+        { "$toOrg.name$": { [Op.like]: `%${search}%` } },
+        { "$toOrg.organization_service.servicess.servicename$": { [Op.like]: `%${search}%` } },
+        { "$userDetails.firstName$": { [Op.like]: `%${search}%` } },
+        { "$userDetails.lastName$": { [Op.like]: `%${search}%` } },
+        where(fn("concat",col("firstName"), " ",col("lastName")),{
+          [Op.like]:`%${search}%`
+        })
+      ]
+    };
+
+    const isDate = moment(search, "YYYY-MM-DD", true).isValid();
+    if (isDate) {
+      whereConditions[Op.or].push({
+        createdAt: {
+          [Op.between]: [
+            moment(search, "YYYY-MM-DD").startOf("day").toDate(),
+            moment(search, "YYYY-MM-DD").endOf("day").toDate()
+          ]
+        }
+      });
+    }
     const orderReports = await OrderReports.findAll({
-      where: {
-        orderStatus: "completed",
-        toOrganization: organization_id,
-        [Op.or]: [
-          { orderId: { [Op.like]: `%${search}%` } },
-          { toothName: { [Op.like]: `%${search}%` } },
-          { shades: { [Op.like]: `%${search}%` } },
-          { remarks: { [Op.like]: `%${search}%` } },
-          { reasonForScan: { [Op.like]: `%${search}%` } },
-          { mobileNo: { [Op.like]: `%${search}%` } },
-          { patientName: { [Op.like]: `%${search}%` } },
-          { patientProblem: { [Op.like]: `%${search}%` } },
-          { paymentMethod: { [Op.like]: `%${search}%` } },
-          literal(`toOrg.name LIKE '%${search}%'`)
-        ],
-      },
+      where: whereConditions,
+      order: [["createdAt", "DESC"]],
       include: [
         {
           model: Organization,
           as: "toOrg",
-          attributes: ["id", "name"],
-          required: false,
+          attributes: ["name"],
+          include: [
+            {
+              model: TblOrganization_Service,
+              as: "organization_service",
+              attributes: ["service_id", "price"],
+              include: [
+                {
+                  model: Services,
+                  as: "servicess",
+                  attributes: ["servicename"],
+                },
+              ],
+            },
+          ]
         },
-      ],
+        {
+          model: User,
+          as: "userDetails", // doctor name
+          attributes: ["prefix", "firstName", "lastName"]
+        }
+      ]
     });
 
     return res.status(200).json({ orderReports });
@@ -537,7 +579,7 @@ const assignService = async (req, res) => {
     let assignedUserId = null;
     if (technician) {
       updateFields.technician = technician;
-      updateFields.assignment_status="assigned_to_technician";
+      updateFields.assignment_status = "assigned_to_technician";
 
       const technicianuser = await User.findOne({ where: { id: technician, organization_id: organization_id } });
 
@@ -548,13 +590,13 @@ const assignService = async (req, res) => {
     }
     if (delivery_boy) {
       updateFields.delivery_boy = delivery_boy;
-      updateFields.assignment_status="assigned_to_delivery_boy"
+      updateFields.assignment_status = "assigned_to_delivery_boy"
 
       const deliveryboyuser = await User.findOne({ where: { id: delivery_boy, organization_id: organization_id } });
       if (!deliveryboyuser) {
         return res.status(404).json({ message: "Delivery Boy not found" });
       }
-      assignedUserId=delivery_boy
+      assignedUserId = delivery_boy
     }
 
     if (Object.keys(updateFields).length > 0) {
@@ -562,7 +604,7 @@ const assignService = async (req, res) => {
     }
     if (assignedUserId) {
 
-      const assignedUser=await User.findByPk(assignedUserId)
+      const assignedUser = await User.findByPk(assignedUserId)
       await Notification.create({
         uid: assignedUserId,
         datetime: new Date(),
@@ -572,22 +614,22 @@ const assignService = async (req, res) => {
       })
 
       //send push notfication
-      if(assignedUser?.one_subscription){
-        const res=await axios.post("https://onesignal.com/api/v1/notifications",{
-          app_id:process.env.ONESIGNAL_APP_ID,
+      if (assignedUser?.one_subscription) {
+        const res = await axios.post("https://onesignal.com/api/v1/notifications", {
+          app_id: process.env.ONESIGNAL_APP_ID,
           include_player_ids: [assignedUser.one_subscription],
-            headings: { en: "Order Assigned" },
-            contents: {
-              en: `You have been assigned to order ID ${order.orderId}.`,
-            },
+          headings: { en: "Order Assigned" },
+          contents: {
+            en: `You have been assigned to order ID ${order.orderId}.`,
+          },
         },
-      {
-        headers:{
-          "Content-Type": "application/json",
-          Authorization: `Basic ${process.env.ONESIGNAL_API_KEY}`,
-        }
-      })
-      
+          {
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Basic ${process.env.ONESIGNAL_API_KEY}`,
+            }
+          })
+
       }
     }
     return res.status(200).json({ message: "Service assigned successfully" });
@@ -765,34 +807,34 @@ const ownerUpsertOrder = async (req, res) => {
       }
 
 
-      
 
-        await orderReport.update(
-          {
-            fromOrganization,
-            patientName,
-            orderId: orderReport.orderId,
-            patientId: patientId || orderReport.patientId,
-            toOrganization: organization_id,
-            requiredDate,
-            toothName,
-            orderDate: orderReport.orderDate,
-            shades,
-            remarks,
-            reasonForScan,
-            userUUID: userUUID || orderReport.userUUID,
-            subTotal: sub_total,
-            tax,
-            serviceCharges: service_charges,
-            paidAmount: paid_amount,
-            totalAmount: total_amount,
-            paymentMethod: payment_method,
-            orderStatus: order_status,
-            address
-          },
-          { transaction }
-        );
-      
+
+      await orderReport.update(
+        {
+          fromOrganization,
+          patientName,
+          orderId: orderReport.orderId,
+          patientId: patientId || orderReport.patientId,
+          toOrganization: organization_id,
+          requiredDate,
+          toothName,
+          orderDate: orderReport.orderDate,
+          shades,
+          remarks,
+          reasonForScan,
+          userUUID: userUUID || orderReport.userUUID,
+          subTotal: sub_total,
+          tax,
+          serviceCharges: service_charges,
+          paidAmount: paid_amount,
+          totalAmount: total_amount,
+          paymentMethod: payment_method,
+          orderStatus: order_status,
+          address
+        },
+        { transaction }
+      );
+
     } else {
       // Create new order
       const orderIdValue = await generateUniqueId("ORD", OrderReports, "orderId");
@@ -822,7 +864,7 @@ const ownerUpsertOrder = async (req, res) => {
           orderStatus: "processing",
           address,
           payment_status: "unpaid",
-          created_by: req.user.id ,
+          created_by: req.user.id,
         },
         { transaction }
       );
@@ -873,7 +915,7 @@ const ownerUpsertOrder = async (req, res) => {
             }
           })
       })
-      
+
       try {
         await Promise.all(pushNotifications)
         console.log(" Push notifications sent to all owners.");
@@ -979,7 +1021,7 @@ const cancelledOrders = async (req, res) => {
     return res.status(401).json({ message: "Unauthorized" });
   }
   const { cancel } = req.params;
-  const {id}=req.body
+  const { id } = req.body
   try {
     if (cancel) {
       const orderReport = await OrderReports.findByPk(id);
@@ -1126,7 +1168,7 @@ const cancelledAndDestroyOrder = async (req, res) => {
       orderStatus: status,
       toOrganization: organization_id,
       created_by: id,
-      is_visible_to_owner: true, 
+      is_visible_to_owner: true,
     };
 
     if (status === "completed") {
@@ -1215,7 +1257,7 @@ const editInvoice = async (req, res) => {
   if (!organization_id) {
     return res.status(401).json({ message: "Unauthorized" });
   }
-  const { totalAmount, remarks,subTotal } = req.body;
+  const { totalAmount, remarks, subTotal } = req.body;
   try {
     const order = await OrderReports.findOne({
       where: { id, toOrganization: organization_id, payment_status: { [Op.ne]: "paid" }, },
@@ -1223,7 +1265,7 @@ const editInvoice = async (req, res) => {
     if (!order) {
       return res.status(404).json({ message: "Order not found" });
     }
-    await order.update({ totalAmount, remarks,subTotal });
+    await order.update({ totalAmount, remarks, subTotal });
     return res.status(200).json({ message: "Invoice updated successfully", order });
   } catch (error) {
     console.error("Error updating invoice:", error);
@@ -1358,8 +1400,8 @@ const getRadiologyOwnerOrdersByStatus = async (req, res) => {
         ...whereClause,
         orderStatus: "cancelled",
       };
-    } 
-    
+    }
+
     else {
       return res.status(400).json({ message: "Invalid order status" });
     }
@@ -1402,8 +1444,8 @@ const payNow = async (req, res) => {
     }
 
     // Create the transaction with userId
-    const [transaction,orderReport] = await Promise.all([
-      orderTransaction.create({orderId,userUUID:userId,transactionId,amount}),
+    const [transaction, orderReport] = await Promise.all([
+      orderTransaction.create({ orderId, userUUID: userId, transactionId, amount }),
       OrderReports.findByPk(orderId)
     ])
 
@@ -1418,22 +1460,22 @@ const payNow = async (req, res) => {
       const sendUser = await User.findByPk(userId);
       const pushPromise = sendUser?.one_subscription
         ? axios.post(
-            "https://onesignal.com/api/v1/notifications",
-            {
-              app_id: process.env.ONESIGNAL_APP_ID,
-              include_player_ids: [sendUser.one_subscription],
-              headings: { en: "Payment Confirmation" },
-              contents: {
-                en: `Order ₹${amount} for bill ${orderReport.orderId} has been successfully processed.`,
-              },
+          "https://onesignal.com/api/v1/notifications",
+          {
+            app_id: process.env.ONESIGNAL_APP_ID,
+            include_player_ids: [sendUser.one_subscription],
+            headings: { en: "Payment Confirmation" },
+            contents: {
+              en: `Order ₹${amount} for bill ${orderReport.orderId} has been successfully processed.`,
             },
-            {
-              headers: {
-                "Content-Type": "application/json",
-                Authorization: `Basic ${process.env.ONESIGNAL_API_KEY}`,
-              },
-            }
-          )
+          },
+          {
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Basic ${process.env.ONESIGNAL_API_KEY}`,
+            },
+          }
+        )
         : Promise.resolve();
 
       const notifPromise = Notification.create({
