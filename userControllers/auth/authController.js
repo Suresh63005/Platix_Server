@@ -6,6 +6,7 @@ const TblOrganizationType = require("../../Models/TblOrganizationType.model");
 const Organization = require("../../Models/Organization.model");
 const TblOrganization_Service = require("../../Models/tblOrganizationService");
 const Services = require("../../Models/TblServices.model");
+const Roles = require("../../Models/TblRoles.model");
 
 let otpStore={};
 
@@ -136,6 +137,12 @@ const RoleDetails = async (req, res) => {
             return res.status(404).json({ message: "User not found!" });
         }
 
+        const validateRole = await Roles.findByPk(role_id);
+
+        if(validateRole.rolename !== "Dentist" || "dentist"){
+            return res.status(401).json({message:"un authorized role"});
+        }
+
         // Update role details
         await User.update(
             { firstName, lastName, email, role_id },
@@ -160,6 +167,42 @@ const RoleDetails = async (req, res) => {
         return res.status(500).json({ message: "Internal server error: " + error.message });
     }
 };
+
+const sentEmailverify = async (req, res)=>{
+    const {  email,  } = req.body;
+
+    const id = req.user.id;
+
+    if ( !email || !id) {
+        return res.status(400).json({ message: "All fields are required!" });
+    }
+
+    try {
+        let user = await User.findOne({ where: { id } });
+        if (!user) {
+            return res.status(404).json({ message: "User not found!" });
+        }
+
+       // await subscribeUser(email)
+        // Generate OTP
+        const otp = generateOTP();
+
+        // Store OTP in memory with expiration time
+        otpStore[id] = { otp, expiry: Date.now() + 5 * 60 * 1000 };  // Expiry after 5 minutes
+
+        const subject = 'Your OTP Code';
+        const text = `Your 6-digit OTP code is: ${otp}`;
+        console.log(otp)
+        await sendEmail(email, subject, text);
+
+        return res.status(200).json({ message: " OTP has been sent to your email." ,user:user});
+
+    } catch (error) {
+        console.error("Error assigning/updating role:", error.message);
+        return res.status(500).json({ message: "Internal server error: " + error.message });
+    }
+
+}
 
 const verifyOtp = async(req, res) => {
     const { id, otp } = req.body;
@@ -187,10 +230,14 @@ const verifyOtp = async(req, res) => {
     // Verify OTP
     if (storedOtp === otp) {
         delete otpStore[id];  // Clear OTP after successful verification
+        user.Email_verification = true;
+        user.save();
         return res.status(200).json({ message: "OTP verified successfully!",user });
     } else {
         return res.status(400).json({ message: "Invalid OTP!" });
     }
+
+
 };
 
 // delivery boy , owner, technician  login controller
@@ -357,4 +404,4 @@ const removeOneSignal = async (req, res) => {
     }
 }
 
-module.exports = { verifyMobile ,RoleDetails,verifyOtp,loginwithnumber,updateOneSignal,removeOneSignal};
+module.exports = { verifyMobile ,RoleDetails,verifyOtp,loginwithnumber,updateOneSignal,removeOneSignal,sentEmailverify};
