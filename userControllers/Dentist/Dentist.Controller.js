@@ -372,8 +372,8 @@ const cancelledOrders = async (req, res) => {
       const notifPromise = Notification.create({
         uid: userId,
         datetime: new Date(),
-        title: "Payment Confirmation",
-        description: `Order ₹${amount} for bill ${orderReport.orderId} has been successfully processed.`,
+        title: "Order Cancelled",
+        description: `Order ${orderReport.orderId} } has been Cancelled.`,
       });
 
       await Promise.allSettled([pushPromise, notifPromise]); // No need to wait in main flow
