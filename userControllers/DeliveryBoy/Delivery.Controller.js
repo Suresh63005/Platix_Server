@@ -376,7 +376,8 @@ const cancelledAndDestroyOrder = async (req, res) => {
     let whereClause = {
       orderStatus: status,
       is_visible_to_delivery: true, 
-      created_by:userUUID,
+      // created_by:userUUID,
+      delivery_boy:userUUID
     };
     console.log(whereClause, "whereClause");
     if (status === "completed") {
