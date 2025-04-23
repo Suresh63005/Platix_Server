@@ -104,6 +104,7 @@ const FetchTechnicianOrdersByStatus = async (req, res) => {
     return res.status(400).json({ message: "orderStatus is required." });
   }
 
+  orderStatus = orderStatus.toLowerCase(); // Normalize case
   if (!["processing", "completed", "cancelled"].includes(orderStatus)) {
     return res.status(400).json({
       message: "Order status is required and should be either processing, completed, or cancelled!",
@@ -111,25 +112,24 @@ const FetchTechnicianOrdersByStatus = async (req, res) => {
   }
 
   try {
-    const whereClause = {
+    let whereClause = {
       technician: uid,
-      orderStatus,
     };
 
-    // For processing, include assignment_status filter
     if (orderStatus === "processing") {
+      whereClause.orderStatus = "processing";
       whereClause.assignment_status = {
         [Op.in]: ["assigned_to_technician"],
       };
-    }
-
-    if (orderStatus === "completed") {
+    } else if (orderStatus === "completed") {
+      whereClause.orderStatus = {
+        [Op.in]: ["processing", "completed"],
+      };
       whereClause.assignment_status = {
         [Op.in]: ["technician_completed"],
       };
-    }
-    
-    if (orderStatus === "cancelled") {
+    } else if (orderStatus === "cancelled") {
+      whereClause.orderStatus = "cancelled";
       whereClause.assignment_status = {
         [Op.in]: ["assigned_to_technician"],
       };
@@ -139,27 +139,26 @@ const FetchTechnicianOrdersByStatus = async (req, res) => {
       where: whereClause,
       include: [
         {
-          model:User,
+          model: User,
           as: "userDetails",
-          attributes: ["id","firstName"],
-          include:[
+          attributes: ["id", "firstName"],
+          include: [
             {
               model: Organization,
               as: "organization",
               attributes: ["name"],
             },
-          ]
+          ],
         },
-
       ],
-      order: [['createdAt', 'DESC']]
+      order: [["createdAt", "DESC"]],
     });
 
     if (!orders.length) {
       return res.status(404).json({ message: "No orders found with the specified status!" });
     }
 
-    res.status(200).json({ message: "Orders fetched successfully!", orders: orders });
+    res.status(200).json({ message: "Orders fetched successfully!", orders });
   } catch (error) {
     console.error("Error fetching orders:", error);
     res.status(500).json({ message: "Internal Server Error", error: error.message });
