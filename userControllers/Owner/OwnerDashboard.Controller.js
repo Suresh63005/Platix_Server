@@ -1016,6 +1016,7 @@ const ownerUpsertOrder = async (req, res) => {
 
 const cancelledOrders = async (req, res) => {
   const { organization_id , id: userId} = req.user;
+  console.log(id,"id")
   console.log(organization_id, "organization_id")
   if (!organization_id) {
     return res.status(401).json({ message: "Unauthorized" });
@@ -1223,10 +1224,42 @@ const cancelledAndDestroyOrder = async (req, res) => {
       { is_visible_to_owner: false },
       { where: whereClause }
     );
+    // Send push notification if user has OneSignal ID
+    (async () => {
+      const sendUser = await User.findByPk(id);
+      const pushPromise = sendUser?.one_subscription
+        ? axios.post(
+          "https://onesignal.com/api/v1/notifications",
+          {
+            app_id: process.env.ONESIGNAL_APP_ID,
+            include_player_ids: [sendUser.one_subscription],
+            headings: { en: "Order Cancelled" },
+            contents: {
+              en: `Order ${ordersToUpdate[0]?.orderId} has been Cancelled by owner`,
+            },
+          },
+          {
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Basic ${process.env.ONESIGNAL_API_KEY}`,
+            },
+          }
+        )
+        : Promise.resolve();
+        // console.log("all")
+      const notifPromise = Notification.create({
+        uid: id,
+        datetime: new Date(),
+        title: "Order Cancelled",
+        description: `Order ${ordersToUpdate[0]?.orderId} has been Cancelled by owner`,
+      });
+      // console.log("all2")
+      await Promise.allSettled([pushPromise, notifPromise]); 
+    })();
 
     return res.status(200).json({
       success: true,
-      message: `${updatedCount} ${status} orders created by you have been deleted successfully.`,
+      message: `${updatedCount} ${status} orders  deleted successfully.`,
     });
   } catch (error) {
     console.error("Error deleting orders:", error.message);
