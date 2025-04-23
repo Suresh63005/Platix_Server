@@ -159,7 +159,7 @@ const OrderReports = sequelize.define(
       ),
       defaultValue: "unassigned",
       allowNull: true,
-    }    
+    },
   },
   {
     tableName: "OrderReports",
