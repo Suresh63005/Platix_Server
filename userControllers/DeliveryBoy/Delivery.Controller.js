@@ -380,9 +380,9 @@ const cancelledAndDestroyOrder = async (req, res) => {
       delivery_boy:userUUID
     };
     console.log(whereClause, "whereClause");
-    if (status === "completed") {
-      whereClause.payment_status = "paid";
-    }
+    // if (status === "completed") {
+    //   whereClause.payment_status = "paid";
+    // }
 
     // Check if any such orders exist
     const ordersToUpdate = await OrderReports.findAll({ where: whereClause });

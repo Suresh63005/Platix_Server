@@ -12,10 +12,8 @@ const TblOrganizationType = require("../../Models/TblOrganizationType.model");
 const Notification = require("../../Models/Notification.model");
 const orderTransaction = require("../../Models/ReportsModel/OrderTransaction.model");
 const Roles = require("../../Models/TblRoles.model");
-
 const uploadToS3 = require("../../config/fileUpload.aws");
 const UploadImages = require("../../Models/ReportsModel/UploadImages.model");
-
 const moment = require("moment-timezone");
 const axios  = require("axios");
 
@@ -76,9 +74,7 @@ const labOrders = async (req, res) => {
     // Format the response
     const response = {
       activeOrders,
-      
       totalOrders,
-      
       closedOrders,
       totalReceivedAmount: receivedAmounts,
       orderList: orders.map((order) => ({
