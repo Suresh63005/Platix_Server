@@ -1015,7 +1015,7 @@ const ownerUpsertOrder = async (req, res) => {
 };
 
 const cancelledOrders = async (req, res) => {
-  const { organization_id } = req.user;
+  const { organization_id , id: userId} = req.user;
   console.log(organization_id, "organization_id")
   if (!organization_id) {
     return res.status(401).json({ message: "Unauthorized" });
@@ -1034,6 +1034,39 @@ const cancelledOrders = async (req, res) => {
       await orderReport.update(
         { orderStatus: "cancelled" },
       );
+      // Send push notification if user has OneSignal ID
+    (async () => {
+      const sendUser = await User.findByPk(userId);
+      const pushPromise = sendUser?.one_subscription
+        ? axios.post(
+          "https://onesignal.com/api/v1/notifications",
+          {
+            app_id: process.env.ONESIGNAL_APP_ID,
+            include_player_ids: [sendUser.one_subscription],
+            headings: { en: "Order Cancelled" },
+            contents: {
+              en: `Order ${orderReport.orderId} } has been Cancelled.`,
+            },
+          },
+          {
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Basic ${process.env.ONESIGNAL_API_KEY}`,
+            },
+          }
+        )
+        : Promise.resolve();
+
+      const notifPromise = Notification.create({
+        uid: userId,
+        datetime: new Date(),
+        title: "Order Cancelled",
+        description: `Order ${orderReport.orderId} } has been Cancelled.`,
+      });
+
+      await Promise.allSettled([pushPromise, notifPromise]); // No need to wait in main flow
+    })();
+
       return res.status(200).json({
         success: true,
         message: "Order cancelled successfully",
@@ -1408,6 +1441,7 @@ const getRadiologyOwnerOrdersByStatus = async (req, res) => {
 
     const allOrders = await OrderReports.findAll({
       where: whereClause,
+
       include: [
         { model: Organization, as: "toOrg", attributes: ["name"] },
         {
@@ -1443,7 +1477,34 @@ const getRadiologyOwnerOrdersByStatus = async (req, res) => {
         },
 
       ],
+
       order: [["createdAt", "DESC"]],
+      include: [
+        {
+          model: Organization,
+          as: "toOrg",
+          attributes: ["name"],
+          include: [
+            {
+              model: TblOrganization_Service,
+              as: "organization_service",
+              attributes: ["service_id", "price"],
+              include: [
+                {
+                  model: Services,
+                  as: "servicess",
+                  attributes: ["servicename"],
+                },
+              ],
+            },
+          ]
+        },
+        {
+          model: User,
+          as: "userDetails", // doctor name
+          attributes: ["prefix", "firstName", "lastName"]
+        }
+      ]
     });
 
     return res.status(200).json({

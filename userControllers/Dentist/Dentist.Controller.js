@@ -155,7 +155,7 @@ const fromDentist = async (req, res) => {
         {
           app_id: process.env.ONESIGNAL_APP_ID,
           include_player_ids: [sendUserId.one_subscription],
-          headings: { en: `${id ? "Order Updated":"Order Confirmation"}` },
+          headings: {  en: `${id ? "Order Updated":"Order Confirmation"}` },
           contents: { en:  ` ${id ? `Order ${orderReport.orderId} has been successfully Updated `:`Order ${orderReport.orderId} has been successfully confirmed and is now beeing processed`}.` },
         },
         {
@@ -345,6 +345,40 @@ const cancelledOrders = async (req, res) => {
       await orderReport.update(
         { orderStatus: "cancelled" },
       );
+
+      // Send push notification if user has OneSignal ID
+    (async () => {
+      const sendUser = await User.findByPk(userId);
+      const pushPromise = sendUser?.one_subscription
+        ? axios.post(
+          "https://onesignal.com/api/v1/notifications",
+          {
+            app_id: process.env.ONESIGNAL_APP_ID,
+            include_player_ids: [sendUser.one_subscription],
+            headings: { en: "Order Cancelled" },
+            contents: {
+              en: `Order ${orderReport.orderId} } has been Cancelled.`,
+            },
+          },
+          {
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Basic ${process.env.ONESIGNAL_API_KEY}`,
+            },
+          }
+        )
+        : Promise.resolve();
+
+      const notifPromise = Notification.create({
+        uid: userId,
+        datetime: new Date(),
+        title: "Order Cancelled",
+        description: `Order ${orderReport.orderId} } has been Cancelled.`,
+      });
+
+      await Promise.allSettled([pushPromise, notifPromise]); // No need to wait in main flow
+    })();
+
       return res.status(200).json({
         success: true,
         message: "Order cancelled successfully",
