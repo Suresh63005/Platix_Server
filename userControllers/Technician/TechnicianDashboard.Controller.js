@@ -63,6 +63,8 @@ const technicianDashboardData = async (req, res) => {
           ]
         }
       ],
+      limit: 10,
+      order: [['createdAt', 'DESC']]
     });
 
     // Log fromOrganization values
@@ -102,7 +104,6 @@ const FetchTechnicianOrdersByStatus = async (req, res) => {
     return res.status(400).json({ message: "orderStatus is required." });
   }
 
-  orderStatus = orderStatus.toLowerCase(); // Normalize case
   if (!["processing", "completed", "cancelled"].includes(orderStatus)) {
     return res.status(400).json({
       message: "Order status is required and should be either processing, completed, or cancelled!",
@@ -110,28 +111,27 @@ const FetchTechnicianOrdersByStatus = async (req, res) => {
   }
 
   try {
-    let whereClause = {
-      orderStatus, // Use the query parameter dynamically
+    const whereClause = {
+      technician: uid,
+      orderStatus:"processing",
     };
 
-    // For processing and completed, filter by technician
+    // For processing, include assignment_status filter
     if (orderStatus === "processing") {
-      whereClause.technician = uid;
       whereClause.assignment_status = {
         [Op.in]: ["assigned_to_technician"],
       };
-    } else if (orderStatus === "completed") {
-      whereClause.technician = uid;
+    }
+
+    if (orderStatus === "completed") {
       whereClause.assignment_status = {
         [Op.in]: ["technician_completed"],
       };
-    } else if (orderStatus === "cancelled") {
-      // For cancelled orders, filter only by cancel_by_technician.technicianId
-      whereClause = {
-        orderStatus,
-        cancel_by_technician: {
-          technicianId: uid,
-        },
+    }
+    
+    if (orderStatus === "cancelled") {
+      whereClause.assignment_status = {
+        [Op.in]: ["cancelled"],
       };
     }
 
@@ -139,25 +139,27 @@ const FetchTechnicianOrdersByStatus = async (req, res) => {
       where: whereClause,
       include: [
         {
-          model: User,
+          model:User,
           as: "userDetails",
-          attributes: ["id", "firstName"],
-          include: [
+          attributes: ["id","firstName"],
+          include:[
             {
               model: Organization,
               as: "organization",
               attributes: ["name"],
             },
-          ],
+          ]
         },
+
       ],
+      order: [['createdAt', 'DESC']]
     });
 
     if (!orders.length) {
       return res.status(404).json({ message: "No orders found with the specified status!" });
     }
 
-    res.status(200).json({ message: "Orders fetched successfully!", orders });
+    res.status(200).json({ message: "Orders fetched successfully!", orders: orders });
   } catch (error) {
     console.error("Error fetching orders:", error);
     res.status(500).json({ message: "Internal Server Error", error: error.message });
@@ -325,65 +327,7 @@ const UploadImagesByTechnician = async (req, res) => {
   }
 };
   
-// const CancelAndCloseOrder = async (req, res) => {
-//   const uid = req.user?.id;
-//   const { orderId } = req.body;
-//   const { action } = req.query;
-
-//   // Input validation
-//   if (!uid) {
-//     return res.status(401).json({ message: "Unauthorized: User not found!" });
-//   }
-//   if (!orderId) {
-//     return res.status(400).json({ message: "Order ID is required!" });
-//   }
-//   if (!action || !["cancelled", "completed"].includes(action)) {
-//     return res.status(400).json({ message: "Invalid action! Action must be 'cancelled' or 'completed'." });
-//   }
-
-//   try {
-//     // Find order
-//     const order = await OrderReports.findOne({
-//       where: { technician: uid, id: orderId },
-//     });
-//     if (!order) {
-//       return res.status(404).json({
-//         message: "Order not found or you don't have permission to modify it!",
-//       });
-//     }
-
-//     // Check current status
-//     if (action === "cancelled" && order.orderStatus === "processing" && order.assignment_status === "assigned_to_technician") {
-//       return res.status(400).json({ message: "Order is already in processing status." });
-//     }
-//     if (action === "completed" && order.orderStatus === "processing" && order.assignment_status === "technician_completed") {
-//       return res.status(400).json({ message: "Order is already marked as technician completed." });
-//     }
-//     if (order.orderStatus === "completed" && action === "cancelled") {
-//       return res.status(400).json({ message: "Fully completed order cannot be cancelled!" });
-//     }
-
-//     // Update status
-//     if (action === "cancelled") {
-//       order.orderStatus = "processing";
-//       // assignment_status remains unchanged (e.g., assigned_to_technician)
-//     } else if (action === "completed") {
-//       order.orderStatus = "processing";
-//       order.assignment_status = "technician_completed";
-//     }
-
-//     await order.save();
-
-//     // Response message
-//     const statusMessage = action === "cancelled" ? "set to processing" : "marked as technician completed";
-//     return res.status(200).json({ message: `Order has been successfully ${statusMessage}!` });
-//   } catch (error) {
-//     console.error("Error while updating order:", error);
-//     return res.status(500).json({ message: "Internal server error: " + error.message });
-//   }
-// };
-
-const CancelAndCloseOrder = async (req, res) => {
+const CloseOrder = async (req, res) => {
   const uid = req.user?.id;
   const { orderId } = req.body;
   const { action } = req.query;
@@ -395,8 +339,8 @@ const CancelAndCloseOrder = async (req, res) => {
   if (!orderId) {
     return res.status(400).json({ message: "Order ID is required!" });
   }
-  if (!action || !["cancelled", "completed"].includes(action)) {
-    return res.status(400).json({ message: "Invalid action! Action must be 'cancelled' or 'completed'." });
+  if (action !== "completed") {
+    return res.status(400).json({ message: "Invalid action! Action must be 'completed'." });
   }
 
   try {
@@ -411,35 +355,18 @@ const CancelAndCloseOrder = async (req, res) => {
     }
 
     // Check current status
-    if (action === "cancelled") {
-      if (order.orderStatus === "cancelled") {
-        return res.status(400).json({ message: "Order is already cancelled!" });
-      }
-      if (order.orderStatus === "completed") {
-        return res.status(400).json({ message: "Fully completed order cannot be cancelled!" });
-      }
-    } else if (action === "completed") {
-      if (order.orderStatus === "processing" && order.assignment_status === "technician_completed") {
-        return res.status(400).json({ message: "Order is already marked as technician completed." });
-      }
+    if (order.orderStatus === "completed" && order.assignment_status === "technician_completed") {
+      return res.status(400).json({ message: "Order is already marked as completed." });
     }
 
     // Update status
-    if (action === "cancelled") {
-      order.orderStatus = "cancelled"; // Changed to reflect actual cancellation
-      order.cancel_by_technician = { technicianId: uid, cancelledAt: new Date() };
-      order.technician = null;
-      order.assignment_status = "unassigned";
-    } else if (action === "completed") {
-      order.orderStatus = "processing";
-      order.assignment_status = "technician_completed";
-    }
+    order.orderStatus = "processing";
+    order.assignment_status = "technician_completed";
 
     await order.save();
 
     // Response message
-    const statusMessage = action === "cancelled" ? "cancelled" : "marked as technician completed";
-    return res.status(200).json({ message: `Order has been successfully ${statusMessage}!` });
+    return res.status(200).json({ message: "Order has been successfully marked as completed!" });
   } catch (error) {
     console.error("Error while updating order:", error);
     return res.status(500).json({ message: "Internal server error: " + error.message });
@@ -662,6 +589,7 @@ const CancelAndCloseOrder = async (req, res) => {
       return res.status(500).json({ message: "Internal Server Error: " + error.message });
     }
   };
+  
   const ClearAllCompletedOrders = async (req, res) => {
     const uid = req.user?.id;
     if (!uid) {
@@ -723,7 +651,7 @@ module.exports = {
   technicianDashboardData,
   FetchTechnicianOrdersByStatus,
   ViewOrderDetails,
-  CancelAndCloseOrder,
+  CloseOrder,
   UploadImagesByTechnician,
   SearchAPI,
   TechnicianDashboardOrderSearch,

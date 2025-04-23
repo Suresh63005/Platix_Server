@@ -160,10 +160,6 @@ const OrderReports = sequelize.define(
       defaultValue: "unassigned",
       allowNull: true,
     },
-    cancel_by_technician: {
-      type: DataTypes.JSON,
-      allowNull: true,
-    },
   },
   {
     tableName: "OrderReports",
