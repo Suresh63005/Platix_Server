@@ -357,7 +357,7 @@ const cancelledOrders = async (req, res) => {
             include_player_ids: [sendUser.one_subscription],
             headings: { en: "Order Cancelled" },
             contents: {
-              en: `Order ${orderReport.orderId} } has been Cancelled.`,
+              en: `Order ${orderReport.orderId}  has been Cancelled.`,
             },
           },
           {
@@ -853,7 +853,7 @@ const cancelledAndDestroyOrder = async (req, res) => {
     let whereClause = {
       orderStatus: status,
       is_visible_to_customer: true, 
-      created_by:userUUID,
+      // created_by:userUUID,
     };
     console.log(whereClause, "whereClause");
     if (status === "completed") {
