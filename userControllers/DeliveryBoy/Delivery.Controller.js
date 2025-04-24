@@ -6,15 +6,16 @@ const OrderServices = require("../../Models/ReportsModel/OrderServices.model");
 const TblOrganization_Service = require("../../Models/tblOrganizationService");
 const Services = require("../../Models/TblServices.model");
 const TblOrganizationType = require("../../Models/TblOrganizationType.model");
+const Roles = require("../../Models/TblRoles.model");
 
 // getall dashboard data and searching also
 const getAll = async (req, res) => {
-  const uid = req.user?.id; 
+  const uid = req.user?.id;
   if (!uid) {
     return res.status(401).json({ message: "Unauthorized" });
   }
 
-  const { search } = req.query;  
+  const { search } = req.query;
 
   try {
     let orderList = [];
@@ -43,7 +44,7 @@ const getAll = async (req, res) => {
             attributes: ['name'],
           },
           {
-            model:Organization,
+            model: Organization,
             as: 'fromOrg',
             attributes: ['name'],
           }
@@ -95,8 +96,8 @@ const getAll = async (req, res) => {
 
 //get all active || cancelled || closed order data
 const deliveryAllOrders = async (req, res) => {
-  const uid = req.user?.id; 
-  const { orderStatus } = req.params; 
+  const uid = req.user?.id;
+  const { orderStatus } = req.params;
 
   if (!uid) {
     return res.status(401).json({ message: "Unauthorized. Please log in." });
@@ -110,24 +111,24 @@ const deliveryAllOrders = async (req, res) => {
     const allOrders = await OrderReports.findAll({
       where: {
         orderStatus,
-        is_visible_to_delivery:true,  
+        is_visible_to_delivery: true,
         [Op.or]: [
-          { delivery_boy: uid }, 
+          { delivery_boy: uid },
         ]
       },
       include: [
-        { 
-          model: User, 
-          as: 'userDetails', 
+        {
+          model: User,
+          as: 'userDetails',
           attributes: ['id', 'firstName', 'email', 'address', 'hospital_name'],
-          include:[
+          include: [
             {
-              model:Organization, // from organization
-              as:"organization",
-              attributes:["id","name"]
+              model: Organization, // from organization
+              as: "organization",
+              attributes: ["id", "name"]
             }
           ]
-        } 
+        }
       ],
       order: [['createdAt', 'DESC']]
     });
@@ -135,7 +136,7 @@ const deliveryAllOrders = async (req, res) => {
     return res.status(200).json({
       [orderStatus]: allOrders.map(order => ({
         ...order.toJSON(),
-        
+
       }))
     });
   } catch (error) {
@@ -146,9 +147,9 @@ const deliveryAllOrders = async (req, res) => {
 
 // get specific id by details
 const orderDetailsGetById = async (req, res) => {
-  const uid = req.user?.id; 
+  const uid = req.user?.id;
   console.log(uid)
-  const { id } = req.params; 
+  const { id } = req.params;
   console.log(id)
   if (!uid) {
     return res.status(401).json({ success: false, message: "Unauthorized" });
@@ -158,25 +159,25 @@ const orderDetailsGetById = async (req, res) => {
     const orderReport = await OrderReports.findOne({
       where: {
         id,
-        delivery_boy: uid 
+        delivery_boy: uid
       },
       include: [
         {
           model: User,
           as: 'userDetails',
           attributes: ['id', 'firstName', 'email', 'address', 'hospital_name'],
-          include:[
+          include: [
             {
-              model:Organization,
-              as:'organization',
-              attributes:['id','name'],
+              model: Organization,
+              as: 'organization',
+              attributes: ['id', 'name'],
             }
           ]
         },
         {
-          model:User,
-          as:'deliveryBoy',
-          attributes: ['id', 'firstName','lastName', 'email', ]
+          model: User,
+          as: 'deliveryBoy',
+          attributes: ['id', 'firstName', 'lastName', 'email',]
         }
         // here shown doctor details mean useruuid in orderreports table
       ]
@@ -190,7 +191,7 @@ const orderDetailsGetById = async (req, res) => {
         {
           model: TblOrganization_Service,
           as: 'orgservice',
-          attributes: ['id', 'service_id','price'],
+          attributes: ['id', 'service_id', 'price'],
           include: [
             {
               model: Services,
@@ -204,26 +205,26 @@ const orderDetailsGetById = async (req, res) => {
 
     const toOrganizationDetails = await Organization.findByPk(orderReport.toOrganization, {
       attributes: ['id', 'name'],
-      include:[
+      include: [
         {
-          model:TblOrganizationType,
-          as:'organizationType',
-          attributes:['id','organizationType']
+          model: TblOrganizationType,
+          as: 'organizationType',
+          attributes: ['id', 'organizationType']
         }
       ]
     });
     const fromOrganizationDetails = await Organization.findByPk(orderReport.fromOrganization, {
       attributes: ['id', 'name'],
-      include:[
+      include: [
         {
-          model:TblOrganizationType,
-          as:'organizationType',
-          attributes:['id','organizationType']
+          model: TblOrganizationType,
+          as: 'organizationType',
+          attributes: ['id', 'organizationType']
         }
       ]
     });
 
-    const orderData=orderReport.toJSON()
+    const orderData = orderReport.toJSON()
     orderData.doctorDetails = orderData.userDetails; //Creates a new key called doctorDetails and assigns it the value of userDetails (which was loaded from the association).
     delete orderData.userDetails; //Removes the original userDetails key from the object, so only doctorDetails will appear in the final response.
 
@@ -245,9 +246,9 @@ const orderDetailsGetById = async (req, res) => {
 };
 
 const upsert = async (req, res) => {
-  const uid = req.user?.id; 
+  const uid = req.user?.id;
   const { id, userUUID, fromOrganization, toOrganization, toothName, shades, remarks, services } = req.body;
-  const orderDate = new Date().toISOString().split('T')[0]; 
+  const orderDate = new Date().toISOString().split('T')[0];
   const servicesArray = Array.isArray(services) ? services : [services];
   const generateUniqueId = async (prefix, model, field) => {
     let uniqueId;
@@ -273,7 +274,7 @@ const upsert = async (req, res) => {
         userUUID,
         fromOrganization,
         toOrganization,
-        orderDate,  
+        orderDate,
         toothName,
         shades,
         remarks,
@@ -285,21 +286,21 @@ const upsert = async (req, res) => {
         userUUID,
         fromOrganization,
         toOrganization,
-        orderDate, 
+        orderDate,
         toothName,
         shades,
         remarks,
         delivery_boy: uid,
-        orderId:orderIdValue
+        orderId: orderIdValue
       });
     }
 
     if (servicesArray.length > 0) {
       const orderServicesData = servicesArray.map(service => ({
         orderId: orderReport.id,
-        orgserviceId: service.service_id,  
-        quantity: service.quantity,        
-        price: service.price               
+        orgserviceId: service.service_id,
+        quantity: service.quantity,
+        price: service.price
       }));
 
       await OrderServices.destroy({ where: { orderId: orderReport.id } });
@@ -319,7 +320,7 @@ const upsert = async (req, res) => {
 };
 
 const closedOrder = async (req, res) => {
-  const uid = req.user?.id; 
+  const uid = req.user?.id;
 
   console.log(uid)
   if (!uid) {
@@ -331,10 +332,10 @@ const closedOrder = async (req, res) => {
 
   try {
     const order = await OrderReports.findOne({
-      where: { 
-        id: id,  
+      where: {
+        id: id,
         delivery_boy: uid,
-        
+
       }
     });
     console.log(order)
@@ -344,11 +345,99 @@ const closedOrder = async (req, res) => {
     }
 
     await OrderReports.update(
-      { 
-        orderStatus: "completed", 
+      {
+        orderStatus: "completed",
       },
       { where: { id } }
     );
+
+    // notification send
+    const sendUser = await User.findByPk(uid);
+    const organizationId = sendUser.organization_id;
+    (async () => {
+
+      const pushPromise = sendUser?.one_subscription
+        ? axios.post(
+          "https://onesignal.com/api/v1/notifications",
+          {
+            app_id: process.env.ONESIGNAL_APP_ID,
+            include_player_ids: [sendUser.one_subscription],
+            headings: { en: "Order Closed" },
+            contents: {
+              en: `Order ID ${order.orderId} has been closed by delivery boy`,
+            },
+          },
+          {
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Basic ${process.env.ONESIGNAL_API_KEY}`,
+            },
+          }
+        )
+        : Promise.resolve();
+
+      const notifPromise = Notification.create({
+        uid: uid,
+        datetime: new Date(),
+        title: "Order Closed",
+        description: `Order ID ${order.orderId} has been closed by delivery boy`,
+      });
+
+      await Promise.allSettled([pushPromise, notifPromise]); // No need to wait in main flow
+    })();
+
+    const ownersFromOrganization = await User.findAll({
+      where: {
+        organization_id: organizationId,
+      },
+      include: [
+        {
+          model: Roles,
+          as: "role",
+          attributes: ["id", "rolename"],
+          where: {
+            rolename: "owner"
+          }
+        }
+      ]
+    })
+    // console.log(ownersFromOrganization, "ownersFromOrganization");
+    if (ownersFromOrganization.length > 0) {
+      const notifications = ownersFromOrganization.map((owner) => {
+        return {
+          organization_id: organizationId,
+          uid: owner.id,
+          datetime: new Date(),
+          title: "Order Closed",
+          description: `Order ID ${order.orderId} has been closed by delivery boy`,
+
+        }
+      })
+      await Notification.bulkCreate(notifications)
+
+      //// 🔹 Send push notification (OneSignal)
+      const pushNotifications = ownersFromOrganization.filter((owner) => owner.one_subscription).map((owner) => {
+        return axios.post("https://onesignal.com/api/v1/notifications", {
+          app_id: process.env.ONESIGNAL_APP_ID,
+          include_player_ids: [owner.one_subscription],
+          headings: { en: "Order Closed" },
+          contents: { en: `Order ID ${order.orderId} has been closed by delivery boy` },
+        },
+          {
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Basic ${process.env.ONESIGNAL_API_KEY}`,
+            }
+          })
+      })
+
+      try {
+        await Promise.all(pushNotifications)
+        // console.log(" Push notifications sent to all owners.");
+      } catch (pushError) {
+        // console.warn("⚠️ One or more push notifications failed:", pushError.message);
+      }
+    }
 
     return res.status(200).json({ success: true, message: "Order closed successfully!" });
   } catch (error) {
@@ -362,7 +451,7 @@ const closedOrder = async (req, res) => {
 const cancelledAndDestroyOrder = async (req, res) => {
   const { status } = req.params; // should be "completed" or "cancelled"
   const userUUID = req.user?.id;
-  if(!userUUID) {
+  if (!userUUID) {
     return res.status(401).json({ message: "Unauthorized!" });
   }
   if (!["completed", "cancelled"].includes(status)) {
@@ -375,9 +464,9 @@ const cancelledAndDestroyOrder = async (req, res) => {
     // Build base where clause
     let whereClause = {
       orderStatus: status,
-      is_visible_to_delivery: true, 
+      is_visible_to_delivery: true,
       // created_by:userUUID,
-      delivery_boy:userUUID
+      delivery_boy: userUUID
     };
     console.log(whereClause, "whereClause");
     // if (status === "completed") {
@@ -415,4 +504,4 @@ const cancelledAndDestroyOrder = async (req, res) => {
   }
 };
 
-module.exports={ getAll ,deliveryAllOrders,orderDetailsGetById,upsert,closedOrder,cancelledAndDestroyOrder}
+module.exports = { getAll, deliveryAllOrders, orderDetailsGetById, upsert, closedOrder, cancelledAndDestroyOrder }
