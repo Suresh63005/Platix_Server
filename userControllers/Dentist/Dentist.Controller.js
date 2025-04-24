@@ -254,7 +254,37 @@ const fromDentist = async (req, res) => {
 
       // notification send
 
-
+      (async () => {
+        const sendUser = await User.findByPk(userId);
+        const pushPromise = sendUser?.one_subscription
+          ? axios.post(
+            "https://onesignal.com/api/v1/notifications",
+            {
+              app_id: process.env.ONESIGNAL_APP_ID,
+              include_player_ids: [sendUser.one_subscription],
+              headings: { en: "Payment Successfull" },
+              contents: {
+                en: `Payment Successfull of orderId ${orderReport.orderId}`,
+              },
+            },
+            {
+              headers: {
+                "Content-Type": "application/json",
+                Authorization: `Basic ${process.env.ONESIGNAL_API_KEY}`,
+              },
+            }
+          )
+          : Promise.resolve();
+  
+        const notifPromise = Notification.create({
+          uid: userId,
+          datetime: new Date(),
+          title: "Payment Successfull",
+          description: `Payment Successfull  of orderId ${orderReport.orderId}`,
+        });
+  
+        await Promise.allSettled([pushPromise, notifPromise]); // No need to wait in main flow
+      })();
 
     }
 
