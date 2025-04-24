@@ -8,72 +8,64 @@ const User = require("../../Models/ReportsModel/User.model");
 
 const getAllUsers = async (req, res) => {
     try {
-        const { page = 1, limit = 10, filter = "", search = "" } = req.params;
-        const offset = (page - 1) * limit;
-
-        const whereCondition = {};
-
-        // Add search condition if search query exists
-        if (search) {
-            whereCondition[Op.or] = [
-                { "$role.rolename$": { [Op.like]: `%${search}%` } },
-                { firstName: { [Op.like]: `%${search}%` } },
-                { lastName: { [Op.like]: `%${search}%` } },
-                { email: { [Op.like]: `%${search}%` } },
-                { mobileNo: { [Op.like]: `%${search}%` } }
-            ];
-        }
-
-        // Add filter condition (role filter) if filter is provided
-        if (filter) {
-            whereCondition.role_id = filter;
-        }
-
-        // Query the users with pagination and filters
-        const users = await User.findAndCountAll({
-            where: whereCondition,
-            limit: parseInt(limit),
-            offset: parseInt(offset),
-            order: [["createdAt", "DESC"]],
-            include: [
-                {
-                    model: Roles,
-                    as: 'role',
-                    attributes: ['id', 'rolename'],
-                },
-                {
-                    model: Organization,
-                    as: 'organization',
-                    attributes: ['id', 'name'],
-                },
-            ]
-        });
-
-        // Format the users
-        const formattedUsers = users.rows.map(user => {
-            const userJson = user.toJSON();
-            return {
-                ...formatDateFields(userJson, ["createdAt"]),
-                Username: `${userJson.firstName} ${userJson.lastName}`,
-                Role: userJson.role ? userJson.role.rolename : null,
-            };
-        });
-
-        // Send the response with the formatted users and pagination info
-        res.status(200).json({
-            users: formattedUsers,
-            pagination: {
-                total: users.count,
-                page: parseInt(page),
-                limit: parseInt(limit),
-                totalPages: Math.ceil(users.count / limit),
-            },
-        });
+      // Only keeping filter and search
+      const { filter = "", search = "" } = req.query;
+  
+      const whereCondition = {};
+  
+      // 🔍 Search across multiple fields
+      if (search) {
+        whereCondition[Op.or] = [
+          { "$role.rolename$": { [Op.like]: `%${search}%` } },
+          { firstName: { [Op.like]: `%${search}%` } },
+          { lastName: { [Op.like]: `%${search}%` } },
+          { email: { [Op.like]: `%${search}%` } },
+          { mobileNo: { [Op.like]: `%${search}%` } }
+        ];
+      }
+  
+      // 🎯 Role filter (if needed)
+      if (filter) {
+        whereCondition.role_id = filter;
+      }
+  
+      // 🧾 Fetch all users without pagination
+      const users = await User.findAll({
+        where: whereCondition,
+        order: [["createdAt", "DESC"]],
+        include: [
+          {
+            model: Roles,
+            as: "role",
+            attributes: ["id", "rolename"],
+          },
+          {
+            model: Organization,
+            as: "organization",
+            attributes: ["id", "name"],
+          },
+        ],
+      });
+  
+      // 🎨 Format user output
+      const formattedUsers = users.map(user => {
+        const userJson = user.toJSON();
+        return {
+          ...formatDateFields(userJson, ["createdAt"]), // Optional: format createdAt
+          Username: `${userJson.firstName} ${userJson.lastName}`,
+          Role: userJson.role ? userJson.role.rolename : null,
+        };
+      });
+  
+      // ✅ Send response
+      res.status(200).json({
+        users: formattedUsers,
+      });
     } catch (error) {
-        console.error("Error fetching users:", error);
-        res.status(500).json({ message: "Server error", error: error.message });
+      console.error("Error fetching users:", error);
+      res.status(500).json({ message: "Server error", error: error.message });
     }
-};
+  };
 
 
 const getAllUsersByOrganizationName = async (req, res) => {
