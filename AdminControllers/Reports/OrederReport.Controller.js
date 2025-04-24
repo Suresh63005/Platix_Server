@@ -126,10 +126,18 @@ const getAllOrderReports = asyncHandler(async (req, res) => {
   try {
     const orderReports = await OrderReports.findAll({
       include: [
-        { model: UserReports, as: "userDetails",attributes:["firstName","mobileNo"] },
-        { model: Organization, as: "fromOrg", attributes: ["id", "name"] },
+        { 
+          model: UserReports,
+           as: "userDetails" ,
+           include:[
+            {
+              model: Organization, as: "organization", attributes: ["id", "name"]
+            }
+           ]
+        },
         { model: Organization, as: "toOrg", attributes: ["id", "name"] },
       ],
+      order:[["createdAt","DESC"]]
     });
 
     // Convert orderReports to JSON
@@ -179,10 +187,18 @@ const filterByOrderDate = async (req, res) => {
         }
       },
       include: [
-        { model: UserReports, as: "user", attributes: ["firstName"] },
-        { model: Organization, as: "fromOrg", attributes: ["id", "name"] },
+        { 
+          model: UserReports,
+           as: "userDetails" ,
+           include:[
+            {
+              model: Organization, as: "organization", attributes: ["id", "name"]
+            }
+           ]
+        },
         { model: Organization, as: "toOrg", attributes: ["id", "name"] },
-      ]
+      ],
+      order:[["createdAt","DESC"]]
     });
 
     res.json({ data: orders });

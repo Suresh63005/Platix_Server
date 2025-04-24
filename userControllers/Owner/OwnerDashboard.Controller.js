@@ -1028,74 +1028,69 @@ const ownerUpsertOrder = async (req, res) => {
     })
     // console.log(ownersFromOrganization, "ownersFromOrganization");
     if (ownersFromOrganization.length > 0) {
-      const notifications = ownersFromOrganization.map((owner) => {
-        return {
-          organization_id: toOrganization,
-          uid: owner.id,
-          datetime: new Date(),
-          title: "New Order Received",
-          description: `New Order ${orderReport.orderId} has been received to your organization.`,
+      const notifications = ownersFromOrganization.map((owner) => ({
+        organization_id: toOrganization,
+        uid: owner.id,
+        datetime: new Date(),
+        title: "New Order Received",
+        description: `New Order ${orderReport.orderId} has been received to your organization.`,
+      }));
 
-        }
-      })
-      await Notification.bulkCreate(notifications, { transaction })
+      await Notification.bulkCreate(notifications, { transaction });
 
-      //// 🔹 Send push notification (OneSignal)
-      const pushNotifications = ownersFromOrganization.filter((owner) => owner.one_subscription).map((owner) => {
-        return axios.post("https://onesignal.com/api/v1/notifications", {
-          app_id: process.env.ONESIGNAL_APP_ID,
-          include_player_ids: [owner.one_subscription],
-          headings: { en: "New Order Received" },
-          contents: { en: `New Order ${orderReport.orderId} has been received to your organization.` },
-        },
-          {
+      const pushNotifications = ownersFromOrganization
+        .filter((owner) => owner.one_subscription)
+        .map((owner) =>
+          axios.post("https://onesignal.com/api/v1/notifications", {
+            app_id: process.env.ONESIGNAL_APP_ID,
+            include_player_ids: [owner.one_subscription],
+            headings: { en: "New Order Received" },
+            contents: {
+              en: `New Order ${orderReport.orderId} has been received to your organization.`,
+            },
+          }, {
             headers: {
               "Content-Type": "application/json",
               Authorization: `Basic ${process.env.ONESIGNAL_API_KEY}`,
             }
           })
-      })
+        );
 
       try {
-        await Promise.all(pushNotifications)
-        console.log(" Push notifications sent to all owners.");
+        await Promise.all(pushNotifications);
+        console.log("Push notifications sent to all owners.");
       } catch (pushError) {
-        console.warn("⚠️ One or more push notifications failed:", pushError.message);
+        console.warn("OneSignal push failed for some owners:", pushError.message);
       }
     }
 
+    // 🔔 Notify Doctor
+    await Notification.create({
+      organization_id: toOrganization,
+      uid: userUUID,
+      datetime: new Date(),
+      title: "Order Confirmation",
+      description: `Your Order ${orderReport.orderId} has been confirmed and is now being processed.`,
+    });
 
-    const notificationToUser = await Notification.create(
-      {
-        organization_id: toOrganization,
-        uid: userUUID,
-        datetime: new Date(),
-        title: "Order Confirmation",
-        description: `Your Order${orderReport.orderId} has been Confirmed and is now being processed.`,
-
+    if (user.one_subscription) {
+      try {
+        await axios.post("https://onesignal.com/api/v1/notifications", {
+          app_id: process.env.ONESIGNAL_APP_ID,
+          include_player_ids: [user.one_subscription],
+          headings: { en: "Order Confirmation" },
+          contents: {
+            en: `Your Order ${orderReport.orderId} has been confirmed and is now being processed.`,
+          },
+        }, {
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Basic ${process.env.ONESIGNAL_API_KEY}`,
+          }
+        });
+      } catch (pushError) {
+        console.warn("OneSignal push failed for doctor:", pushError.message);
       }
-    )
-
-
-    axios.post("https://onesignal.com/api/v1/notifications", {
-      app_id: process.env.ONESIGNAL_APP_ID,
-      include_player_ids: [user.one_subscription],
-      headings: { en: "Order Confirmation" },
-      contents: { en: `Your Order${orderReport.orderId} has been Confirmed and is now being processed.` },
-    },
-      {
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Basic ${process.env.ONESIGNAL_API_KEY}`,
-        }
-      })
-
-
-    try {
-      await Promise.all(pushNotifications)
-      console.log(" Push notifications sent to all owners.");
-    } catch (pushError) {
-      console.warn("⚠️ One or more push notifications failed:", pushError.message);
     }
 
 
