@@ -53,6 +53,7 @@ const createOrder = async (req, res) => {
 
 const getPaymentByOrderId = async (req, res) => {
     const uid = req.user?.id;
+    console.log(uid)
     const { order_id } = req.params;
     
     try {

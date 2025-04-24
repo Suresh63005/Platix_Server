@@ -127,33 +127,40 @@ const verifyMobile = async (req, res) => {
 const RoleDetails = async (req, res) => {
     const { firstName, lastName, email, role_id, id } = req.body;
 
-    if (!firstName || !lastName || !email || !role_id || !id) {
+    const userid = req.user.id;
+
+  
+
+    if (!firstName || !lastName || !email || !role_id || !userid) {
         return res.status(400).json({ message: "All fields are required!" });
     }
 
     try {
-        let user = await User.findOne({ where: { id } });
+        let user = await User.findOne({ where: {id: userid } });
         if (!user) {
             return res.status(404).json({ message: "User not found!" });
         }
 
         const validateRole = await Roles.findByPk(role_id);
 
-        if(validateRole.rolename !== "Dentist" || "dentist"){
-            return res.status(401).json({message:"un authorized role"});
-        }
+      
+
+        if (!["Dentist", "dentist"].includes(validateRole.rolename)) {
+            return res.status(401).json({ message: "Unauthorized role" });
+          }
+          
 
         // Update role details
         await User.update(
             { firstName, lastName, email, role_id },
-            { where: { id } }
+            { where: { id:userid } }
         );
        // await subscribeUser(email)
         // Generate OTP
         const otp = generateOTP();
 
         // Store OTP in memory with expiration time
-        otpStore[id] = { otp, expiry: Date.now() + 5 * 60 * 1000 };  // Expiry after 5 minutes
+        otpStore[userid] = { otp, expiry: Date.now() + 5 * 60 * 1000 };  // Expiry after 5 minutes
 
         const subject = 'Your OTP Code';
         const text = `Your 6-digit OTP code is: ${otp}`;
