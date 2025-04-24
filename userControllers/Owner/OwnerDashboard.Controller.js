@@ -558,7 +558,7 @@ const searchDoctor = async (req, res) => {
 // assigning service to the delivery boy or technician
 const assignService = async (req, res) => {
   const { organization_id } = req.user;
-  console.log(organization_id, "organization_id")
+  console.log(organization_id, "organization_id");
   if (!organization_id) {
     return res.status(401).json({ message: "Unauthorized" });
   }
@@ -569,76 +569,208 @@ const assignService = async (req, res) => {
     return res.status(400).json({ message: "Order ID is required" });
   }
 
+  const transaction = await sequelize.transaction({ autocommit: false });
+
   try {
-    const order = await OrderReports.findOne({ where: { id: orderId, toOrganization: organization_id } });
+    const order = await OrderReports.findOne({
+      where: { id: orderId, toOrganization: organization_id },
+      transaction,
+    });
     if (!order) {
+      await transaction.rollback();
       return res.status(404).json({ message: "Order not found" });
+    }
+
+    // Check assignment status
+    if (technician) {
+      if (order.assignment_status === "assigned_to_technician" || order.assignment_status === "technician_completed") {
+        await transaction.rollback();
+        return res.status(400).json({
+          message: `Order ID ${order.orderId} is already assigned to a technician or technician has completed it`,
+        });
+      }
+    }
+    if (delivery_boy) {
+      if (order.assignment_status === "assigned_to_delivery_boy") {
+        await transaction.rollback();
+        return res.status(400).json({
+          message: `Order ID ${order.orderId} is already assigned to a delivery boy`,
+        });
+      }
+      if (order.assignment_status !== "technician_completed" && order.assignment_status !== "unassigned") {
+        await transaction.rollback();
+        return res.status(400).json({
+          message: `Order ID ${order.orderId} cannot be assigned to a delivery boy until technician has completed it`,
+        });
+      }
     }
 
     const updateFields = {};
     let assignedUserId = null;
+    let role = null;
     if (technician) {
       updateFields.technician = technician;
       updateFields.assignment_status = "assigned_to_technician";
-
-      const technicianuser = await User.findOne({ where: { id: technician, organization_id: organization_id } });
-
-      if (!technicianuser) {
+      const technicianUser = await User.findOne({
+        where: { id: technician, organization_id: organization_id },
+        transaction,
+      });
+      if (!technicianUser) {
+        await transaction.rollback();
         return res.status(404).json({ message: "Technician not found" });
       }
-      assignedUserId = technician
+      assignedUserId = technician;
+      role = "technician";
     }
     if (delivery_boy) {
       updateFields.delivery_boy = delivery_boy;
-      updateFields.assignment_status = "assigned_to_delivery_boy"
-
-      const deliveryboyuser = await User.findOne({ where: { id: delivery_boy, organization_id: organization_id } });
-      if (!deliveryboyuser) {
+      updateFields.assignment_status = "assigned_to_delivery_boy";
+      const deliveryBoyUser = await User.findOne({
+        where: { id: delivery_boy, organization_id: organization_id },
+        transaction,
+      });
+      if (!deliveryBoyUser) {
+        await transaction.rollback();
         return res.status(404).json({ message: "Delivery Boy not found" });
       }
-      assignedUserId = delivery_boy
+      assignedUserId = delivery_boy;
+      role = "delivery boy";
     }
 
     if (Object.keys(updateFields).length > 0) {
-      await OrderReports.update(updateFields, { where: { id: orderId } });
+      await OrderReports.update(updateFields, { where: { id: orderId }, transaction });
     }
+
     if (assignedUserId) {
+      const assignedUser = await User.findByPk(assignedUserId, { transaction });
 
-      const assignedUser = await User.findByPk(assignedUserId)
-      await Notification.create({
-        uid: assignedUserId,
-        datetime: new Date(),
-        title: "Order Assigned",
-        description: `You have been assigned to order ID ${order.orderId}`,
-
-      })
-
-      //send push notfication
-      if (assignedUser?.one_subscription) {
-        const res = await axios.post("https://onesignal.com/api/v1/notifications", {
-          app_id: process.env.ONESIGNAL_APP_ID,
-          include_player_ids: [assignedUser.one_subscription],
-          headings: { en: "Order Assigned" },
-          contents: {
-            en: `You have been assigned to order ID ${order.orderId}.`,
-          },
-        },
+      // Create notification for assigned user
+      try {
+        await Notification.create(
           {
-            headers: {
-              "Content-Type": "application/json",
-              Authorization: `Basic ${process.env.ONESIGNAL_API_KEY}`,
-            }
-          })
+            uid: assignedUserId,
+            datetime: new Date(),
+            title: "Order Assigned",
+            description: `You have been assigned to order ID ${order.orderId} as ${role}.`,
+          },
+          { transaction }
+        );
+        console.log(`Notification created successfully for ${role} ID ${assignedUserId} for order ID ${order.orderId}`);
+      } catch (error) {
+        console.error(`Failed to create notification for ${role} ID ${assignedUserId} for order ID ${order.orderId}:`, error.message);
+      }
 
+      // Send push notification via OneSignal for assigned user
+      if (assignedUser?.one_subscription) {
+        try {
+          const response = await axios.post(
+            "https://onesignal.com/api/v1/notifications",
+            {
+              app_id: process.env.ONESIGNAL_APP_ID,
+              include_player_ids: [assignedUser.one_subscription],
+              headings: { en: "Order Assigned" },
+              contents: {
+                en: `You have been assigned to order ID ${order.orderId} as ${role}.`,
+              },
+            },
+            {
+              headers: {
+                "Content-Type": "application/json",
+                Authorization: `Basic ${process.env.ONESIGNAL_API_KEY}`,
+              },
+            }
+          );
+          console.log(`OneSignal push notification sent successfully to ${role} ID ${assignedUserId} for order ID ${order.orderId}`, response.data);
+        } catch (error) {
+          console.error(`Failed to send OneSignal push notification to ${role} ID ${assignedUserId} for order ID ${order.orderId}:`, error.response?.data || error.message);
+        }
+      } else {
+        console.log(`No OneSignal push notification sent to ${role} ID ${assignedUserId} for order ID ${order.orderId}: one_subscription is missing`);
+      }
+
+      // Notify organization owners
+      const ownersFromOrganization = await User.findAll(
+        {
+          where: {
+            organization_id: order.toOrganization,
+          },
+          include: [
+            {
+              model: Roles,
+              as: "role",
+              attributes: ["id", "rolename"],
+              where: {
+                rolename: "owner",
+              },
+            },
+          ],
+        },
+        { transaction }
+      );
+
+      if (ownersFromOrganization.length > 0) {
+        const ownerNotifications = ownersFromOrganization.map((owner) => ({
+          organization_id: order.toOrganization,
+          uid: owner.id,
+          datetime: new Date(),
+          title: "Order Assigned",
+          description: `Order ${order.orderId} has been assigned to a ${role}.`,
+        }));
+
+        try {
+          await Notification.bulkCreate(ownerNotifications, { transaction });
+          console.log(`Notifications created successfully for ${ownersFromOrganization.length} owners of organization ID ${order.toOrganization} for order ID ${order.orderId}`);
+        } catch (error) {
+          console.error(`Failed to create notifications for owners of organization ID ${order.toOrganization} for order ID ${order.orderId}:`, error.message);
+        }
+
+        const pushNotifications = ownersFromOrganization
+          .filter((owner) => owner.one_subscription)
+          .map((owner) =>
+            axios.post(
+              "https://onesignal.com/api/v1/notifications",
+              {
+                app_id: process.env.ONESIGNAL_APP_ID,
+                include_player_ids: [owner.one_subscription],
+                headings: { en: "Order Assigned" },
+                contents: {
+                  en: `Order ${order.orderId} has been assigned to a ${role}.`,
+                },
+              },
+              {
+                headers: {
+                  "Content-Type": "application/json",
+                  Authorization: `Basic ${process.env.ONESIGNAL_API_KEY}`,
+                },
+              }
+            )
+          );
+
+        if (pushNotifications.length > 0) {
+          try {
+            const responses = await Promise.all(pushNotifications);
+            console.log(`OneSignal push notifications sent successfully to ${pushNotifications.length} owners of organization ID ${order.toOrganization} for order ID ${order.orderId}`, responses.map((r) => r.data));
+          } catch (error) {
+            console.error(`Failed to send one or more OneSignal push notifications to owners of organization ID ${order.toOrganization} for order ID ${order.orderId}:`, error.response?.data || error.message);
+          }
+        } else {
+          console.log(`No OneSignal push notifications sent to owners of organization ID ${order.toOrganization} for order ID ${order.orderId}: no owners with one_subscription`);
+        }
+      } else {
+        console.log(`No owners found for organization ID ${order.toOrganization} for order ID ${order.orderId}`);
       }
     }
+
+    await transaction.commit();
     return res.status(200).json({ message: "Service assigned successfully" });
   } catch (error) {
+    if (transaction.finished !== "commit") {
+      await transaction.rollback();
+    }
     console.error("Error assigning service:", error);
     return res.status(500).json({ message: "Internal Server Error" });
   }
 };
-
 // adding or updating doctor
 const upsertDoctor = async (req, res) => {
   const { organization_id } = req.user;

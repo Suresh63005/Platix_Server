@@ -9,6 +9,9 @@ const uploadToS3 = require("../../config/fileUpload.aws");
 const UploadImages = require("../../Models/ReportsModel/UploadImages.model");
 const TblOrganization_Service = require("../../Models/tblOrganizationService");
 const TblOrganizationType = require("../../Models/TblOrganizationType.model");
+const { sequelize } = require("../../config/db");
+const Roles = require("../../Models/TblRoles.model");
+const axios = require("axios")
 
 const technicianDashboardData = async (req, res) => {
   const uid = req.user?.id;
@@ -350,27 +353,31 @@ const CloseOrder = async (req, res) => {
     return res.status(400).json({ message: "Invalid action! Action must be 'completed'." });
   }
 
+  const transaction = await sequelize.transaction({ autocommit: false });
+
   try {
-
+    // Find technician with organization details
     const technician = await User.findOne({
-      where:{id:uid},
-      include:[
+      where: { id: uid },
+      include: [
         {
-          model:Organization,
-          as:"organization",
-          attributes:['id'],
-          include:[
+          model: Organization,
+          as: "organization",
+          attributes: ["id"],
+          include: [
             {
-              model:TblOrganizationType,
-              as:"organizationType",
-              attributes:["organizationType"]
-            }
-          ]
-        }
-      ]
-    })
+              model: TblOrganizationType,
+              as: "organizationType",
+              attributes: ["organizationType"],
+            },
+          ],
+        },
+      ],
+      transaction,
+    });
 
-    if(!technician || !technician.organization || !technician.organization.organizationType){
+    if (!technician || !technician.organization || !technician.organization.organizationType) {
+      await transaction.rollback();
       return res.status(404).json({ message: "User, organization, or organization type not found!" });
     }
 
@@ -379,8 +386,10 @@ const CloseOrder = async (req, res) => {
     // Find order
     const order = await OrderReports.findOne({
       where: { technician: uid, id: orderId },
+      transaction,
     });
     if (!order) {
+      await transaction.rollback();
       return res.status(404).json({
         message: "Order not found or you don't have permission to modify it!",
       });
@@ -388,6 +397,7 @@ const CloseOrder = async (req, res) => {
 
     // Check current status
     if (order.orderStatus === "completed" && order.assignment_status === "technician_completed") {
+      await transaction.rollback();
       return res.status(400).json({ message: "Order is already marked as completed." });
     }
 
@@ -395,12 +405,132 @@ const CloseOrder = async (req, res) => {
     order.orderStatus = isRadiology ? "completed" : "processing";
     order.assignment_status = "technician_completed";
 
-    await order.save();
+    await order.save({ transaction });
+
+    // Notify the technician
+    try {
+      await Notification.create(
+        {
+          uid: uid,
+          datetime: new Date(),
+          title: "Order Completed",
+          description: `Order ${order.orderId} has been marked as completed by you.`,
+        },
+        { transaction }
+      );
+      console.log(`Notification created successfully for technician ID ${uid} for order ID ${order.orderId}`);
+    } catch (error) {
+      console.error(`Failed to create notification for technician ID ${uid} for order ID ${order.orderId}:`, error.message);
+    }
+
+    if (technician.one_subscription) {
+      try {
+        const response = await axios.post(
+          "https://onesignal.com/api/v1/notifications",
+          {
+            app_id: process.env.ONESIGNAL_APP_ID,
+            include_player_ids: [technician.one_subscription],
+            headings: { en: "Order Completed" },
+            contents: {
+              en: `Order ${order.orderId} has been marked as completed by you.`,
+            },
+          },
+          {
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Basic ${process.env.ONESIGNAL_API_KEY}`,
+            },
+          }
+        );
+        console.log(`OneSignal push notification sent successfully to technician ID ${uid} for order ID ${order.orderId}`, response.data);
+      } catch (error) {
+        console.error(`Failed to send OneSignal push notification to technician ID ${uid} for order ID ${order.orderId}:`, error.response?.data || error.message);
+      }
+    } else {
+      console.log(`No OneSignal push notification sent to technician ID ${uid} for order ID ${order.orderId}: one_subscription is missing`);
+    }
+
+    // Notify organization owners
+    const ownersFromOrganization = await User.findAll(
+      {
+        where: {
+          organization_id: order.toOrganization,
+        },
+        include: [
+          {
+            model: Roles,
+            as: "role",
+            attributes: ["id", "rolename"],
+            where: {
+              rolename: "owner",
+            },
+          },
+        ],
+      },
+      { transaction }
+    );
+
+    if (ownersFromOrganization.length > 0) {
+      const ownerNotifications = ownersFromOrganization.map((owner) => ({
+        organization_id: order.toOrganization,
+        uid: owner.id,
+        datetime: new Date(),
+        title: "Order Completed",
+        description: `Order ${order.orderId} has been marked as completed by the technician.`,
+      }));
+
+      try {
+        await Notification.bulkCreate(ownerNotifications, { transaction });
+        console.log(`Notifications created successfully for ${ownersFromOrganization.length} owners of organization ID ${order.toOrganization} for order ID ${order.orderId}`);
+      } catch (error) {
+        console.error(`Failed to create notifications for owners of organization ID ${order.toOrganization} for order ID ${order.orderId}:`, error.message);
+      }
+
+      const pushNotifications = ownersFromOrganization
+        .filter((owner) => owner.one_subscription)
+        .map((owner) =>
+          axios.post(
+            "https://onesignal.com/api/v1/notifications",
+            {
+              app_id: process.env.ONESIGNAL_APP_ID,
+              include_player_ids: [owner.one_subscription],
+              headings: { en: "Order Completed" },
+              contents: {
+                en: `Order ${order.orderId} has been marked as completed by the technician.`,
+              },
+            },
+            {
+              headers: {
+                "Content-Type": "application/json",
+                Authorization: `Basic ${process.env.ONESIGNAL_API_KEY}`,
+              },
+            }
+          )
+        );
+
+      if (pushNotifications.length > 0) {
+        try {
+          const responses = await Promise.all(pushNotifications);
+          console.log(`OneSignal push notifications sent successfully to ${pushNotifications.length} owners of organization ID ${order.toOrganization} for order ID ${order.orderId}`, responses.map((r) => r.data));
+        } catch (error) {
+          console.error(`Failed to send one or more OneSignal push notifications to owners of organization ID ${order.toOrganization} for order ID ${order.orderId}:`, error.response?.data || error.message);
+        }
+      } else {
+        console.log(`No OneSignal push notifications sent to owners of organization ID ${order.toOrganization} for order ID ${order.orderId}: no owners with one_subscription`);
+      }
+    } else {
+      console.log(`No owners found for organization ID ${order.toOrganization} for order ID ${order.orderId}`);
+    }
+
+    await transaction.commit();
 
     // Response message
     const statusMessage = isRadiology ? "completed" : "technician completed";
     return res.status(200).json({ message: `Order has been successfully ${statusMessage}!` });
-    } catch (error) {
+  } catch (error) {
+    if (transaction.finished !== "commit") {
+      await transaction.rollback();
+    }
     console.error("Error while updating order:", error);
     return res.status(500).json({ message: "Internal server error: " + error.message });
   }
