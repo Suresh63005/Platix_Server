@@ -8,76 +8,80 @@ const User = require("../../Models/ReportsModel/User.model");
 
 const getAllUsers = async (req, res) => {
     try {
-      const { page = 1, limit = 10, filter = "", search = "" } = req.params;
-      const offset = (page - 1) * limit;
-  
-      const whereCondition = {};
-  
-      // Add search condition if search query exists
-      if (search) {
-        whereCondition[Op.or] = [
-            { "$role.rolename$": { [Op.like]: `%${search}%` } },
-            { firstName: { [Op.like]: `%${search}%` } },
-            { lastName: { [Op.like]: `%${search}%` } },
-            { email: { [Op.like]: `%${search}%` } },
-            { mobileNo: { [Op.like]: `%${search}%` } }
-        ];
-    }
-  
-      // Add filter condition (role filter) if filter is provided
-      if (filter) {
-        whereCondition.role_id = filter;
-      }
-  
-      // Query the users with pagination and filters
-      const users = await User.findAndCountAll({
-        where: whereCondition,
-        limit: parseInt(limit),
-        offset: parseInt(offset),
-        order: [["createdAt", "DESC"]],
-        include: [
-          {model: Roles,
-          as: 'role',
-          attributes: ['id', 'rolename'],},
-          {model: Organization,
-          as: 'organization',
-          attributes: ['id', 'name'],},
-        ]
-      });
-  
-      // Format the users
-      const formattedUsers = users.rows.map(user => {
-        const userJson = user.toJSON();
-        return {
-          ...formatDateFields(userJson, ["createdAt"]),
-          Username: `${userJson.firstName} ${userJson.lastName}`,
-          Role: userJson.role ? userJson.role.rolename : null,
-        };
-      });
-  
-      // Send the response with the formatted users and pagination info
-      res.status(200).json({
-        users: formattedUsers,
-        pagination: {
-          total: users.count,
-          page: parseInt(page),
-          limit: parseInt(limit),
-          totalPages: Math.ceil(users.count / limit),
-        },
-      });
-    } catch (error) {
-      console.error("Error fetching users:", error);
-      res.status(500).json({ message: "Server error", error: error.message });
-    }
-  };
-  
+        const { page = 1, limit = 10, filter = "", search = "" } = req.params;
+        const offset = (page - 1) * limit;
 
-  const getAllUsersByOrganizationName = async (req, res) => {
+        const whereCondition = {};
+
+        // Add search condition if search query exists
+        if (search) {
+            whereCondition[Op.or] = [
+                { "$role.rolename$": { [Op.like]: `%${search}%` } },
+                { firstName: { [Op.like]: `%${search}%` } },
+                { lastName: { [Op.like]: `%${search}%` } },
+                { email: { [Op.like]: `%${search}%` } },
+                { mobileNo: { [Op.like]: `%${search}%` } }
+            ];
+        }
+
+        // Add filter condition (role filter) if filter is provided
+        if (filter) {
+            whereCondition.role_id = filter;
+        }
+
+        // Query the users with pagination and filters
+        const users = await User.findAndCountAll({
+            where: whereCondition,
+            limit: parseInt(limit),
+            offset: parseInt(offset),
+            order: [["createdAt", "DESC"]],
+            include: [
+                {
+                    model: Roles,
+                    as: 'role',
+                    attributes: ['id', 'rolename'],
+                },
+                {
+                    model: Organization,
+                    as: 'organization',
+                    attributes: ['id', 'name'],
+                },
+            ]
+        });
+
+        // Format the users
+        const formattedUsers = users.rows.map(user => {
+            const userJson = user.toJSON();
+            return {
+                ...formatDateFields(userJson, ["createdAt"]),
+                Username: `${userJson.firstName} ${userJson.lastName}`,
+                Role: userJson.role ? userJson.role.rolename : null,
+            };
+        });
+
+        // Send the response with the formatted users and pagination info
+        res.status(200).json({
+            users: formattedUsers,
+            pagination: {
+                total: users.count,
+                page: parseInt(page),
+                limit: parseInt(limit),
+                totalPages: Math.ceil(users.count / limit),
+            },
+        });
+    } catch (error) {
+        console.error("Error fetching users:", error);
+        res.status(500).json({ message: "Server error", error: error.message });
+    }
+};
+
+
+const getAllUsersByOrganizationName = async (req, res) => {
     try {
         const { organization_id } = req.params;
         const { page = 1, limit = 10, search = "", filter = "" } = req.query;
         const offset = (page - 1) * limit;
-        
+
         // Check if the organization exists
         const organization = await Organization.findOne({ where: { id: organization_id } });
         if (!organization) {
@@ -146,7 +150,7 @@ const getAllUsers = async (req, res) => {
 
 const CreateUser = async (req, res) => {
     const {
-        id, 
+        id,
         prefix,
         firstName,
         lastName,
@@ -159,7 +163,7 @@ const CreateUser = async (req, res) => {
         startDate = "2021-09-01", // Fixed incorrect backticks
         designation,
         // organizationType_id =2,
-        organization_id 
+        organization_id
     } = req.body;
     // console.log(req.body)
     const t = await sequelize.transaction();
@@ -169,7 +173,7 @@ const CreateUser = async (req, res) => {
         // Check if 'id' is provided for updating an existing user
         if (id) {
             // Update existing user
-            user = await User.findByPk(id,{transaction:t});
+            user = await User.findByPk(id, { transaction: t });
             if (!user) {
                 await t.rollback();
                 return res.status(404).json({ message: "User not found" });
@@ -186,7 +190,7 @@ const CreateUser = async (req, res) => {
                 role_id,
                 dateOfBirth,
                 address,
-                startDate :startDate || "2021-09-01",
+                startDate: startDate || "2021-09-01",
                 designation,
                 // organizationType_id,
                 organization_id
@@ -220,32 +224,32 @@ const CreateUser = async (req, res) => {
     }
 };
 
-const getById=async(req,res)=>{
-    const { id }=req.params;
+const getById = async (req, res) => {
+    const { id } = req.params;
     const t = await sequelize.transaction();
-    const user=await User.findByPk(id,{
-        include:[
+    const user = await User.findByPk(id, {
+        include: [
             {
-                model:Roles,
-                as:"role",
-                attributes:["id","rolename"]
+                model: Roles,
+                as: "role",
+                attributes: ["id", "rolename"]
             },
             {
-                model:TblOrganizationType,
-                as:"organizationType1",
-                attributes:["id","organizationType"]
+                model: TblOrganizationType,
+                as: "organizationType1",
+                attributes: ["id", "organizationType"]
             }
         ],
-        transaction:t
+        transaction: t
     });
-    if(!user){
+    if (!user) {
         await t.rollback();
-        return res.status(404).json({message:"User not found"});
+        return res.status(404).json({ message: "User not found" });
     }
     // console.log(user)
     await t.commit()
-    const formattedUser=formatDateFields(user.toJSON(),['dateOfBirth'])
-    res.json({user:formattedUser});
+    const formattedUser = formatDateFields(user.toJSON(), ['dateOfBirth'])
+    res.json({ user: formattedUser });
 }
 
 const deleteUser = async (req, res) => {
@@ -304,8 +308,8 @@ const filterByDate = async (req, res) => {
         const users = await User.findAll({
             where: {
                 createdAt: {
-                    [Op.gte]: from, 
-                    [Op.lte]: to    
+                    [Op.gte]: from,
+                    [Op.lte]: to
                 }
             },
             include: {
@@ -335,4 +339,4 @@ const filterByDate = async (req, res) => {
     }
 };
 
-module.exports={getAllUsers,CreateUser,getById,deleteUser,filterByDate,getAllUsersByOrganizationName};
+module.exports = { getAllUsers, CreateUser, getById, deleteUser, filterByDate, getAllUsersByOrganizationName };
