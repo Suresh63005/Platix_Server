@@ -331,33 +331,79 @@ const cancelledOrders = async (req, res) => {
       message: "Unauthorized",
     });
   }
-  const { cancel } = req.params;
-  const {id}=req.body
-  try {
-    if (cancel) {
-      const orderReport = await OrderReports.findByPk(id);
-      if (!orderReport) {
-        return res.status(404).json({
-          success: false,
-          message: "Order not found",
-        });
-      }
-      await orderReport.update(
-        { orderStatus: "cancelled" },
-      );
 
-      // Send push notification if user has OneSignal ID
-    (async () => {
-      const sendUser = await User.findByPk(userId);
-      const pushPromise = sendUser?.one_subscription
-        ? axios.post(
+  const { cancel } = req.params;
+  const { id } = req.body;
+
+  if (!cancel || !id) {
+    return res.status(400).json({
+      success: false,
+      message: "Cancel parameter and order ID are required",
+    });
+  }
+
+  const transaction = await sequelize.transaction({ autocommit: false });
+
+  try {
+    const orderReport = await OrderReports.findByPk(id, { transaction });
+    if (!orderReport) {
+      await transaction.rollback();
+      return res.status(404).json({
+        success: false,
+        message: "Order not found",
+      });
+    }
+
+    // Authorization: Only dentist (userUUID) or creator (created_by) can cancel
+    if (orderReport.userUUID !== userId && orderReport.created_by !== userId) {
+      await transaction.rollback();
+      return res.status(403).json({
+        success: false,
+        message: "You are not authorized to cancel this order",
+      });
+    }
+
+    // Update order status to cancelled
+    await orderReport.update(
+      { orderStatus: "cancelled" },
+      { transaction }
+    );
+
+    // Notify the dentist (userUUID)
+    const dentist = await User.findByPk(orderReport.userUUID, { transaction });
+    if (!dentist) {
+      await transaction.rollback();
+      return res.status(404).json({
+        success: false,
+        message: "Dentist not found",
+      });
+    }
+
+    try {
+      await Notification.create(
+        {
+          uid: orderReport.userUUID,
+          datetime: new Date(),
+          title: "Order Cancelled",
+          description: `Order ${orderReport.orderId} has been cancelled.`,
+        },
+        { transaction }
+      );
+      console.log(`Notification created successfully for dentist ID ${orderReport.userUUID} for order ID ${orderReport.orderId}`);
+    } catch (error) {
+      console.error(`Failed to create notification for dentist ID ${orderReport.userUUID} for order ID ${orderReport.orderId}:`, error.message);
+    }
+
+    if (dentist.one_subscription) {
+      try {
+        const response = await axios.post(
           "https://onesignal.com/api/v1/notifications",
           {
             app_id: process.env.ONESIGNAL_APP_ID,
-            include_player_ids: [sendUser.one_subscription],
+            include_player_ids: [dentist.one_subscription],
             headings: { en: "Order Cancelled" },
             contents: {
-              en: `Order ${orderReport.orderId}  has been Cancelled.`,
+              en: `Order ${orderReport.orderId} has been cancelled.`,
             },
           },
           {
@@ -366,30 +412,159 @@ const cancelledOrders = async (req, res) => {
               Authorization: `Basic ${process.env.ONESIGNAL_API_KEY}`,
             },
           }
-        )
-        : Promise.resolve();
+        );
+        console.log(`OneSignal push notification sent successfully to dentist ID ${orderReport.userUUID} for order ID ${orderReport.orderId}`, response.data);
+      } catch (error) {
+        console.error(`Failed to send OneSignal push notification to dentist ID ${orderReport.userUUID} for order ID ${orderReport.orderId}:`, error.response?.data || error.message);
+      }
+    } else {
+      console.log(`No OneSignal push notification sent to dentist ID ${orderReport.userUUID} for order ID ${orderReport.orderId}: one_subscription is missing`);
+    }
 
-      const notifPromise = Notification.create({
-        uid: userId,
+    // Notify organization owners
+    const ownersFromOrganization = await User.findAll(
+      {
+        where: {
+          organization_id: orderReport.toOrganization,
+        },
+        include: [
+          {
+            model: Roles,
+            as: "role",
+            attributes: ["id", "rolename"],
+            where: {
+              rolename: "owner",
+            },
+          },
+        ],
+      },
+      { transaction }
+    );
+
+    if (ownersFromOrganization.length > 0) {
+      const ownerNotifications = ownersFromOrganization.map((owner) => ({
+        organization_id: orderReport.toOrganization,
+        uid: owner.id,
         datetime: new Date(),
         title: "Order Cancelled",
-        description: `Order ${orderReport.orderId} } has been Cancelled.`,
-      });
+        description: `Order ${orderReport.orderId} has been cancelled by the dentist.`,
+      }));
 
-      await Promise.allSettled([pushPromise, notifPromise]); // No need to wait in main flow
-    })();
+      try {
+        await Notification.bulkCreate(ownerNotifications, { transaction });
+        console.log(`Notifications created successfully for ${ownersFromOrganization.length} owners of organization ID ${orderReport.toOrganization} for order ID ${orderReport.orderId}`);
+      } catch (error) {
+        console.error(`Failed to create notifications for owners of organization ID ${orderReport.toOrganization} for order ID ${orderReport.orderId}:`, error.message);
+      }
 
-      return res.status(200).json({
-        success: true,
-        message: "Order cancelled successfully",
-      });
+      const pushNotifications = ownersFromOrganization
+        .filter((owner) => owner.one_subscription)
+        .map((owner) =>
+          axios.post(
+            "https://onesignal.com/api/v1/notifications",
+            {
+              app_id: process.env.ONESIGNAL_APP_ID,
+              include_player_ids: [owner.one_subscription],
+              headings: { en: "Order Cancelled" },
+              contents: {
+                en: `Order ${orderReport.orderId} has been cancelled by the dentist.`,
+              },
+            },
+            {
+              headers: {
+                "Content-Type": "application/json",
+                Authorization: `Basic ${process.env.ONESIGNAL_API_KEY}`,
+              },
+            }
+          )
+        );
+
+      if (pushNotifications.length > 0) {
+        try {
+          const responses = await Promise.all(pushNotifications);
+          console.log(`OneSignal push notifications sent successfully to ${pushNotifications.length} owners of organization ID ${orderReport.toOrganization} for order ID ${orderReport.orderId}`, responses.map((r) => r.data));
+        } catch (error) {
+          console.error(`Failed to send one or more OneSignal push notifications to owners of organization ID ${orderReport.toOrganization} for order ID ${orderReport.orderId}:`, error.response?.data || error.message);
+        }
+      } else {
+        console.log(`No OneSignal push notifications sent to owners of organization ID ${orderReport.toOrganization} for order ID ${orderReport.orderId}: no owners with one_subscription`);
+      }
     } else {
-      return res.status(400).json({
-        success: false,
-        message: "Invalid request",
-      });
+      console.log(`No owners found for organization ID ${orderReport.toOrganization} for order ID ${orderReport.orderId}`);
     }
+
+    // Notify assigned technician or delivery boy
+    const assignedUsers = [];
+    if (orderReport.technician) {
+      assignedUsers.push({ id: orderReport.technician, role: "technician" });
+    }
+    if (orderReport.delivery_boy) {
+      assignedUsers.push({ id: orderReport.delivery_boy, role: "delivery boy" });
+    }
+
+    if (assignedUsers.length > 0) {
+      for (const { id, role } of assignedUsers) {
+        const assignedUser = await User.findByPk(id, { transaction });
+        if (assignedUser) {
+          try {
+            await Notification.create(
+              {
+                uid: id,
+                datetime: new Date(),
+                title: "Order Cancelled",
+                description: `Order ${orderReport.orderId} you were assigned to as ${role} has been cancelled.`,
+              },
+              { transaction }
+            );
+            console.log(`Notification created successfully for ${role} ID ${id} for order ID ${orderReport.orderId}`);
+          } catch (error) {
+            console.error(`Failed to create notification for ${role} ID ${id} for order ID ${orderReport.orderId}:`, error.message);
+          }
+
+          if (assignedUser.one_subscription) {
+            try {
+              const response = await axios.post(
+                "https://onesignal.com/api/v1/notifications",
+                {
+                  app_id: process.env.ONESIGNAL_APP_ID,
+                  include_player_ids: [assignedUser.one_subscription],
+                  headings: { en: "Order Cancelled" },
+                  contents: {
+                    en: `Order ${orderReport.orderId} you were assigned to as ${role} has been cancelled.`,
+                  },
+                },
+                {
+                  headers: {
+                    "Content-Type": "application/json",
+                    Authorization: `Basic ${process.env.ONESIGNAL_API_KEY}`,
+                  },
+                }
+              );
+              console.log(`OneSignal push notification sent successfully to ${role} ID ${id} for order ID ${orderReport.orderId}`, response.data);
+            } catch (error) {
+              console.error(`Failed to send OneSignal push notification to ${role} ID ${id} for order ID ${orderReport.orderId}:`, error.response?.data || error.message);
+            }
+          } else {
+            console.log(`No OneSignal push notification sent to ${role} ID ${id} for order ID ${orderReport.orderId}: one_subscription is missing`);
+          }
+        } else {
+          console.log(`No user found for ${role} ID ${id} for order ID ${orderReport.orderId}`);
+        }
+      }
+    } else {
+      console.log(`No technician or delivery boy assigned to order ID ${orderReport.orderId}`);
+    }
+
+    await transaction.commit();
+
+    return res.status(200).json({
+      success: true,
+      message: "Order cancelled successfully",
+    });
   } catch (error) {
+    if (transaction.finished !== "commit") {
+      await transaction.rollback();
+    }
     console.error("Error cancelling order:", error);
     return res.status(500).json({
       success: false,
