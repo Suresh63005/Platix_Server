@@ -128,7 +128,6 @@ const fromDentist = async (req, res) => {
           orderDate,
           requiredDate,
           toothName,
-          
           shades,
           remarks,
           reasonForScan,
@@ -148,7 +147,7 @@ const fromDentist = async (req, res) => {
       );
     }
     const sendUserId = await User.findByPk(userId)
-
+    
     if (sendUserId?.one_subscription) {
       const response = await axios.post(
         "https://onesignal.com/api/v1/notifications",
@@ -172,13 +171,48 @@ const fromDentist = async (req, res) => {
 
 
     await Notification.create({
-      uid: userUUID || userId,
+      uid: userId,
       datetime: new Date(),
       title: `${id ? "Order Updated":"Order Confirmation"}`,
       description: ` ${id ? `Order ${orderReport.orderId} has been successfully Updated `:`Order ${orderReport.orderId} has been successfully confirmed and is now beeing processed`}.`
     })
 
+    // doctor recived msg
+   if(userUUID){
+    const doctor=await User.findByPk(userUUID);
+    if (doctor?.one_subscription) {
+      console.log("den122")
+      const response = await axios.post(
+        "https://onesignal.com/api/v1/notifications",
+        {
+          app_id: process.env.ONESIGNAL_APP_ID,
+          include_player_ids: [doctor.one_subscription],
+          headings: {  en: `Order Recieved` },
+          contents: { en:  `Order Recieved of orderId ${orderReport.orderId}` },
+        },
+        {
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Basic ${process.env.ONESIGNAL_API_KEY}`,
+          },
+        }
+      );
 
+      console.log("✅ Notification sent successfully doctor:", response.data);
+
+    }
+
+    await Notification.create({
+      uid: userUUID,
+      datetime: new Date(),
+      title: `Order Recieved`,
+      description: `Order Recieved of orderId ${orderReport.orderId}`
+    })
+   }
+
+
+   
+    console.log("den12")
     const ownersFromOrganization = await User.findAll({
       where: {
         organization_id: toOrganization,

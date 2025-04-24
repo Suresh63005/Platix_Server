@@ -7,6 +7,8 @@ const TblOrganization_Service = require("../../Models/tblOrganizationService");
 const Services = require("../../Models/TblServices.model");
 const TblOrganizationType = require("../../Models/TblOrganizationType.model");
 const Roles = require("../../Models/TblRoles.model");
+const Notification = require("../../Models/Notification.model");
+const axios=require("axios")
 
 // getall dashboard data and searching also
 const getAll = async (req, res) => {
@@ -338,6 +340,9 @@ const closedOrder = async (req, res) => {
 
       }
     });
+    if (!order) {
+      return res.status(404).json({ message: "Order not found or not assigned to you." });
+    }
     console.log(order)
 
     if (order.orderStatus === "completed") {
@@ -354,6 +359,8 @@ const closedOrder = async (req, res) => {
     // notification send
     const sendUser = await User.findByPk(uid);
     const organizationId = sendUser.organization_id;
+
+    console.log(organizationId,"uuuuuuuuuuuuuuuuuuuu");
     (async () => {
 
       const pushPromise = sendUser?.one_subscription
@@ -382,7 +389,7 @@ const closedOrder = async (req, res) => {
         title: "Order Closed",
         description: `Order ID ${order.orderId} has been closed by delivery boy`,
       });
-
+      console.log("not2")
       await Promise.allSettled([pushPromise, notifPromise]); // No need to wait in main flow
     })();
 
@@ -400,10 +407,13 @@ const closedOrder = async (req, res) => {
           }
         }
       ]
-    })
+    });
+
+    console.log(ownersFromOrganization,"ownerrrrrrrrrrrrrrrrrrrrrrr")
     // console.log(ownersFromOrganization, "ownersFromOrganization");
     if (ownersFromOrganization.length > 0) {
       const notifications = ownersFromOrganization.map((owner) => {
+        console.log("1111111111");
         return {
           organization_id: organizationId,
           uid: owner.id,
@@ -413,10 +423,12 @@ const closedOrder = async (req, res) => {
 
         }
       })
+      console.log("notttttttttttttttt")
       await Notification.bulkCreate(notifications)
 
       //// 🔹 Send push notification (OneSignal)
       const pushNotifications = ownersFromOrganization.filter((owner) => owner.one_subscription).map((owner) => {
+        console.log("222222222222222")
         return axios.post("https://onesignal.com/api/v1/notifications", {
           app_id: process.env.ONESIGNAL_APP_ID,
           include_player_ids: [owner.one_subscription],
@@ -433,7 +445,7 @@ const closedOrder = async (req, res) => {
 
       try {
         await Promise.all(pushNotifications)
-        // console.log(" Push notifications sent to all owners.");
+        console.log(" Push notifications sent to all owners.");
       } catch (pushError) {
         // console.warn("⚠️ One or more push notifications failed:", pushError.message);
       }
