@@ -103,15 +103,15 @@ const labAllOrders = async (req, res) => {
 
     const allOrders = await OrderReports.findAll({
 
-      where: { orderStatus, toOrganization: organization_id ,is_visible_to_owner:true},
+      where: { orderStatus, toOrganization: organization_id, is_visible_to_owner: true },
 
       include: [
         { model: Organization, as: "toOrg", attributes: ["name"] },
         {
-          model:User,
+          model: User,
           as: "userDetails",
-          attributes: ["id","firstName"],
-          include:[
+          attributes: ["id", "firstName"],
+          include: [
             {
               model: Organization,
               as: "organization",
@@ -463,8 +463,8 @@ const orderAndPaymentSearch = async (req, res) => {
         { "$toOrg.organization_service.servicess.servicename$": { [Op.like]: `%${search}%` } },
         { "$userDetails.firstName$": { [Op.like]: `%${search}%` } },
         { "$userDetails.lastName$": { [Op.like]: `%${search}%` } },
-        where(fn("concat",col("firstName"), " ",col("lastName")),{
-          [Op.like]:`%${search}%`
+        where(fn("concat", col("firstName"), " ", col("lastName")), {
+          [Op.like]: `%${search}%`
         })
       ]
     };
@@ -796,6 +796,13 @@ const ownerUpsertOrder = async (req, res) => {
 
     let orderReport;
 
+    const user = await User.findByPk(userUUID);
+
+
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
     if (id) {
       // Update existing order
       orderReport = await OrderReports.findOne({
@@ -924,6 +931,41 @@ const ownerUpsertOrder = async (req, res) => {
       }
     }
 
+
+    const notificationToUser = await Notification.create(
+      {
+        organization_id: toOrganization,
+        uid: userUUID,
+        datetime: new Date(),
+        title: "Order Confirmation",
+        description: `Your Order${orderReport.orderId} has been Confirmed and is now being processed.`,
+
+      }
+    )
+
+
+    axios.post("https://onesignal.com/api/v1/notifications", {
+      app_id: process.env.ONESIGNAL_APP_ID,
+      include_player_ids: [user.one_subscription],
+      headings: { en: "Order Confirmation" },
+      contents: { en: `Your Order${orderReport.orderId} has been Confirmed and is now being processed.` },
+    },
+      {
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Basic ${process.env.ONESIGNAL_API_KEY}`,
+        }
+      })
+
+
+    try {
+      await Promise.all(pushNotifications)
+      console.log(" Push notifications sent to all owners.");
+    } catch (pushError) {
+      console.warn("⚠️ One or more push notifications failed:", pushError.message);
+    }
+
+
     if (transactionId) {
       console.log("Processing transaction...");
 
@@ -1015,86 +1057,131 @@ const ownerUpsertOrder = async (req, res) => {
 };
 
 const cancelledOrders = async (req, res) => {
-  const user = req.user; // this is the full Sequelize User object
-  const userId = user.id; // ID from Sequelize model (not JWT)
+  const user = req.user; // Sequelize User instance
+  const userId = user.id; // Owner ID
   const organization_id = user.organization_id;
 
   const { cancel } = req.params;
   const { id } = req.body;
 
-  console.log("User ID:", userId);
-  console.log("Organization ID:", organization_id);
+  console.log("🧑 Owner ID:", userId);
+  console.log("🏢 Organization ID:", organization_id);
 
   if (!organization_id) {
     return res.status(401).json({ message: "Unauthorized: No organization found." });
   }
 
   try {
-    if (cancel) {
-      const orderReport = await OrderReports.findByPk(id);
-      if (!orderReport) {
-        return res.status(404).json({
-          success: false,
-          message: "Order not found",
-        });
-      }
-
-      await orderReport.update({ orderStatus: "cancelled" });
-
-      // Push Notification
-      (async () => {
-        const pushPromise = user?.one_subscription
-          ? axios.post(
-              "https://onesignal.com/api/v1/notifications",
-              {
-                app_id: process.env.ONESIGNAL_APP_ID,
-                include_player_ids: [user.one_subscription],
-                headings: { en: "Order Cancelled" },
-                contents: {
-                  en: `Order ${orderReport.orderId} has been Cancelled.`,
-                },
-              },
-              {
-                headers: {
-                  "Content-Type": "application/json",
-                  Authorization: `Basic ${process.env.ONESIGNAL_API_KEY}`,
-                },
-              }
-            )
-          : Promise.resolve();
-
-        console.log("🔔 Push notification sent");
-
-        const notifPromise = Notification.create({
-          uid: userId,
-          datetime: new Date(),
-          title: "Order Cancelled",
-          description: `Order ${orderReport.orderId} has been Cancelled.`,
-        });
-
-        console.log("📝 Notification stored");
-
-        await Promise.allSettled([pushPromise, notifPromise]);
-      })();
-
-      return res.status(200).json({
-        success: true,
-        message: "Order cancelled successfully",
-      });
-    } else {
+    if (!cancel) {
       return res.status(400).json({
         success: false,
-        message: "Invalid request",
+        message: "Invalid request: Cancel param is missing",
       });
     }
+
+    const orderReport = await OrderReports.findByPk(id);
+
+    if (!orderReport) {
+      return res.status(404).json({
+        success: false,
+        message: "Order not found",
+      });
+    }
+
+    // Update order status to 'cancelled'
+    await orderReport.update({ orderStatus: "cancelled" });
+
+    // 🧑 Fetch dentist user
+    const dentist = await User.findByPk(orderReport.userUUID);
+
+    // Push Notification & In-App Notification
+    const pushPromise = axios.post(
+      "https://onesignal.com/api/v1/notifications",
+      {
+        app_id: process.env.ONESIGNAL_APP_ID,
+        include_player_ids: [
+          user.one_subscription, // owner 
+        ],
+        headings: { en: "Order Cancelled" },
+        contents: {
+          en: `Order ${orderReport.orderId} has been cancelled.`,
+        },
+      },
+      {
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Basic ${process.env.ONESIGNAL_API_KEY}`,
+        },
+      }
+    );
+
+    // In-app notifications (owner + dentist)
+    const notifPromises = [
+      Notification.create({
+        uid: userId,
+        datetime: new Date(),
+        title: "Order Cancelled",
+        description: `Order ${orderReport.orderId} has been cancelled.`,
+      }),
+    ];
+    // Wait for notifications
+    await Promise.allSettled([pushPromise, ...notifPromises]);
+
+    console.log("✅ Notifications sent and saved");
+
+
+    try {
+      await Notification.create({
+        uid: dentist.id,
+        datetime: new Date(),
+        title: "Order Cancelled",
+        description: `Order ${orderReport.orderId} has been cancelled.`,
+      })
+
+
+      const pushPromise2 = await axios.post(
+        "https://onesignal.com/api/v1/notifications",
+        {
+          app_id: process.env.ONESIGNAL_APP_ID,
+          include_player_ids: [
+            dentist.one_subscription, // doctor
+          ],
+          headings: { en: "Order Cancelled" },
+          contents: {
+            en: `Order ${orderReport.orderId} has been cancelled.`,
+          },
+        },
+        {
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Basic ${process.env.ONESIGNAL_API_KEY}`,
+          },
+        }
+      );
+    }
+    catch (error) {
+      console.error("❌", error);
+      return res.status(500).json({
+        success: false,
+        message: "Internal server error",
+        error: error.message,
+      });
+    }
+
+    return res.status(200).json({
+      success: true,
+      message: "Order cancelled successfully",
+    });
   } catch (error) {
-    console.error("❌ Error cancelling order:", error.message);
+    console.error("❌ Error cancelling order:", error);
     return res.status(500).json({
       success: false,
       message: "Internal server error",
+      error: error.message,
     });
   }
 };
+
 
 
 // get all technician 
@@ -1255,7 +1342,7 @@ const cancelledAndDestroyOrder = async (req, res) => {
           }
         )
         : Promise.resolve();
-        // console.log("all")
+      // console.log("all")
       const notifPromise = Notification.create({
         uid: id,
         datetime: new Date(),
@@ -1263,7 +1350,7 @@ const cancelledAndDestroyOrder = async (req, res) => {
         description: `Order ${ordersToUpdate[0]?.orderId} has been Cancelled by owner`,
       });
       // console.log("all2")
-      await Promise.allSettled([pushPromise, notifPromise]); 
+      await Promise.allSettled([pushPromise, notifPromise]);
     })();
 
     return res.status(200).json({
@@ -1487,17 +1574,17 @@ const getRadiologyOwnerOrdersByStatus = async (req, res) => {
       include: [
         { model: Organization, as: "toOrg", attributes: ["name"] },
         {
-          model:User,
+          model: User,
           as: "userDetails",
-          attributes: ["id","firstName"],
-          include:[
+          attributes: ["id", "firstName"],
+          include: [
             {
               model: Organization,
               as: "organization",
               attributes: ["name"],
             },
           ]
-        },{
+        }, {
           model: OrderServices,
           as: "orderServices",
           attributes: ["quantity", "price"],
