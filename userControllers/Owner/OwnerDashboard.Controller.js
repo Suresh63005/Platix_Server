@@ -48,6 +48,7 @@ const labOrders = async (req, res) => {
           attributes: ["name"],
         },
       ],
+      order:[["created_at","DESC"]]
     });
 
     // if (orders.length === 0) {
