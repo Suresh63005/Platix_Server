@@ -41,11 +41,19 @@ const labOrders = async (req, res) => {
         delivery_boy: { [Op.is]: null },
         technician: { [Op.is]: null },
       },
-      include: [
+      include:[
+        { model: Organization, as: "toOrg", attributes: ["name"] },
         {
-          model: Organization,
-          as: "toOrg",
-          attributes: ["name"],
+          model: User,
+          as: "userDetails",
+          attributes: ["id", "firstName"],
+          include: [
+            {
+              model: Organization,
+              as: "organization",
+              attributes: ["name"],
+            },
+          ]
         },
       ],
       order:[["created_at","DESC"]]
