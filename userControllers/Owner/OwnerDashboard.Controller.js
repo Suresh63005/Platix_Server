@@ -1511,12 +1511,15 @@ const raiseInvoiceAndCloseOrder = async (req, res) => {
     return res.status(401).json({ message: "Unauthorized" });
   }
 
+  const transaction = await sequelize.transaction({ autocommit: false });
+
   try {
     const checkOrder = await OrderReports.findOne({
       where: {
         id: id,
         toOrganization: organization_id,
       },
+      transaction
     });
 
     if (!checkOrder) {
@@ -1527,20 +1530,76 @@ const raiseInvoiceAndCloseOrder = async (req, res) => {
       await checkOrder.update({
         orderStatus: "completed",
         payment_status: "processing",
-      });
+      },{transaction});
 
+      const dentist = await User.findByPk(checkOrder.userUUID,{transaction})
+      if (!dentist) {
+        await transaction.rollback();
+        return res.status(404).json({
+          success: false,
+          message: "Dentist not found",
+        });
+      }
+
+      try {
+        await Notification.create(
+          {
+            uid: checkOrder.userUUID,
+            datetime: new Date(),
+            title: "Invoice Raised",
+            description: `An invoice has been raised for order ${checkOrder.orderId}.`,
+          },
+          { transaction }
+        );
+        console.log(`Notification created successfully for dentist ID ${checkOrder.userUUID} for order ID ${checkOrder.orderId}`);
+      } catch (error) {
+        console.error(`Failed to create notification for dentist ID ${checkOrder.userUUID} for order ID ${checkOrder.orderId}:`, error.message);
+      }
+
+      if (dentist.one_subscription) {
+        try {
+          const response = await axios.post(
+            "https://onesignal.com/api/v1/notifications",
+            {
+              app_id: process.env.ONESIGNAL_APP_ID,
+              include_player_ids: [dentist.one_subscription],
+              headings: { en: "Invoice Raised" },
+              contents: {
+                en: `An invoice has been raised for order ${checkOrder.orderId}.`,
+              },
+            },
+            {
+              headers: {
+                "Content-Type": "application/json",
+                Authorization: `Basic ${process.env.ONESIGNAL_API_KEY}`,
+              },
+            }
+          );
+          console.log(`OneSignal push notification sent successfully to dentist ID ${checkOrder.userUUID} for order ID ${checkOrder.orderId}`, response.data);
+        } catch (error) {
+          console.error(`Failed to send OneSignal push notification to dentist ID ${checkOrder.userUUID} for order ID ${checkOrder.orderId}:`, error.response?.data || error.message);
+        }
+      } else {
+        console.log(`No OneSignal push notification sent to dentist ID ${checkOrder.userUUID} for order ID ${checkOrder.orderId}: one_subscription is missing`);
+      }
+
+      await transaction.commit();
       return res.status(200).json({
         success: true,
         message: "Invoice process started successfully.",
         data: checkOrder,
       });
     } else {
+      await transaction.rollback();
       return res.status(400).json({
         success: false,
         message: "Order is not eligible for invoice generation.",
       });
     }
   } catch (error) {
+    if (transaction.finished !== "commit") {
+      await transaction.rollback();
+    }
     console.error("Error in raiseInvoiceAndCloseOrder:", error);
     return res.status(500).json({
       success: false,
