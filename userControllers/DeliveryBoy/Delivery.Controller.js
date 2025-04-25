@@ -167,7 +167,7 @@ const orderDetailsGetById = async (req, res) => {
         {
           model: User,
           as: 'userDetails',
-          attributes: ['id', 'firstName', 'email', 'address', 'hospital_name'],
+          attributes: ['id', 'firstName', 'email', 'address', 'hospital_name',"googleMapLink"],
           include: [
             {
               model: Organization,
