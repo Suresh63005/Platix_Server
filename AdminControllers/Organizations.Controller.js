@@ -1,24 +1,60 @@
-
 const { sequelize } = require("../config/db");
 const { Sequelize, Op } = require("sequelize");
-const TblOrganizationType = require("../Models/TblOrganizationType.model")
-const Organization = require("../Models/Organization.model")
+const TblOrganizationType = require("../Models/TblOrganizationType.model");
+const Organization = require("../Models/Organization.model");
 const uploadToS3 = require("../config/fileUpload.aws");
 const { upsertOrganizationSchema, deleteOrganizationSchema, organizationGetByidSchema } = require("../Middlewares/validation");
 const TblOrganization_Service = require("../Models/tblOrganizationService");
 const Services = require("../Models/TblServices.model");
-const cashfree = require("cashfree-sdk");
+const axios = require("axios");
+require('dotenv').config();
 
 
-const { Payouts } = cashfree
-Payouts.Init({
-    "ENV": process.env.CASHFREE_ENV,
-    "ClientID": process.env.CASHFREE_CLIENT_ID,
-    "ClientSecret": process.env.CASHFREE_CLIENT_SECRET
-})
+
+// Upsert (Create or Update) Organization
+const generateToken = async () => {
+    if (!process.env.CASHFREE_PAYOUTS_CLIENT_ID || !process.env.CASHFREE_PAYOUTS_CLIENT_SECRET) {
+        throw new Error('CASHFREE_PAYOUTS_CLIENT_ID or CASHFREE_PAYOUTS_CLIENT_SECRET is not defined in the environment variables');
+    }
+
+    const tokenUrl =
+        process.env.CASHFREE_ENV === 'production'
+            ? 'https://payout-api.cashfree.com/payout/v1/authorize'
+            : 'https://payout-gamma.cashfree.com/payout/v1/authorize';
+
+    const headers = {
+        'Content-Type': 'application/json',
+        'X-Client-Id': process.env.CASHFREE_PAYOUTS_CLIENT_ID.trim(),
+        'X-Client-Secret': process.env.CASHFREE_PAYOUTS_CLIENT_SECRET.trim(),
+    };
+
+    try {
+        const response = await axios.post(tokenUrl, {}, { headers });
+        if (response.data.status !== 'SUCCESS') {
+            throw new Error(`Token generation failed: ${response.data.message} (SubCode: ${response.data.subCode})`);
+        }
+        console.log('Token Generated:', response.data);
+        return response.data.data.token;
+    } catch (error) {
+        console.error('Error generating Cashfree token:', error.response?.data || error.message);
+        if (error.message.includes('IP not whitelisted')) {
+            throw new Error(`IP whitelisting required: ${error.message}. Please whitelist your IP in the Cashfree dashboard.`);
+        }
+        throw new Error(`Failed to generate Cashfree token: ${error.message}`);
+    }
+};
+
+const validateIFSC = (ifscCode) => {
+    const ifscRegex = /^[A-Za-z]{4}\d{7}$/; // IFSC code pattern
+    if (!ifscRegex.test(ifscCode)) {
+        return { valid: false, message: 'Invalid IFSC code format' };
+    }
+    return { valid: true, ifsc: ifscCode };
+};
 
 // Upsert (Create or Update) Organization
 const upsertOrganizations = async (req, res) => {
+    const uid = req.user?.id;
     const {
         id, addresses, businessName, description, designation, email, googleCoordinates,
         gstNumber, mobile, name, registrationId, organizationType_id, whatsapp, bankName,
@@ -91,43 +127,6 @@ const upsertOrganizations = async (req, res) => {
                 await organization.update({ file2: updatedImages.join(",") }, { transaction });
             }
 
-            const existingServices = await TblOrganization_Service.findAll({
-                where: { organization_id: id },
-                transaction
-            });
-
-            const existingServicesMap = new Map(
-                existingServices.map(s => [s.service_id, s])
-            );
-
-            for (const service of parsedServices) {
-                const existingService = existingServicesMap.get(service.id);
-
-                if (existingService) {
-                    if (existingService.price !== service.price) {
-                        await existingService.update({ price: service.price }, { transaction });
-                    }
-                    existingServicesMap.delete(service.id);
-                } else {
-                    await TblOrganization_Service.create({
-                        organization_id: id,
-                        service_id: service.id,
-                        price: service.price
-                    }, { transaction });
-                }
-            }
-
-            if (existingServicesMap.size > 0) {
-                const servicesToDelete = Array.from(existingServicesMap.keys());
-                await TblOrganization_Service.destroy({
-                    where: {
-                        organization_id: id,
-                        service_id: servicesToDelete
-                    },
-                    transaction
-                });
-            }
-
             await transaction.commit();
             return res.status(200).json({ message: "Organization updated successfully", data: organization });
         }
@@ -171,33 +170,73 @@ const upsertOrganizations = async (req, res) => {
             upiId,
             file1,
             file2: files.join(","),
-            beneficiary_id: tempBeneficiaryId
+            beneficiary_id: "NULL"
         }, { transaction });
 
-        const organizationId = organization.id;
-        const beneficiaryId = `merchant_${organizationId}`;
+        const organizationId = organization.id.replace(/-/g, ''); // Remove hyphens
+        // Sanitize beneId: Remove special characters (e.g., hyphens) and ensure it's alphanumeric
+        const sanitizedBeneId = `merchant_${organizationId}`.replace(/[^a-zA-Z0-9]/g, '');
+        if (sanitizedBeneId.length > 50) {
+            return res.status(400).json({ error: "Beneficiary ID exceeds maximum length of 50 characters" });
+        }
+
+        // Validate IFSC code
+        const ifscValidation = validateIFSC(ifscCode);
+        if (!ifscValidation.valid) {
+            await transaction.rollback();
+            return res.status(400).json({ error: ifscValidation.message });
+        }
 
         const beneficiaryDetails = {
-            beneficiary_id: beneficiaryId,
+            beneId: sanitizedBeneId,
             name: accountHolder,
             email,
             phone: mobile,
             bankAccount: accountNumber,
-            ifsc: ifscCode,
+            ifsc: ifscValidation.ifsc, // Use validated and sanitized IFSC
             address1: primaryAddress,
-            city: "N/A",
-            state: "N/A",
+            city: "NA",
+            state: "NA",
             pincode: "000000"
         };
 
+        let token;
         try {
-            const response = await Payouts.Beneficiary.Add(beneficiaryDetails);
-            console.log("Cashfree Beneficiary Created:", response);
-            await organization.update({ beneficiary_id: beneficiaryId }, { transaction });
+            token = await generateToken();
         } catch (error) {
-            console.error("Error creating beneficiary in Cashfree:", error);
-            await transaction.rollback();
-            return res.status(500).json({ error: "Failed to create beneficiary in Cashfree" });
+            console.error("Skipping Cashfree beneficiary creation due to token generation failure:", error.message);
+            await organization.update({ beneficiary_id: sanitizedBeneId }, { transaction });
+        }
+
+        if (token) {
+            const apiUrl =
+                process.env.CASHFREE_ENV === 'production'
+                    ? 'https://payout-api.cashfree.com/payout/v1/addBeneficiary'
+                    : 'https://payout-gamma.cashfree.com/payout/v1/addBeneficiary';
+
+            const headers = {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${token}`,
+            };
+
+            try {
+                const response = await axios.post(apiUrl, beneficiaryDetails, { headers });
+                console.log("Cashfree Beneficiary Created:", response.data);
+
+                if (response.data.status !== 'SUCCESS') {
+                    throw new Error(`Failed to create beneficiary: ${response.data.message}`);
+                }
+
+                if (response.data.status === 'SUCCESS') {
+                    await organization.update({ beneficiary_id: sanitizedBeneId }, { transaction });
+                }
+
+                
+            } catch (error) {
+                console.error("Error creating beneficiary in Cashfree:", error.response?.data || error.message);
+                await transaction.rollback();
+                return res.status(500).json({ error: "Failed to create beneficiary in Cashfree", details: error.message });
+            }
         }
 
         if (parsedServices.length > 0) {
