@@ -12,6 +12,7 @@ const Notification = require("../../Models/Notification.model");
 const orderTransaction = require("../../Models/ReportsModel/OrderTransaction.model");
 const Roles = require("../../Models/TblRoles.model");
 const axios = require("axios");
+const UploadImages = require("../../Models/ReportsModel/UploadImages.model");
 
 // If I pass only the userUUID, it means the request is coming from the owner. If I pass both the userUUID and delivery_boy, it means the request is coming from the delivery boy. If I do not pass the delivery_boy and userUUID, it means the request is coming from the dentist.
 const fromDentist = async (req, res) => {
@@ -736,39 +737,44 @@ const orderDetailsgetById = async (req, res) => {
     const orderReport = await OrderReports.findOne({
       where: {
         id: id,
-        userUUID: uid
+        userUUID: uid,
       },
       include: [
         {
           model: User,
-          as: 'userDetails',
-          attributes: ['id', 'firstName', 'email', 'address', 'hospital_name'],
-
+          as: "userDetails",
+          attributes: ["id", "firstName", "email", "address", "hospital_name"],
         },
         {
           model: OrderServices,
-          as: 'orderServices',
+          as: "orderServices",
           attributes: ["quantity"],
           include: [
             {
               model: TblOrganization_Service,
-              as: 'orgservice',
-              attributes: ['id', 'price'],
+              as: "orgservice",
+              attributes: ["id", "price"],
               include: [
                 {
                   model: Services,
-                  as: 'servicess',
-                  attributes: ['servicename'],
-                }
-              ]
+                  as: "servicess",
+                  attributes: ["servicename"],
+                },
+              ],
             },
           ],
         },
         {
           model: orderTransaction,
-          as: 'transactions',
-          attributes: ['transactionId', 'amount', 'createdAt'],
-        }
+          as: "transactions",
+          attributes: ["transactionId", "amount", "createdAt"],
+        },
+        {
+          model: UploadImages,
+          as: "orderImages",
+          attributes: ["id", "images", "order_id"],
+          required: false,
+        },
       ],
     });
 
