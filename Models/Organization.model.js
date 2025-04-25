@@ -92,6 +92,10 @@ const Organization = sequelize.define("Organization", {
     type: DataTypes.STRING,
     allowNull: false,
   },
+  beneficiary_id:{
+    type:DataTypes.STRING,
+    allowNull:false
+  }
 
 }, {
   tableName: "Organization",
