@@ -345,23 +345,18 @@ const CloseOrder = async (req, res) => {
 
   // Input validation
   if (!uid) {
-    console.log("Validation failed: No user ID found in request");
     return res.status(401).json({ message: "Unauthorized: User not found!" });
   }
   if (!orderId) {
-    console.log("Validation failed: No order ID provided");
     return res.status(400).json({ message: "Order ID is required!" });
   }
   if (action !== "completed") {
-    console.log(`Validation failed: Invalid action=${action}`);
     return res.status(400).json({ message: "Invalid action! Action must be 'completed'." });
   }
 
   const transaction = await sequelize.transaction({ autocommit: false });
 
   try {
-    console.log(`Technician ID (uid): ${uid}`);
-
     // Find technician with organization details
     const technician = await User.findOne({
       where: { id: uid },
@@ -383,7 +378,6 @@ const CloseOrder = async (req, res) => {
     });
 
     if (!technician || !technician.organization || !technician.organization.organizationType) {
-      console.log(`Technician not found or missing organization details: ${JSON.stringify(technician)}`);
       await transaction.rollback();
       return res.status(404).json({ message: "User, organization, or organization type not found!" });
     }
@@ -392,10 +386,7 @@ const CloseOrder = async (req, res) => {
     const isRadiology = organizationType === "Radiology";
     const isDentalLaboratory = organizationType === "Dental Laboratory";
 
-    console.log(`Technician organization type: ${organizationType}`);
-
     if (!isRadiology && !isDentalLaboratory) {
-      console.log(`Invalid organization type: ${organizationType}`);
       await transaction.rollback();
       return res.status(400).json({ message: `Invalid organization type: ${organizationType}` });
     }
@@ -407,20 +398,18 @@ const CloseOrder = async (req, res) => {
     });
 
     if (!order) {
-      console.log(`Order not found for orderId=${orderId}`);
       await transaction.rollback();
       return res.status(404).json({ message: "Order not found!" });
     }
+
     // Verify technician permission
     if (order.technician !== uid) {
-      console.log(`Permission denied: Technician ${uid} does not match order technician ${order.technician} for orderId=${orderId}`);
       await transaction.rollback();
       return res.status(403).json({ message: "You don't have permission to modify this order!" });
     }
 
     // Verify assignment status
     if (order.assignment_status !== "assigned_to_technician") {
-      console.log(`Invalid assignment status: ${order.assignment_status} for orderId=${orderId}`);
       await transaction.rollback();
       return res.status(400).json({ message: "Order cannot be closed by technician in current status!" });
     }
@@ -428,36 +417,24 @@ const CloseOrder = async (req, res) => {
     // Verify organization consistency
     const toOrganization = order.to_organization || order.dataValues.toOrganization;
     if (!toOrganization) {
-      console.log(`Order to_organization is null or undefined for orderId=${orderId}`);
       await transaction.rollback();
       return res.status(400).json({ message: "Order is missing organization information!" });
     }
     if (toOrganization !== technician.organization.id) {
-      console.log(`Organization mismatch: Order to_organization=${toOrganization} does not match technician organization=${technician.organization.id} for orderId=${orderId}`);
       await transaction.rollback();
       return res.status(400).json({ message: "Order organization does not match technician's organization!" });
     }
 
     // Check current status
     if (order.orderStatus === "completed" && order.assignment_status === "technician_completed") {
-      console.log(`Order already completed: orderId=${orderId}`);
       await transaction.rollback();
       return res.status(400).json({ message: "Order is already marked as completed." });
-    }
-
-    // Check payment status for Radiology
-    if (isRadiology && order.payment_status !== "paid") {
-      console.log(`Radiology order not paid: payment_status=${order.payment_status}, orderId=${orderId}`);
-      await transaction.rollback();
-      return res.status(400).json({ message: "Radiology orders can only be closed if payment status is paid." });
     }
 
     // Update status
     order.orderStatus = "processing";
     order.assignment_status = "technician_completed";
-
     await order.save({ transaction });
-    console.log(`Order updated: orderId=${orderId}, orderStatus=processing, assignment_status=technician_completed`);
 
     // Notify technician (only for Radiology)
     if (isRadiology) {
@@ -504,8 +481,8 @@ const CloseOrder = async (req, res) => {
       }
     }
 
-    // Notify dentist (only for Radiology, same organization)
-    if (isRadiology) {
+    // Notify dentist (only for Radiology, if payment_status is paid)
+    if (isRadiology && order.payment_status === "paid") {
       const dentist = await User.findOne({
         where: { id: order.userUUID },
         include: [
@@ -640,15 +617,10 @@ const CloseOrder = async (req, res) => {
     }
 
     await transaction.commit();
-    console.log(`Transaction committed for orderId=${orderId}`);
-
-    // Response message
-    console.log(`Returning response: status=200, message="Order has been successfully technician completed!"`);
     return res.status(200).json({ message: "Order has been successfully technician completed!" });
   } catch (error) {
     if (transaction.finished !== "commit") {
       await transaction.rollback();
-      console.log(`Transaction rolled back for orderId=${orderId}`);
     }
     console.error("Error while updating order:", error.stack);
     return res.status(500).json({ message: "Internal server error: " + error.message });

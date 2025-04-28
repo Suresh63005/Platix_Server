@@ -16,7 +16,7 @@ const OrderReports = sequelize.define(
     },
     paid_date: {
       type: DataTypes.DATE,
-      allowNull: true
+      allowNull: true,
     },
     orderId: {
       type: DataTypes.STRING,
@@ -29,7 +29,6 @@ const OrderReports = sequelize.define(
     address: {
       type: DataTypes.TEXT,
       allowNull: true,
-
     },
     toothName: {
       type: DataTypes.STRING,
@@ -65,8 +64,8 @@ const OrderReports = sequelize.define(
       allowNull: true,
     },
     payment_status: {
-      type: DataTypes.ENUM("unpaid", "paid","processing"),
-      allowNull: true
+      type: DataTypes.ENUM("unpaid", "paid", "processing"),
+      allowNull: true,
     },
     mobileNo: {
       type: DataTypes.STRING,
@@ -148,11 +147,11 @@ const OrderReports = sequelize.define(
       type: DataTypes.BOOLEAN,
       allowNull: false,
       defaultValue: true,
-    },    
+    },
     assignment_status: {
       type: DataTypes.ENUM(
         "unassigned",
-        " ",
+        "assigned_to_technician",
         "technician_completed",
         "assigned_to_delivery_boy",
         "delivery_boy_completed"
