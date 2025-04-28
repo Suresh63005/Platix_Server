@@ -448,7 +448,7 @@ const cancelledOrders = async (req, res) => {
         uid: owner.id,
         datetime: new Date(),
         title: "Order Cancelled",
-        description: `Order ${orderReport.orderId} has been cancelled by the dentist.`,
+        description: `Order ${orderReport.orderId} has been cancelled by the delivery boy.`,
       }));
 
       try {
