@@ -1526,7 +1526,7 @@ const raiseInvoiceAndCloseOrder = async (req, res) => {
       return res.status(404).json({ message: "Order not found" });
     }
 
-    if (checkOrder.orderStatus === "completed" && checkOrder.payment_status === "unpaid") {
+    if (checkOrder.orderStatus === "processing" && checkOrder.payment_status === "unpaid") {
       await checkOrder.update({
         orderStatus: "completed",
         payment_status: "processing",

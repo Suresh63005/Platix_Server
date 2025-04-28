@@ -152,7 +152,7 @@ const OrderReports = sequelize.define(
     assignment_status: {
       type: DataTypes.ENUM(
         "unassigned",
-        "assigned_to_technician",
+        " ",
         "technician_completed",
         "assigned_to_delivery_boy",
         "delivery_boy_completed"
