@@ -48,7 +48,8 @@ app.use(
       "http://localhost:3002",
       "https://platix-client.vercel.app",
       "https://platix-server.vercel.app",
-      "https://2e06-183-82-109-252.ngrok-free.app"
+      "https://2e06-183-82-109-252.ngrok-free.app",
+      "http://localhost:54451"
     ],
     credentials: true,
     methods: "GET,POST,PUT,DELETE",
