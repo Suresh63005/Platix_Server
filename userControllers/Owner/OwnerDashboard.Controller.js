@@ -1433,7 +1433,7 @@ const cancelledAndDestroyOrder = async (req, res) => {
     const whereClause = {
       orderStatus: status,
       toOrganization: organization_id,
-      created_by: id,
+      // created_by: id,
       is_visible_to_owner: true,
     };
 
