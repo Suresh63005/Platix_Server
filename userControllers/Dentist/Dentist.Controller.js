@@ -12,7 +12,6 @@ const Notification = require("../../Models/Notification.model");
 const orderTransaction = require("../../Models/ReportsModel/OrderTransaction.model");
 const Roles = require("../../Models/TblRoles.model");
 const axios = require("axios");
-const UploadImages = require("../../Models/ReportsModel/UploadImages.model");
 
 // If I pass only the userUUID, it means the request is coming from the owner. If I pass both the userUUID and delivery_boy, it means the request is coming from the delivery boy. If I do not pass the delivery_boy and userUUID, it means the request is coming from the dentist.
 const fromDentist = async (req, res) => {
@@ -51,7 +50,7 @@ const fromDentist = async (req, res) => {
 
 
 
-    
+
 
     // Function to generate a unique ID
     const generateUniqueId = async (prefix, model, field) => {
@@ -82,38 +81,38 @@ const fromDentist = async (req, res) => {
       //   return res.status(403).json({ success: false, message: "You are not allowed to edit or cancel this order." });
       // }
 
-      
 
-      
-        console.log("updte started 1");
-        await orderReport.update(
-          {
-            fromOrganization,
-            patientName,
-            orderId: orderReport.orderId,
-            patientId: patientId || orderReport.patientId,
-            toOrganization,
-            requiredDate,
-            toothName,
-            orderDate: orderReport.orderDate,
-            shades,
-            remarks,
-            reasonForScan,
-            userUUID: userUUID || orderReport.userUUID,
-            subTotal: sub_total,
-            tax,
-            serviceCharges: service_charges,
-            paidAmount: paid_amount,
-            totalAmount: total_amount,
-            paymentMethod: payment_method,
-            orderStatus: order_status,
-            address
-          },
-          { where: { id: id }, transaction }
 
-          
-        );
-      
+
+      console.log("updte started 1");
+      await orderReport.update(
+        {
+          fromOrganization,
+          patientName,
+          orderId: orderReport.orderId,
+          patientId: patientId || orderReport.patientId,
+          toOrganization,
+          requiredDate,
+          toothName,
+          orderDate: orderReport.orderDate,
+          shades,
+          remarks,
+          reasonForScan,
+          userUUID: userUUID || orderReport.userUUID,
+          subTotal: sub_total,
+          tax,
+          serviceCharges: service_charges,
+          paidAmount: paid_amount,
+          totalAmount: total_amount,
+          paymentMethod: payment_method,
+          orderStatus: order_status,
+          address
+        },
+        { where: { id: id }, transaction }
+
+
+      );
+
     } else {
       // Create new order
       const orderIdValue = await generateUniqueId("ORD", OrderReports, "orderId");
@@ -129,7 +128,6 @@ const fromDentist = async (req, res) => {
           orderDate,
           requiredDate,
           toothName,
-          
           shades,
           remarks,
           reasonForScan,
@@ -147,6 +145,40 @@ const fromDentist = async (req, res) => {
         },
         { transaction }
       );
+
+      // doctor recived msg
+      if (userUUID) {
+        const doctor = await User.findByPk(userUUID);
+        if (doctor?.one_subscription) {
+          console.log("den122")
+          const response = await axios.post(
+            "https://onesignal.com/api/v1/notifications",
+            {
+              app_id: process.env.ONESIGNAL_APP_ID,
+              include_player_ids: [doctor.one_subscription],
+              headings: { en: `Order Recieved` },
+              contents: { en: `Order Recieved of orderId ${orderReport.orderId}` },
+            },
+            {
+              headers: {
+                "Content-Type": "application/json",
+                Authorization: `Basic ${process.env.ONESIGNAL_API_KEY}`,
+              },
+            }
+          );
+
+          console.log("✅ Notification sent successfully doctor:", response.data);
+
+        }
+
+        await Notification.create({
+          uid: userUUID,
+          datetime: new Date(),
+          title: `Order Recieved`,
+          description: `Order Recieved of orderId ${orderReport.orderId}`
+        })
+      }
+
     }
     const sendUserId = await User.findByPk(userId)
 
@@ -156,8 +188,8 @@ const fromDentist = async (req, res) => {
         {
           app_id: process.env.ONESIGNAL_APP_ID,
           include_player_ids: [sendUserId.one_subscription],
-          headings: {  en: `${id ? "Order Updated":"Order Confirmation"}` },
-          contents: { en:  ` ${id ? `Order ${orderReport.orderId} has been successfully Updated `:`Order ${orderReport.orderId} has been successfully confirmed and is now beeing processed`}.` },
+          headings: { en: `${id ? "Order Updated" : "Order Confirmation"}` },
+          contents: { en: ` ${id ? `Order ${orderReport.orderId} has been successfully Updated ` : `Order ${orderReport.orderId} has been successfully confirmed and is now beeing processed`}.` },
         },
         {
           headers: {
@@ -173,10 +205,10 @@ const fromDentist = async (req, res) => {
 
 
     await Notification.create({
-      uid: userUUID || userId,
+      uid: userId,
       datetime: new Date(),
-      title: `${id ? "Order Updated":"Order Confirmation"}`,
-      description: ` ${id ? `Order ${orderReport.orderId} has been successfully Updated `:`Order ${orderReport.orderId} has been successfully confirmed and is now beeing processed`}.`
+      title: `${id ? "Order Updated" : "Order Confirmation"}`,
+      description: ` ${id ? `Order ${orderReport.orderId} has been successfully Updated ` : `Order ${orderReport.orderId} has been successfully confirmed and is now beeing processed`}.`
     })
 
 
@@ -224,7 +256,7 @@ const fromDentist = async (req, res) => {
             }
           })
       })
-      
+
       try {
         await Promise.all(pushNotifications)
         // console.log(" Push notifications sent to all owners.");
@@ -255,7 +287,37 @@ const fromDentist = async (req, res) => {
 
       // notification send
 
+      (async () => {
+        const sendUser = await User.findByPk(userId);
+        const pushPromise = sendUser?.one_subscription
+          ? axios.post(
+            "https://onesignal.com/api/v1/notifications",
+            {
+              app_id: process.env.ONESIGNAL_APP_ID,
+              include_player_ids: [sendUser.one_subscription],
+              headings: { en: "Payment Successfull" },
+              contents: {
+                en: `Payment Successfull of orderId ${orderReport.orderId}`,
+              },
+            },
+            {
+              headers: {
+                "Content-Type": "application/json",
+                Authorization: `Basic ${process.env.ONESIGNAL_API_KEY}`,
+              },
+            }
+          )
+          : Promise.resolve();
 
+        const notifPromise = Notification.create({
+          uid: userId,
+          datetime: new Date(),
+          title: "Payment Successfull",
+          description: `Payment Successfull  of orderId ${orderReport.orderId}`,
+        });
+
+        await Promise.allSettled([pushPromise, notifPromise]); // No need to wait in main flow
+      })();
 
     }
 
@@ -448,7 +510,7 @@ const cancelledOrders = async (req, res) => {
         uid: owner.id,
         datetime: new Date(),
         title: "Order Cancelled",
-        description: `Order ${orderReport.orderId} has been cancelled by the delivery boy.`,
+        description: `Order ${orderReport.orderId} has been cancelled by the dentist.`,
       }));
 
       try {
@@ -468,7 +530,7 @@ const cancelledOrders = async (req, res) => {
               include_player_ids: [owner.one_subscription],
               headings: { en: "Order Cancelled" },
               contents: {
-                en: `Order ${orderReport.orderId} has been cancelled by the delivery boy.`,
+                en: `Order ${orderReport.orderId} has been cancelled by the dentist.`,
               },
             },
             {
@@ -674,44 +736,39 @@ const orderDetailsgetById = async (req, res) => {
     const orderReport = await OrderReports.findOne({
       where: {
         id: id,
-        userUUID: uid,
+        userUUID: uid
       },
       include: [
         {
           model: User,
-          as: "userDetails",
-          attributes: ["id", "firstName", "email", "address", "hospital_name"],
+          as: 'userDetails',
+          attributes: ['id', 'firstName', 'email', 'address', 'hospital_name'],
+
         },
         {
           model: OrderServices,
-          as: "orderServices",
+          as: 'orderServices',
           attributes: ["quantity"],
           include: [
             {
               model: TblOrganization_Service,
-              as: "orgservice",
-              attributes: ["id", "price"],
+              as: 'orgservice',
+              attributes: ['id', 'price'],
               include: [
                 {
                   model: Services,
-                  as: "servicess",
-                  attributes: ["servicename"],
-                },
-              ],
+                  as: 'servicess',
+                  attributes: ['servicename'],
+                }
+              ]
             },
           ],
         },
         {
           model: orderTransaction,
-          as: "transactions",
-          attributes: ["transactionId", "amount", "createdAt"],
-        },
-        {
-          model: UploadImages,
-          as: "orderImages",
-          attributes: ["id", "images", "order_id"],
-          required: false,
-        },
+          as: 'transactions',
+          attributes: ['transactionId', 'amount', 'createdAt'],
+        }
       ],
     });
 
@@ -1020,7 +1077,7 @@ const getorganizationDetailsById = async (req, res) => {
 const cancelledAndDestroyOrder = async (req, res) => {
   const { status } = req.params; // should be "completed" or "cancelled"
   const userUUID = req.user?.id;
-  if(!userUUID) {
+  if (!userUUID) {
     return res.status(401).json({ message: "Unauthorized!" });
   }
   if (!["completed", "cancelled"].includes(status)) {
@@ -1033,7 +1090,7 @@ const cancelledAndDestroyOrder = async (req, res) => {
     // Build base where clause
     let whereClause = {
       orderStatus: status,
-      is_visible_to_customer: true, 
+      is_visible_to_customer: true,
       // created_by:userUUID,
     };
     console.log(whereClause, "whereClause");
@@ -1105,20 +1162,20 @@ const payNow = async (req, res) => {
 
 
     //send push notifications
-    const sendUserId= await User.findByPk(uid)
-    if(sendUserId?.one_subscription){
-      const response=await axios.post(
+    const sendUserId = await User.findByPk(uid)
+    if (sendUserId?.one_subscription) {
+      const response = await axios.post(
         "https://onesignal.com/api/v1/notifications",
         {
           app_id: process.env.ONESIGNAL_APP_ID,
           include_player_ids: [sendUserId.one_subscription],
-          headings: { en: "Payment Confirmation"},
-          contents: {en: `Order ${amount} for bill ${orderReport.orderId} has been successfully processed.`}
+          headings: { en: "Payment Confirmation" },
+          contents: { en: `Order ${amount} for bill ${orderReport.orderId} has been successfully processed.` }
         },
         {
           headers: {
-            "Content-Type":"application/json",
-            Authorization:`Basic ${process.env.ONESIGNAL_API_KEY}`
+            "Content-Type": "application/json",
+            Authorization: `Basic ${process.env.ONESIGNAL_API_KEY}`
           }
         }
       )
@@ -1147,7 +1204,7 @@ const fetchDentistOrganizations = async (req, res) => {
           model: TblOrganizationType,
           as: "organizationType",
           where: { organizationType: "Dentist" },
-          attributes:["id","organizationType"]
+          attributes: ["id", "organizationType"]
         },
       ],
       attributes: [
