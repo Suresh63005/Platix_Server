@@ -202,7 +202,7 @@ const deleteAccount = async (req, res) => {
   }
 }
 
-//edit profile for owner and technician
+//edit profile for owner and technician  and delivery boy also
 const ownerOrTechnicianProfileEdit = async (req, res) => {
   const {
     prefix,
