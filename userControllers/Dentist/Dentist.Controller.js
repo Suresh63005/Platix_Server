@@ -12,6 +12,7 @@ const Notification = require("../../Models/Notification.model");
 const orderTransaction = require("../../Models/ReportsModel/OrderTransaction.model");
 const Roles = require("../../Models/TblRoles.model");
 const axios = require("axios");
+const UploadImages = require("../../Models/ReportsModel/UploadImages.model");
 
 // If I pass only the userUUID, it means the request is coming from the owner. If I pass both the userUUID and delivery_boy, it means the request is coming from the delivery boy. If I do not pass the delivery_boy and userUUID, it means the request is coming from the dentist.
 const fromDentist = async (req, res) => {
@@ -768,6 +769,11 @@ const orderDetailsgetById = async (req, res) => {
           model: orderTransaction,
           as: 'transactions',
           attributes: ['transactionId', 'amount', 'createdAt'],
+        },
+        {
+          model:UploadImages,
+          as:"orderImages",
+          attributes:["order_id","images"]
         }
       ],
     });
