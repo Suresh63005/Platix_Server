@@ -356,13 +356,13 @@ const cancelledOrders = async (req, res) => {
     }
 
     // Authorization: Only dentist (userUUID) or creator (created_by) can cancel
-    if (orderReport.userUUID !== userId && orderReport.created_by !== userId) {
-      await transaction.rollback();
-      return res.status(403).json({
-        success: false,
-        message: "You are not authorized to cancel this order",
-      });
-    }
+    // if (orderReport.userUUID !== userId && orderReport.created_by !== userId) {
+    //   await transaction.rollback();
+    //   return res.status(403).json({
+    //     success: false,
+    //     message: "You are not authorized to cancel this order",
+    //   });
+    // }
 
     // Update order status to cancelled
     await orderReport.update(

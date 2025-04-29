@@ -1274,26 +1274,6 @@ const cancelledOrders = async (req, res) => {
         description: `Order ${orderReport.orderId} has been cancelled.`,
       })
 
-
-      const pushPromise2 = await axios.post(
-        "https://onesignal.com/api/v1/notifications",
-        {
-          app_id: process.env.ONESIGNAL_APP_ID,
-          include_player_ids: [
-            dentist.one_subscription, // doctor
-          ],
-          headings: { en: "Order Cancelled" },
-          contents: {
-            en: `Order ${orderReport.orderId} has been cancelled.`,
-          },
-        },
-        {
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Basic ${process.env.ONESIGNAL_API_KEY}`,
-          },
-        }
-      );
     }
     catch (error) {
       console.error("❌", error);
@@ -1413,9 +1393,6 @@ const cancelledAndDestroyOrder = async (req, res) => {
   const { status } = req.params; // Expected: 'completed' or 'cancelled'
   const { organization_id, id } = req.user;
 
-  console.log(req.user); // You can remove this in production
-  console.log(id, "User ID");
-
   // Check for valid organization
   if (!organization_id) {
     return res.status(401).json({ message: "Unauthorized: No organization_id found." });
@@ -1433,7 +1410,7 @@ const cancelledAndDestroyOrder = async (req, res) => {
     const whereClause = {
       orderStatus: status,
       toOrganization: organization_id,
-      created_by: id,
+      // created_by: id,
       is_visible_to_owner: true,
     };
 
