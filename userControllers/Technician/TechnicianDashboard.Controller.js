@@ -353,7 +353,7 @@ const CloseOrder = async (req, res) => {
   try {
     // Find technician with organization details
     const technician = await User.findOne({
-      where: { id: uid,is_visible_to_technician: true },
+      where: { id: uid },
       include: [
         {
           model: Organization,
@@ -387,7 +387,7 @@ const CloseOrder = async (req, res) => {
 
     // Find order
     const order = await OrderReports.findOne({
-      where: { id: orderId },
+      where: { id: orderId,is_visible_to_technician: true },
       transaction,
     });
 
