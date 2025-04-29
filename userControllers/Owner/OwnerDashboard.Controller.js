@@ -592,7 +592,7 @@ const assignService = async (req, res) => {
 
     // Check assignment status
     if (technician) {
-      if (order.assignment_status === "assigned_to_technician" || order.assignment_status === "technician_completed") {
+      if (order.technician_assignment_status === "assigned_to_technician" || order.technician_assignment_status === "technician_completed") {
         await transaction.rollback();
         return res.status(400).json({
           message: `Order ID ${order.orderId} is already assigned to a technician or technician has completed it`,
@@ -600,13 +600,13 @@ const assignService = async (req, res) => {
       }
     }
     if (delivery_boy) {
-      if (order.assignment_status === "assigned_to_delivery_boy") {
+      if (order.delivery_boy_assignment_status === "assigned_to_delivery_boy") {
         await transaction.rollback();
         return res.status(400).json({
           message: `Order ID ${order.orderId} is already assigned to a delivery boy`,
         });
       }
-      if (order.assignment_status !== "technician_completed" && order.assignment_status !== "unassigned") {
+      if (order.technician_assignment_status !== "technician_completed" && order.technician_assignment_status !== "unassigned") {
         await transaction.rollback();
         return res.status(400).json({
           message: `Order ID ${order.orderId} cannot be assigned to a delivery boy until technician has completed it`,
@@ -619,7 +619,7 @@ const assignService = async (req, res) => {
     let role = null;
     if (technician) {
       updateFields.technician = technician;
-      updateFields.assignment_status = "assigned_to_technician";
+      updateFields.technician_assignment_status = "assigned_to_technician";
       const technicianUser = await User.findOne({
         where: { id: technician, organization_id: organization_id },
         transaction,
@@ -633,7 +633,7 @@ const assignService = async (req, res) => {
     }
     if (delivery_boy) {
       updateFields.delivery_boy = delivery_boy;
-      updateFields.assignment_status = "assigned_to_delivery_boy";
+      updateFields.delivery_boy_assignment_status = "assigned_to_delivery_boy";
       const deliveryBoyUser = await User.findOne({
         where: { id: delivery_boy, organization_id: organization_id },
         transaction,
@@ -1273,27 +1273,6 @@ const cancelledOrders = async (req, res) => {
         title: "Order Cancelled",
         description: `Order ${orderReport.orderId} has been cancelled.`,
       })
-
-
-      const pushPromise2 = await axios.post(
-        "https://onesignal.com/api/v1/notifications",
-        {
-          app_id: process.env.ONESIGNAL_APP_ID,
-          include_player_ids: [
-            dentist.one_subscription, // doctor
-          ],
-          headings: { en: "Order Cancelled" },
-          contents: {
-            en: `Order ${orderReport.orderId} has been cancelled.`,
-          },
-        },
-        {
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Basic ${process.env.ONESIGNAL_API_KEY}`,
-          },
-        }
-      );
     }
     catch (error) {
       console.error("❌", error);
@@ -1433,7 +1412,7 @@ const cancelledAndDestroyOrder = async (req, res) => {
     const whereClause = {
       orderStatus: status,
       toOrganization: organization_id,
-      created_by: id,
+      // created_by: id,
       is_visible_to_owner: true,
     };
 

@@ -35,14 +35,14 @@ const technicianDashboardData = async (req, res) => {
         where: {
           technician: uid,
           orderStatus: "processing",
-          assignment_status: "assigned_to_technician",
+          technician_assignment_status: "assigned_to_technician",
         },
       }),
       OrderReports.count({
         where: {
           technician: uid,
-          orderStatus: "processing",
-          assignment_status: "technician_completed",
+
+          technician_assignment_status: "technician_completed",
         },
       }),
     ]);
@@ -51,8 +51,7 @@ const technicianDashboardData = async (req, res) => {
     const orderList = await OrderReports.findAll({
       where: {
         technician: uid,
-        orderStatus: "processing",
-        assignment_status: "assigned_to_technician",
+        technician_assignment_status: "assigned_to_technician",
       },
       include: [
         {
@@ -119,25 +118,20 @@ const FetchTechnicianOrdersByStatus = async (req, res) => {
   try {
     let whereClause = {
       technician: uid,
+      is_visible_to_technician: true
     };
 
     if (orderStatus === "processing") {
       whereClause.orderStatus = "processing";
-      whereClause.assignment_status = {
-        [Op.in]: ["assigned_to_technician"],
-      };
+      whereClause.technician_assignment_status = "assigned_to_technician";
+
     } else if (orderStatus === "completed") {
-      whereClause.orderStatus = {
-        [Op.in]: ["processing", "completed"],
-      };
-      whereClause.assignment_status = {
-        [Op.in]: ["technician_completed"],
-      };
+      // whereClause.orderStatus = "completed";
+      whereClause.technician_assignment_status = "technician_completed";
+      
     } else if (orderStatus === "cancelled") {
       whereClause.orderStatus = "cancelled";
-      whereClause.assignment_status = {
-        [Op.in]: ["assigned_to_technician"],
-      };
+      whereClause.assignment_status = "assigned_to_technician"
     }
 
     const orders = await OrderReports.findAll({
@@ -180,7 +174,7 @@ const ViewOrderDetails = async (req, res) => {
     const { orderId } = req.params;
 
     const order = await OrderReports.findOne({
-      where: { id: orderId, technician: uid },
+      where: { id: orderId, technician: uid, },
       include: [
         {
           model: Organization,
@@ -231,13 +225,13 @@ const ViewOrderDetails = async (req, res) => {
       return res.status(404).json({ message: "Order not found or access denied!" });
     }
 
-    console.log("Raw assignment_status:", order.assignment_status);
+    console.log("Raw assignment_status:", order.technician_assignment_status);
 
     const orderDetails = {
       id: order.id,
       orderId: order.orderId,
       orderStatus: order.orderStatus,
-      assignment_status: order.assignment_status || "unassigned",
+      technician_assignment_status: order.technician_assignment_status || "unassigned",
       orderDate: order.orderDate,
       requiredDate: order.requiredDate,
       toothName: order.toothName,
@@ -301,7 +295,7 @@ const UploadImagesByTechnician = async (req, res) => {
         technician: uid,
         id: orderId,
         orderStatus:{[Op.in]:[ "processing","completed"]},
-        assignment_status: { [Op.in]: ["assigned_to_technician", "technician_completed"] },
+        technician_assignment_status: { [Op.in]: ["assigned_to_technician", "technician_completed"] },
       },
     });
     if (!order) {
@@ -359,7 +353,7 @@ const CloseOrder = async (req, res) => {
   try {
     // Find technician with organization details
     const technician = await User.findOne({
-      where: { id: uid },
+      where: { id: uid,is_visible_to_technician: true },
       include: [
         {
           model: Organization,
@@ -409,7 +403,7 @@ const CloseOrder = async (req, res) => {
     }
 
     // Verify assignment status
-    if (order.assignment_status !== "assigned_to_technician") {
+    if (order.technician_assignment_status !== "assigned_to_technician") {
       await transaction.rollback();
       return res.status(400).json({ message: "Order cannot be closed by technician in current status!" });
     }
@@ -426,15 +420,24 @@ const CloseOrder = async (req, res) => {
     }
 
     // Check current status
-    if (order.orderStatus === "completed" && order.assignment_status === "technician_completed") {
+    if (order.orderStatus === "completed" && order.technician_assignment_status === "technician_completed") {
       await transaction.rollback();
       return res.status(400).json({ message: "Order is already marked as completed." });
     }
 
+    if(isRadiology){
+      order.orderStatus = "completed";
+      order.technician_assignment_status = "technician_completed";
+      await order.save({ transaction });
+    }
+    else{
+      order.orderStatus = "processing";
+      order.technician_assignment_status = "technician_completed";
+      await order.save({ transaction });
+    }
+
     // Update status
-    order.orderStatus = "processing";
-    order.assignment_status = "technician_completed";
-    await order.save({ transaction });
+
 
     // Notify technician (only for Radiology)
     if (isRadiology) {
@@ -849,15 +852,29 @@ const CloseOrder = async (req, res) => {
     if (!uid) {
       return res.status(401).json({ message: "Unauthorized: User not found!" });
     }
+
+    const orderData = await OrderReports.findAll(
+      {
+        where: {
+          technician: uid,
+          orderStatus: "processing",
+          technician_assignment_status: "technician_completed",
+          is_visible_to_technician: true
+        },
+      }
+    );
+
+    console.log(orderData, "ttttttttttttttttttttttttttttttt");
   
     try {
       const [affectedRows] = await OrderReports.update(
-        { technician: null },
+        { is_visible_to_technician: false },
         {
           where: {
             technician: uid,
-            orderStatus: "processing",
-            assignment_status: "technician_completed",
+            orderStatus: "completed",
+            technician_assignment_status: "technician_completed",
+            is_visible_to_technician: true
           },
         }
       );
@@ -881,11 +898,12 @@ const CloseOrder = async (req, res) => {
   
     try {
       const [affectedRows] = await OrderReports.update(
-        { technician: null },
+        { is_visible_to_technician: false },
         {
           where: {
             technician: uid,
-            orderStatus: "cancelled",
+            technician_assignment_status: "cancelled",
+            is_visible_to_technician: true
           },
         }
       );
