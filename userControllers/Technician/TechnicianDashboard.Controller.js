@@ -438,6 +438,17 @@ const CloseOrder = async (req, res) => {
 
     // Update status
 
+   if(isRadiology){
+      order.orderStatus = "completed";
+      order.assignment_status = "technician_completed";
+      await order.save({ transaction });
+    }
+    else{
+      order.orderStatus = "processing";
+      order.assignment_status = "technician_completed";
+      await order.save({ transaction });
+    }
+
 
     // Notify technician (only for Radiology)
     if (isRadiology) {

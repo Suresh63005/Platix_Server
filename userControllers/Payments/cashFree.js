@@ -77,37 +77,37 @@ const getPaymentByOrderId = async (req, res) => {
         const response = await axios.get(apiUrl, { headers });
 
         // // Send push notification if user has OneSignal ID
-        // (async () => {
-        //     const sendUser = await User.findByPk(uid);
-        //     const pushPromise = sendUser?.one_subscription
-        //       ? axios.post(
-        //         "https://onesignal.com/api/v1/notifications",
-        //         {
-        //           app_id: process.env.ONESIGNAL_APP_ID,
-        //           include_player_ids: [sendUser.one_subscription],
-        //           headings: { en: "Payment Successfull" },
-        //           contents: {
-        //             en: `Payment Successfull of orderId ${order_id}`,
-        //           },
-        //         },
-        //         {
-        //           headers: {
-        //             "Content-Type": "application/json",
-        //             Authorization: `Basic ${process.env.ONESIGNAL_API_KEY}`,
-        //           },
-        //         }
-        //       )
-        //       : Promise.resolve();
+        (async () => {
+            const sendUser = await User.findByPk(uid);
+            const pushPromise = sendUser?.one_subscription
+              ? axios.post(
+                "https://onesignal.com/api/v1/notifications",
+                {
+                  app_id: process.env.ONESIGNAL_APP_ID,
+                  include_player_ids: [sendUser.one_subscription],
+                  headings: { en: "Payment Successfull" },
+                  contents: {
+                    en: `Payment Successfull of orderId ${order_id}`,
+                  },
+                },
+                {
+                  headers: {
+                    "Content-Type": "application/json",
+                    Authorization: `Basic ${process.env.ONESIGNAL_API_KEY}`,
+                  },
+                }
+              )
+              : Promise.resolve();
       
-        //     const notifPromise = Notification.create({
-        //       uid: uid,
-        //       datetime: new Date(),
-        //       title: "Payment Successfull",
-        //       description: `Payment Successfull  of orderId ${order_id}`,
-        //     });
+            const notifPromise = Notification.create({
+              uid: uid,
+              datetime: new Date(),
+              title: "Payment Successfull",
+              description: `Payment Successfull  of orderId ${order_id}`,
+            });
       
-        //     await Promise.allSettled([pushPromise, notifPromise]); // No need to wait in main flow
-        //   })();
+            await Promise.allSettled([pushPromise, notifPromise]); // No need to wait in main flow
+          })();
         return res.json(response.data);
     } catch (error) {
         console.error("Error getting payment by ID:", error.response?.data || error.message);

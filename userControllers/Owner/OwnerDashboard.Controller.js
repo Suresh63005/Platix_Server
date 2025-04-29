@@ -1273,6 +1273,7 @@ const cancelledOrders = async (req, res) => {
         title: "Order Cancelled",
         description: `Order ${orderReport.orderId} has been cancelled.`,
       })
+
     }
     catch (error) {
       console.error("❌", error);
@@ -1391,9 +1392,6 @@ const getAllDeliveryBoy = async (req, res) => {
 const cancelledAndDestroyOrder = async (req, res) => {
   const { status } = req.params; // Expected: 'completed' or 'cancelled'
   const { organization_id, id } = req.user;
-
-  console.log(req.user); // You can remove this in production
-  console.log(id, "User ID");
 
   // Check for valid organization
   if (!organization_id) {
