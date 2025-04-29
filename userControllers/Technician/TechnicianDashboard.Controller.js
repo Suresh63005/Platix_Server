@@ -432,9 +432,16 @@ const CloseOrder = async (req, res) => {
     }
 
     // Update status
-    order.orderStatus = "processing";
-    order.assignment_status = "technician_completed";
-    await order.save({ transaction });
+   if(isRadiology){
+      order.orderStatus = "completed";
+      order.assignment_status = "technician_completed";
+      await order.save({ transaction });
+    }
+    else{
+      order.orderStatus = "processing";
+      order.assignment_status = "technician_completed";
+      await order.save({ transaction });
+    }
 
     // Notify technician (only for Radiology)
     if (isRadiology) {
@@ -852,7 +859,7 @@ const CloseOrder = async (req, res) => {
   
     try {
       const [affectedRows] = await OrderReports.update(
-        { technician: null },
+        { is_visible_to_technician: false },
         {
           where: {
             technician: uid,
@@ -881,7 +888,7 @@ const CloseOrder = async (req, res) => {
   
     try {
       const [affectedRows] = await OrderReports.update(
-        { technician: null },
+        { is_visible_to_technician: false },
         {
           where: {
             technician: uid,
