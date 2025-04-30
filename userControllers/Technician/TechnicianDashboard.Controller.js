@@ -353,7 +353,7 @@ const CloseOrder = async (req, res) => {
   try {
     // Find technician with organization details
     const technician = await User.findOne({
-      where: { id: uid,is_visible_to_technician: true },
+      where: { id: uid },
       include: [
         {
           model: Organization,
@@ -387,7 +387,7 @@ const CloseOrder = async (req, res) => {
 
     // Find order
     const order = await OrderReports.findOne({
-      where: { id: orderId },
+      where: { id: orderId,is_visible_to_technician: true },
       transaction,
     });
 
@@ -496,7 +496,7 @@ const CloseOrder = async (req, res) => {
     }
 
     // Notify dentist (only for Radiology, if payment_status is paid)
-    if (isRadiology && order.payment_status === "paid") {
+    if (isRadiology || isDentalLaboratory && order.payment_status === "paid") {
       const dentist = await User.findOne({
         where: { id: order.userUUID },
         include: [
@@ -511,8 +511,6 @@ const CloseOrder = async (req, res) => {
 
       if (!dentist) {
         console.log(`No dentist found for userUUID ${order.userUUID} for order ID ${order.orderId}`);
-      } else if (dentist.organization_id !== toOrganization) {
-        console.log(`Dentist ID ${order.userUUID} does not belong to the same organization (ID ${toOrganization}) for order ID ${order.orderId}`);
       } else {
         try {
           await Notification.create(
