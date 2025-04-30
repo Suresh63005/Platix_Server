@@ -118,6 +118,7 @@ const editprofile = async (req, res) => {
 
         existingOrg.name = hospital_name;
         existingOrg.upiId = upiId;
+        existingOrg.beneficiary_id="TEMP123456"
 
         existingOrg.save();
 
