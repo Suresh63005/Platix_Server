@@ -100,7 +100,7 @@ const editprofile = async (req, res) => {
         ifscCode: "NULL",
         description: "NULL",
         upiId,
-        beneficiary_id:"TEMP_123456"
+        beneficiary_id:"TEMP123456"
       };
 
       const existingOrg = await Organization.findOne({ where: { mobile: mobileNo }, paranoid: false });
