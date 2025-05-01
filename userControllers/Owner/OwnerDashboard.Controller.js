@@ -62,7 +62,6 @@ const labOrders = async (req, res) => {
     // if (orders.length === 0) {
     //   return res.status(404).json({ message: "No orders found" });
     // }
-
     // Fetch order counts in parallel
     const [activeOrders, closedOrders, totalOrders] = await Promise.all([
       // const [activeOrders, totalPayableBills, totalOrders, openOrders, closedOrders] = await Promise.all([
