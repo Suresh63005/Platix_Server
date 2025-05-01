@@ -13,6 +13,7 @@ const orderTransaction = require("../../Models/ReportsModel/OrderTransaction.mod
 const Roles = require("../../Models/TblRoles.model");
 const axios = require("axios");
 const UploadImages = require("../../Models/ReportsModel/UploadImages.model");
+const { initiateRefund } = require("../Payments/cashFree");
 
 // If I pass only the userUUID, it means the request is coming from the owner. If I pass both the userUUID and delivery_boy, it means the request is coming from the delivery boy. If I do not pass the delivery_boy and userUUID, it means the request is coming from the dentist.
 const fromDentist = async (req, res) => {
@@ -435,20 +436,14 @@ const cancelledOrders = async (req, res) => {
       });
     }
 
-    // Authorization: Only dentist (userUUID) or creator (created_by) can cancel
-    // if (orderReport.userUUID !== userId && orderReport.created_by !== userId) {
-    //   await transaction.rollback();
-    //   return res.status(403).json({
-    //     success: false,
-    //     message: "You are not authorized to cancel this order",
-    //   });
-    // }
+    // add cashfree payment refund
+    const {refund_id:returnedRefundId,orderAmount}=await initiateRefund(orderReport,refund_id,transaction)
 
     // Update order status to cancelled
-    await orderReport.update(
-      { orderStatus: "cancelled" },
-      { transaction }
-    );
+    // await orderReport.update(
+    //   { orderStatus: "cancelled" },
+    //   { transaction }
+    // );
 
     // Notify the dentist (userUUID)
     const dentist = await User.findByPk(orderReport.userUUID, { transaction });
@@ -654,6 +649,7 @@ const cancelledOrders = async (req, res) => {
     });
   }
 };
+
 // order report search by date and where orders are completed  . it is working for 2 apis
 const orderReport = async (req, res) => {
 
