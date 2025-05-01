@@ -197,6 +197,7 @@ const RoleDetails = async (req, res) => {
   
       // Generate and store OTP
       const otp = generateOTP();
+    //   console.log(otp)
       otpStore[userid] = { otp, expiry: Date.now() + 5 * 60 * 1000 }; // 5-minute expiry
   
       // Send OTP email
@@ -241,7 +242,7 @@ const sentEmailverify = async (req, res)=>{
        // await subscribeUser(email)
         // Generate OTP
         const otp = generateOTP();
-
+        console.log(otp)
         // Store OTP in memory with expiration time
         otpStore[id] = { otp, expiry: Date.now() + 10 * 60 * 1000 };  // Expiry after 10 minutes
 
@@ -259,41 +260,49 @@ const sentEmailverify = async (req, res)=>{
 
 }
 
-const verifyOtp = async(req, res) => {
-    const { id, otp } = req.body;
-
-    if (!id || !otp) {
+const verifyOtp = async (req, res) => {
+    try {
+      const { id, otp } = req.body;
+  
+      if (!id || !otp) {
         return res.status(400).json({ message: "User ID and OTP are required!" });
-    }
-
-    const user = await User.findOne({ where: { id } });
-
-    const otpData = otpStore[id];
-
-    if (!otpData) {
-        return res.status(400).json({ message: "OTP not found or expired!", });
-    }
-
-    const { otp: storedOtp, expiry } = otpData;
-
-    // Check if OTP has expired
-    if (Date.now() > expiry) {
-        delete otpStore[id];  // Remove expired OTP
+      }
+  
+      const user = await User.findOne({ where: { id } });
+  
+      if (!user) {
+        return res.status(404).json({ message: "User not found!" });
+      }
+  
+      const otpData = otpStore[id];
+  
+      if (!otpData) {
+        return res.status(400).json({ message: "OTP not found or expired!" });
+      }
+  
+      const { otp: storedOtp, expiry } = otpData;
+  
+      // Check expiry
+      if (Date.now() > expiry) {
+        delete otpStore[id];
         return res.status(400).json({ message: "OTP has expired!" });
-    }
-
-    // Verify OTP
-    if (storedOtp === otp) {
-        delete otpStore[id];  // Clear OTP after successful verification
+      }
+  
+      // Match OTP
+      if (storedOtp === otp) {
+        delete otpStore[id];
         user.Email_verification = true;
-        user.save();
-        return res.status(200).json({ message: "OTP verified successfully!",user });
-    } else {
-        return res.status(400).json({ message: "Invalid OTP!" });
+        await user.save(); // ✅ Wait for DB save
+        return res.status(200).json({ message: "OTP verified successfully!", user });
+      }
+  
+      return res.status(400).json({ message: "Invalid OTP!" });
+    } catch (error) {
+      console.error("OTP verification error:", error);
+      return res.status(500).json({ message: "Internal Server Error" });
     }
-
-
-};
+  };
+  
 
 // delivery boy , owner, technician  login controller
 const loginwithnumber = async (req, res) => {
