@@ -120,7 +120,7 @@ const editprofile = async (req, res) => {
         existingOrg.upiId = upiId;
         existingOrg.beneficiary_id="TEMP123456"
 
-        existingOrg.save();
+        await existingOrg.save();
 
       }
     }
