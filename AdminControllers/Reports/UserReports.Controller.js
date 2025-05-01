@@ -152,23 +152,46 @@ const CreateUser = async (req, res) => {
         role_id,
         dateOfBirth,
         address = "SR NAGAR",
-        startDate = "2021-09-01", // Fixed incorrect backticks
+        startDate = "2021-09-01",
         designation,
-        // organizationType_id =2,
         organization_id
     } = req.body;
-    // console.log(req.body)
+
     const t = await sequelize.transaction();
     try {
         let user;
 
         // Check if 'id' is provided for updating an existing user
         if (id) {
-            // Update existing user
+            // Find the existing user
             user = await User.findByPk(id, { transaction: t });
             if (!user) {
                 await t.rollback();
                 return res.status(404).json({ message: "User not found" });
+            }
+
+            // Validate email uniqueness only if email is changing
+            if (email !== user.email) {
+                const existingUserByEmail = await User.findOne({
+                    where: { email },
+                    transaction: t
+                });
+                if (existingUserByEmail && existingUserByEmail.id !== parseInt(id)) {
+                    await t.rollback();
+                    return res.status(400).json({ message: "Email already exists" });
+                }
+            }
+
+            // Validate mobileNo uniqueness only if mobileNo is changing
+            if (mobileNo !== user.mobileNo) {
+                const existingUserByMobile = await User.findOne({
+                    where: { mobileNo },
+                    transaction: t
+                });
+                if (existingUserByMobile && existingUserByMobile.id !== parseInt(id)) {
+                    await t.rollback();
+                    return res.status(400).json({ message: "Mobile number already exists" });
+                }
             }
 
             // Perform the update operation
@@ -184,12 +207,31 @@ const CreateUser = async (req, res) => {
                 address,
                 startDate: startDate || "2021-09-01",
                 designation,
-                // organizationType_id,
                 organization_id
-            });
-            await t.commit()
+            }, { transaction: t });
+
+            await t.commit();
             return res.status(200).json({ message: "User updated successfully", user });
         } else {
+            // Validate email and mobileNo uniqueness for create mode
+            const existingUserByEmail = await User.findOne({
+                where: { email },
+                transaction: t
+            });
+            if (existingUserByEmail) {
+                await t.rollback();
+                return res.status(400).json({ message: "Email already exists" });
+            }
+
+            const existingUserByMobile = await User.findOne({
+                where: { mobileNo },
+                transaction: t
+            });
+            if (existingUserByMobile) {
+                await t.rollback();
+                return res.status(400).json({ message: "Mobile number already exists" });
+            }
+
             // Create new user
             user = await User.create({
                 prefix,
@@ -203,10 +245,10 @@ const CreateUser = async (req, res) => {
                 address,
                 startDate,
                 designation,
-                // organizationType_id,
                 organization_id
-            });
-            await t.commit()
+            }, { transaction: t });
+
+            await t.commit();
             return res.status(201).json({ message: "User created successfully", user });
         }
     } catch (error) {
