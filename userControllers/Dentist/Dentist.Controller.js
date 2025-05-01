@@ -31,7 +31,7 @@ const fromDentist = async (req, res) => {
       patientId,
       orderDate,
       transactionId,
-      userUUID,   //doctor id
+      userUUID, // doctor id
       toOrganization,
       serviceId = [],
       requiredDate,
@@ -49,10 +49,6 @@ const fromDentist = async (req, res) => {
       address,
     } = req.body;
 
-
-
-
-
     // Function to generate a unique ID
     const generateUniqueId = async (prefix, model, field) => {
       let uniqueId;
@@ -68,22 +64,13 @@ const fromDentist = async (req, res) => {
 
     if (id) {
       // Update existing order
-
       orderReport = await OrderReports.findOne({
-        where: { id: id, },
+        where: { id: id },
       }, { transaction });
 
       if (!orderReport) {
         return res.status(404).json({ success: false, message: "Order not found." });
       }
-
-      // // Check if the user is the creator
-      // if (orderReport.created_by !== userId) {
-      //   return res.status(403).json({ success: false, message: "You are not allowed to edit or cancel this order." });
-      // }
-
-
-
 
       console.log("updte started 1");
       await orderReport.update(
@@ -107,18 +94,14 @@ const fromDentist = async (req, res) => {
           totalAmount: total_amount,
           paymentMethod: payment_method,
           orderStatus: order_status,
-          address
+          address,
         },
         { where: { id: id }, transaction }
-
-
       );
-
     } else {
       // Create new order
       const orderIdValue = await generateUniqueId("ORD", OrderReports, "orderId");
 
-      // console.log("Creating a new order");
       orderReport = await OrderReports.create(
         {
           fromOrganization,
@@ -147,18 +130,24 @@ const fromDentist = async (req, res) => {
         { transaction }
       );
 
-      // doctor recived msg
-      if (userUUID) {
+      const creator = await User.findByPk(userId, {
+        include: [{ model: Roles, as: "role", attributes: ["id", "rolename"] }],
+        transaction,
+      });
+      const isDentist = creator?.role?.rolename === "Dentist";
+
+      // Doctor received message
+      if (!isDentist && userUUID) {
         const doctor = await User.findByPk(userUUID);
         if (doctor?.one_subscription) {
-          console.log("den122")
+          console.log(`Sending push notification to doctor (userUUID: ${userUUID}) for order ${orderReport.orderId}`);
           const response = await axios.post(
             "https://onesignal.com/api/v1/notifications",
             {
               app_id: process.env.ONESIGNAL_APP_ID,
               include_player_ids: [doctor.one_subscription],
-              headings: { en: `Order Recieved` },
-              contents: { en: `Order Recieved of orderId ${orderReport.orderId}` },
+              headings: { en: `Order Received` },
+              contents: { en: `Order Received of orderId ${orderReport.orderId}` },
             },
             {
               headers: {
@@ -168,29 +157,37 @@ const fromDentist = async (req, res) => {
             }
           );
 
-          console.log("✅ Notification sent successfully doctor:", response.data);
-
+          console.log(`✅ Push notification sent successfully to doctor (userUUID: ${userUUID}):`, response.data);
+        } else {
+          console.log(`No push notification sent to doctor (userUUID: ${userUUID}) for order ${orderReport.orderId}: one_subscription missing`);
         }
 
+        console.log(`Creating database notification for doctor (userUUID: ${userUUID}) for order ${orderReport.orderId}`);
         await Notification.create({
           uid: userUUID,
           datetime: new Date(),
-          title: `Order Recieved`,
-          description: `Order Recieved of orderId ${orderReport.orderId}`
-        })
+          title: `Order Received`,
+          description: `Order Received of orderId ${orderReport.orderId}`,
+        });
+        console.log(`✅ Database notification created for doctor (userUUID: ${userUUID}) for order ${orderReport.orderId}`);
+      } else {
+        console.log(`No doctor notification sent for order ${orderReport.orderId}: ${isDentist ? "User is a dentist" : "userUUID not provided"}`);
       }
-
     }
-    const sendUserId = await User.findByPk(userId)
+
+    const sendUserId = await User.findByPk(userId);
 
     if (sendUserId?.one_subscription) {
+      console.log(`Sending push notification to user (userId: ${userId}) for order ${orderReport.orderId}`);
       const response = await axios.post(
         "https://onesignal.com/api/v1/notifications",
         {
           app_id: process.env.ONESIGNAL_APP_ID,
           include_player_ids: [sendUserId.one_subscription],
           headings: { en: `${id ? "Order Updated" : "Order Confirmation"}` },
-          contents: { en: ` ${id ? `Order ${orderReport.orderId} has been successfully Updated ` : `Order ${orderReport.orderId} has been successfully confirmed and is now beeing processed`}.` },
+          contents: {
+            en: `${id ? `Order ${orderReport.orderId} has been successfully Updated` : `Order ${orderReport.orderId} has been successfully confirmed and is now being processed`}.`,
+          },
         },
         {
           headers: {
@@ -200,19 +197,22 @@ const fromDentist = async (req, res) => {
         }
       );
 
-      // console.log("✅ Notification sent successfully:", response.data);
-
+      console.log(`✅ Push notification sent successfully to user (userId: ${userId}):`, response.data);
+    } else {
+      console.log(`No push notification sent to user (userId: ${userId}) for order ${orderReport.orderId}: one_subscription missing`);
     }
 
-
+    console.log(`Creating database notification for user (userId: ${userId}) for order ${orderReport.orderId}`);
     await Notification.create({
       uid: userId,
       datetime: new Date(),
       title: `${id ? "Order Updated" : "Order Confirmation"}`,
-      description: ` ${id ? `Order ${orderReport.orderId} has been successfully Updated ` : `Order ${orderReport.orderId} has been successfully confirmed and is now beeing processed`}.`
-    })
+      description: `${id ? `Order ${orderReport.orderId} has been successfully Updated` : `Order ${orderReport.orderId} has been successfully confirmed and is now being processed`}.`,
+    });
+    console.log(`✅ Database notification created for user (userId: ${userId}) for order ${orderReport.orderId}`);
 
-
+    // Fetch organization owners
+    console.log(`Fetching owners for organization (organization_id: ${toOrganization}) for order ${orderReport.orderId}`);
     const ownersFromOrganization = await User.findAll({
       where: {
         organization_id: toOrganization,
@@ -223,13 +223,17 @@ const fromDentist = async (req, res) => {
           as: "role",
           attributes: ["id", "rolename"],
           where: {
-            rolename: "owner"
-          }
-        }
-      ]
-    })
-    // console.log(ownersFromOrganization, "ownersFromOrganization");
+            rolename: "owner",
+          },
+        },
+      ],
+      transaction,
+    });
+
+    console.log(`Found ${ownersFromOrganization.length} owners for organization (organization_id: ${toOrganization}) for order ${orderReport.orderId}`);
+
     if (ownersFromOrganization.length > 0) {
+      console.log(`Creating database notifications for ${ownersFromOrganization.length} organization owners for order ${orderReport.orderId}`);
       const notifications = ownersFromOrganization.map((owner) => {
         return {
           organization_id: toOrganization,
@@ -237,39 +241,58 @@ const fromDentist = async (req, res) => {
           datetime: new Date(),
           title: "New Order Received",
           description: `New Order ${orderReport.orderId} has been received to your organization.`,
+        };
+      });
+      await Notification.bulkCreate(notifications, { transaction });
+      console.log(`✅ Database notifications created for ${ownersFromOrganization.length} organization owners for order ${orderReport.orderId}`);
 
-        }
-      })
-      await Notification.bulkCreate(notifications, { transaction })
-
-      //// 🔹 Send push notification (OneSignal)
-      const pushNotifications = ownersFromOrganization.filter((owner) => owner.one_subscription).map((owner) => {
-        return axios.post("https://onesignal.com/api/v1/notifications", {
-          app_id: process.env.ONESIGNAL_APP_ID,
-          include_player_ids: [owner.one_subscription],
-          headings: { en: "New Order Received" },
-          contents: { en: `New Order ${orderReport.orderId} has been received to your organization.` },
-        },
-          {
-            headers: {
-              "Content-Type": "application/json",
-              Authorization: `Basic ${process.env.ONESIGNAL_API_KEY}`,
+      const pushNotifications = ownersFromOrganization.map((owner) => {
+        if (owner.one_subscription) {
+          console.log(`Sending push notification to organization owner (userId: ${owner.id}) for order ${orderReport.orderId}`);
+          return axios.post(
+            "https://onesignal.com/api/v1/notifications",
+            {
+              app_id: process.env.ONESIGNAL_APP_ID,
+              include_player_ids: [owner.one_subscription],
+              headings: { en: "New Order Received" },
+              contents: { en: `New Order ${orderReport.orderId} has been received to your organization.` },
+            },
+            {
+              headers: {
+                "Content-Type": "application/json",
+                Authorization: `Basic ${process.env.ONESIGNAL_API_KEY}`,
+              },
             }
-          })
-      })
+          ).then((response) => {
+            console.log(`✅ Push notification sent successfully to organization owner (userId: ${owner.id}):`, response.data);
+            return response;
+          }).catch((error) => {
+            console.log(`⚠️ Failed to send push notification to organization owner (userId: ${owner.id}):`, error.message);
+            throw error;
+          });
+        } else {
+          console.log(`Push notification not sent to organization owner (userId: ${owner.id}) for order ${orderReport.orderId}: OneSignal subscription not available`);
+          return Promise.resolve();
+        }
+      });
 
-      try {
-        await Promise.all(pushNotifications)
-        // console.log(" Push notifications sent to all owners.");
-      } catch (pushError) {
-        // console.warn("⚠️ One or more push notifications failed:", pushError.message);
+      if (pushNotifications.length > 0) {
+        try {
+          await Promise.all(pushNotifications);
+          console.log(`✅ All ${pushNotifications.length} push notifications processed for organization owners for order ${orderReport.orderId}`);
+        } catch (pushError) {
+          console.warn(`⚠️ One or more push notifications to organization owners failed for order ${orderReport.orderId}:`, pushError.message);
+        }
+      } else {
+        console.log(`No push notifications sent to organization owners for order ${orderReport.orderId}: no owners with OneSignal subscription`);
       }
+    } else {
+      console.log(`No notifications sent to organization owners for order ${orderReport.orderId}: no owners found for organization (organization_id: ${toOrganization})`);
     }
 
     if (transactionId) {
-      // console.log("Processing transaction...");
+      console.log("Processing transaction...");
 
-      // Insert into orderTransaction table
       await orderTransaction.create(
         {
           orderId: orderReport.id,
@@ -280,60 +303,55 @@ const fromDentist = async (req, res) => {
         { transaction }
       );
 
-      // Update order status to 'paid' IF THEY PAID FULL AMOUNT
       await orderReport.update(
         { payment_status: "paid" },
         { transaction }
       );
 
-      // notification send
-
+      // Notification for payment success
       (async () => {
         const sendUser = await User.findByPk(userId);
         const pushPromise = sendUser?.one_subscription
-          ? axios.post(
-            "https://onesignal.com/api/v1/notifications",
-            {
-              app_id: process.env.ONESIGNAL_APP_ID,
-              include_player_ids: [sendUser.one_subscription],
-              headings: { en: "Payment Successfull" },
-              contents: {
-                en: `Payment Successfull of orderId ${orderReport.orderId}`,
+          ? (console.log(`Sending push notification to user (userId: ${userId}) for payment of order ${orderReport.orderId}`),
+            axios.post(
+              "https://onesignal.com/api/v1/notifications",
+              {
+                app_id: process.env.ONESIGNAL_APP_ID,
+                include_player_ids: [sendUser.one_subscription],
+                headings: { en: "Payment Successful" },
+                contents: {
+                  en: `Payment Successful of orderId ${orderReport.orderId}`,
+                },
               },
-            },
-            {
-              headers: {
-                "Content-Type": "application/json",
-                Authorization: `Basic ${process.env.ONESIGNAL_API_KEY}`,
-              },
-            }
-          )
-          : Promise.resolve();
+              {
+                headers: {
+                  "Content-Type": "application/json",
+                  Authorization: `Basic ${process.env.ONESIGNAL_API_KEY}`,
+                },
+              }
+            ).then((response) => {
+              console.log(`✅ Push notification sent successfully to user (userId: ${userId}) for payment of order ${orderReport.orderId}:`, response.data);
+              return response;
+            }).catch((error) => {
+              console.log(`⚠️ Failed to send push notification to user (userId: ${userId}) for payment of order ${orderReport.orderId}:`, error.message);
+              throw error;
+            }))
+          : (console.log(`No push notification sent to user (userId: ${userId}) for payment of order ${orderReport.orderId}: one_subscription missing`),
+            Promise.resolve());
 
+        console.log(`Creating database notification for user (userId: ${userId}) for payment of order ${orderReport.orderId}`);
         const notifPromise = Notification.create({
           uid: userId,
           datetime: new Date(),
-          title: "Payment Successfull",
-          description: `Payment Successfull  of orderId ${orderReport.orderId}`,
+          title: "Payment Successful",
+          description: `Payment Successful of orderId ${orderReport.orderId}`,
+        }).then(() => {
+          console.log(`✅ Database notification created for user (userId: ${userId}) for payment of order ${orderReport.orderId}`);
         });
 
-        await Promise.allSettled([pushPromise, notifPromise]); // No need to wait in main flow
+        await Promise.allSettled([pushPromise, notifPromise]);
       })();
-
     }
-
-    // Update User Address
-    // if (address) {
-    //   console.log(`Updating address for user ${userUUID || userId}`);
-    //   const user = await User.findOne({ where: { id: userUUID || userId }, transaction });
-
-    //   if (user) {
-    //     await user.update({ address }, { transaction });
-    //     console.log(`Address updated for user ${userUUID}`);
-    //   } else {
-    //     console.log(`User with ID ${userId || userUUID} not found`);
-    //   }
-    // }
 
     // Handle Services
     if (serviceId.length > 0) {
@@ -348,7 +366,7 @@ const fromDentist = async (req, res) => {
           if (!service) {
             return res.status(404).json({
               message: "Organization service not found",
-              status: false
+              status: false,
             });
           }
           await OrderServices.create(
@@ -372,8 +390,7 @@ const fromDentist = async (req, res) => {
       data: orderReport,
     });
   } catch (error) {
-    // Check if the transaction is not committed yet before rolling back
-    if (transaction.finished !== 'commit') {
+    if (transaction.finished !== "commit") {
       await transaction.rollback();
     }
 
