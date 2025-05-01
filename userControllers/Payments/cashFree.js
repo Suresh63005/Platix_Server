@@ -11,88 +11,88 @@ const CASHFREE_BASE_URL = process.env.CASHFREE_ENV === "sandbox"
 const CASHFREE_CLIENT_ID = process.env.CASHFREE_CLIENT_ID?.trim();
 const CASHFREE_CLIENT_SECRET = process.env.CASHFREE_CLIENT_SECRET?.trim();
 
-const createOrder = async (req, res) => {
-  const uid = req.user?.id;
-  const { amount, vendorIds } = req.body;
+// const createOrder = async (req, res) => {
+//   const uid = req.user?.id;
+//   const { amount, vendorIds } = req.body;
 
-  try {
-    // Validate input
-    if (!amount || !vendorIds || !Array.isArray(vendorIds) || vendorIds.length !== 2) {
-      return res.status(400).json({ message: "Amount and exactly two vendor IDs are required" });
-    }
+//   try {
+//     // Validate input
+//     if (!amount || !vendorIds || !Array.isArray(vendorIds) || vendorIds.length !== 2) {
+//       return res.status(400).json({ message: "Amount and exactly two vendor IDs are required" });
+//     }
 
-    // Calculate split amounts (95% to first vendor, 5% to second)
-    const firstVendorAmount = Math.floor(amount * 0.95);
-    const secondVendorAmount = amount - firstVendorAmount;
+//     // Calculate split amounts (95% to first vendor, 5% to second)
+//     const firstVendorAmount = Math.floor(amount * 0.95);
+//     const secondVendorAmount = amount - firstVendorAmount;
 
-    // Fetch user
-    const user = await User.findOne({ where: { id: uid } });
-    if (!user) {
-      return res.status(404).json({ message: "User not found" });
-    }
-    const { firstName, lastName, email, mobileNo } = user;
+//     // Fetch user
+//     const user = await User.findOne({ where: { id: uid } });
+//     if (!user) {
+//       return res.status(404).json({ message: "User not found" });
+//     }
+//     const { firstName, lastName, email, mobileNo } = user;
 
-    // Create order
-    const orderId = `ORDER${Date.now()}`;
-    const orderData = {
-      // order_id: orderId,
-      order_amount: amount,
-      order_currency: "INR",
-      customer_details: {
-        customer_id: uid,
-        customer_name: `${firstName} ${lastName}`,
-        customer_email: email,
-        customer_phone: mobileNo,
-      },
+//     // Create order
+//     const orderId = `ORDER${Date.now()}`;
+//     const orderData = {
+//       // order_id: orderId,
+//       order_amount: amount,
+//       order_currency: "INR",
+//       customer_details: {
+//         customer_id: uid,
+//         customer_name: `${firstName} ${lastName}`,
+//         customer_email: email,
+//         customer_phone: mobileNo,
+//       },
 
-      "order_note": "Tshirt order",
-      "order_meta": {
-          "return_url": "https://webhook.site/a2962864-e51f-41b5-ab30-bb29a34f8768",
-          "notify_url": "http://website.com/notify",
-          "payment_methods": "cc,dc"
-      }
-      ,"order_splits": [
-          {
-              "vendor_id": "vendortest4o3",
-              "percentage": 95,
-              "tags": {
-                  "product": "topwear"
-              }
-          },
-          {
-              "vendor_id": "vendortest4o9",
-              "percentage": 5,
-              "tags": {
-                  "product": "footwear"
-              }
-          }
-      ]
-    };
+//       "order_note": "Tshirt order",
+//       "order_meta": {
+//           "return_url": "https://webhook.site/a2962864-e51f-41b5-ab30-bb29a34f8768",
+//           "notify_url": "http://website.com/notify",
+//           "payment_methods": "cc,dc"
+//       }
+//       ,"order_splits": [
+//           {
+//               "vendor_id": "vendortest4o3",
+//               "percentage": 95,
+//               "tags": {
+//                   "product": "topwear"
+//               }
+//           },
+//           {
+//               "vendor_id": "vendortest4o9",
+//               "percentage": 5,
+//               "tags": {
+//                   "product": "footwear"
+//               }
+//           }
+//       ]
+//     };
 
-    const orderResponse = await axios.post(
-      `${CASHFREE_BASE_URL}/orders`,
-      orderData,
-      {
-        headers: {
-          "Content-Type": "application/json",
-          "x-client-id": CASHFREE_CLIENT_ID,
-          "x-client-secret": CASHFREE_CLIENT_SECRET,
-          "x-api-version": "2025-01-01",
-        },
-      }
-    );
-    return res.json({
-      ...orderResponse.data,
+//     const orderResponse = await axios.post(
+//       `${CASHFREE_BASE_URL}/orders`,
+//       orderData,
+//       {
+//         headers: {
+//           "Content-Type": "application/json",
+//           "x-client-id": CASHFREE_CLIENT_ID,
+//           "x-client-secret": CASHFREE_CLIENT_SECRET,
+//           "x-api-version": "2025-01-01",
+//         },
+//       }
+//     );
+//     return res.json({
+//       ...orderResponse.data,
      
-    });
-  } catch (error) {
-    console.error("Error creating order or splitting:", error.response?.data || error.message);
-    return res.status(500).json({
-      message: "Internal Server Error",
-      error: error.response?.data || error.message,
-    });
-  }
-};
+//     });
+//   } catch (error) {
+//     console.error("Error creating order or splitting:", error.response?.data || error.message);
+//     return res.status(500).json({
+//       message: "Internal Server Error",
+//       error: error.response?.data || error.message,
+//     });
+//   }
+// };
 
 const getPaymentByOrderId = async (req, res) => {
   const uid = req.user?.id;
@@ -291,5 +291,55 @@ const initiateRefund = async (orderReport, refund_id, transaction) => {
     throw new Error(`Refund failed: ${message}`);
   }
 }
+
+const createOrder = async (req, res) => {
+  const uid = req.user?.id;
+  const { amount } = req.body;
+
+  try {
+    const user = await User.findOne({ where: { id: uid } });
+
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+    const { firstName, lastName, email, mobileNo } = user;
+    const orderId = `ORDER${Date.now()}`;
+
+    const orderData = {
+      order_id: orderId,
+      order_amount: amount,
+      order_currency: "INR",
+      customer_details: {
+        customer_id: uid,
+        customer_name: `${firstName} ${lastName}`,
+        customer_email: email,
+        customer_phone: mobileNo,
+      },
+      
+      return_url: 'https://webhook.site/a2962864-e51f-41b5-ab30-bb29a34f8768',
+      notify_url: 'http://website.com/notify',
+    };
+
+    const apiUrl =
+      process.env.CASHFREE_ENV === 'production'
+        ? 'https://api.cashfree.com/pg/orders'
+        : 'https://sandbox.cashfree.com/pg/orders';
+
+    const headers = {
+      'Content-Type': 'application/json',
+      'x-client-id': process.env.CASHFREE_CLIENT_ID?.trim(),
+      'x-client-secret': process.env.CASHFREE_CLIENT_SECRET?.trim(),
+      'x-api-version': '2023-08-01',
+    };
+
+    // Send request to Cashfree API
+    const response = await axios.post(apiUrl, orderData, { headers });
+
+    return res.json(response.data);
+  } catch (error) {
+    console.error('Error creating order:', error.response?.data || error.message);
+    return res.status(500).json({ message: 'Internal Server Error', error: error.response?.data || error.message });
+  }
+};
 
 module.exports = { createOrder, getPaymentByOrderId, splitAmount, initiateRefund }
