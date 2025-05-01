@@ -53,6 +53,303 @@ const validateIFSC = (ifscCode) => {
 };
 
 // Upsert (Create or Update) Organization
+// const upsertOrganizations = async (req, res) => {
+//     const uid = req.user?.id;
+//     const {
+//         id, addresses, businessName, description, designation, email, googleCoordinates,
+//         gstNumber, mobile, name, registrationId, organizationType_id, whatsapp, bankName,
+//         accountNumber, accountHolder, ifscCode, upiId, services, fileextras
+//     } = req.body;
+
+//     console.log(services,"yyyyyyyyyyyyyyyy");
+
+//     const parsedServices = typeof services === "string" ? JSON.parse(services) : services;
+
+
+//     console.log(parsedServices,"xxxxxxxxxxxx")
+//     if (!Array.isArray(parsedServices)) {
+//         return res.status(400).json({ error: "Invalid services format" });
+//     }
+
+//     let file1 = null;
+//     let files = [];
+
+//     // Upload file1 to S3
+//     if (req.files?.file1) {
+//         file1 = await uploadToS3(req.files.file1[0], "organization");
+//     }
+
+//     // Upload file2 to S3
+//     if (req.files?.file2) {
+//         for (const file of req.files.file2) {
+//             const uploadedUrl = await uploadToS3(file, "Extraorganization");
+//             files.push(uploadedUrl);
+//         }
+//     }
+
+//     const transaction = await sequelize.transaction();
+
+//     try {
+//         let organization;
+
+//         // ---------- UPDATE FLOW ----------
+//         if (id) {
+//             organization = await Organization.findByPk(id, { transaction });
+
+//             if (!organization) {
+//                 await transaction.rollback();
+//                 return res.status(404).json({ error: "Organization not found" });
+//             }
+
+//             await organization.update({
+//                 address: addresses,
+//                 businessName,
+//                 description,
+//                 designation,
+//                 email,
+//                 googleCoordinates: JSON.parse(googleCoordinates),
+//                 gstNumber,
+//                 mobile,
+//                 name,
+//                 registrationId,
+//                 organizationType_id,
+//                 whatsapp,
+//                 bankName,
+//                 accountNumber,
+//                 accountHolder,
+//                 ifscCode,
+//                 upiId,
+//                 file1: file1 || organization.file1,
+//                 file2: fileextras
+//             }, { transaction });
+
+//             if (files.length > 0) {
+//                 let existingImages = organization.file2 ? organization.file2.split(",") : [];
+//                 let updatedImages = [...existingImages, ...files];
+//                 updatedImages = Array.from(new Set(updatedImages)).slice(0, 3);
+
+//                 await organization.update({ file2: updatedImages.join(",") }, { transaction });
+//             }
+
+//             await transaction.commit();
+//             return res.status(200).json({ message: "Organization updated successfully", data: organization });
+//         }
+
+//         // ---------- CREATE FLOW ----------
+//         const organizationWithName = await Organization.findOne({ where: { name, organizationType_id } });
+//         const organizationWithNumber = await Organization.findOne({ where: { mobile }, transaction });
+
+//         if (organizationWithName) {
+//             return res.status(400).json({ error: "Organization with this name already exists" });
+//         } else if (organizationWithNumber) {
+//             return res.status(400).json({ error: "Organization with this number already exists" });
+//         }
+
+//         // Parse addresses and get only the first one
+//         const parsedAddresses = Array.isArray(addresses)
+//             ? addresses
+//             : (typeof addresses === "string" ? JSON.parse(addresses) : []);
+//         const primaryAddress = parsedAddresses[0] || "N/A";
+
+//         // Generate temporary beneficiary_id to satisfy NOT NULL
+//         const tempBeneficiaryId = `temp_${Date.now()}`;
+
+//         organization = await Organization.create({
+//             address: addresses,
+//             businessName,
+//             description,
+//             designation,
+//             email,
+//             googleCoordinates: JSON.parse(googleCoordinates),
+//             gstNumber,
+//             mobile,
+//             name,
+//             registrationId,
+//             organizationType_id,
+//             whatsapp,
+//             bankName,
+//             accountNumber,
+//             accountHolder,
+//             ifscCode,
+//             upiId,
+//             file1,
+//             file2: files.join(","),
+//             beneficiary_id: "NULL"
+//         }, { transaction });
+
+    
+// console.log(parsedServices.length,"kkkkkkkkkkkkkkkkkkk")
+
+
+//         if (parsedServices.length > 0) {
+
+//             console.log("zzzzzzzzzzzzzz")
+//             const serviceData = parsedServices.map(service => ({
+//                 organization_id: organizationId,
+//                 service_id: service.id,
+//                 price: service.price
+//             }));
+//             await TblOrganization_Service.bulkCreate(serviceData, { transaction });
+//             console.log("uuuuuuuuuuuuuuuuuuuuuuu")
+//         }
+
+//         await transaction.commit();
+//         return res.status(201).json({ message: "Organization created successfully", data: organization });
+
+//     } catch (error) {
+//         console.error("Error inserting/updating organization:", error);
+//         await transaction.rollback();
+//         return res.status(500).json({ error: "Internal Server Error", details: error.message });
+//     }
+// };
+
+// const upsertOrganizations = async (req, res) => {
+//     const uid = req.user?.id;
+//     const {
+//         id, addresses, businessName, description, designation, email, googleCoordinates,
+//         gstNumber, mobile, name, registrationId, organizationType_id, whatsapp, bankName,
+//         accountNumber, accountHolder, ifscCode, upiId, services, fileextras
+//     } = req.body;
+
+//     const parsedServices = typeof services === "string" ? JSON.parse(services) : services;
+
+//     if (!Array.isArray(parsedServices)) {
+//         return res.status(400).json({ error: "Invalid services format" });
+//     }
+
+//     let file1 = null;
+//     let files = [];
+
+//     // Upload file1
+//     if (req.files?.file1) {
+//         file1 = await uploadToS3(req.files.file1[0], "organization");
+//     }
+
+//     // Upload file2
+//     if (req.files?.file2) {
+//         for (const file of req.files.file2) {
+//             const uploadedUrl = await uploadToS3(file, "Extraorganization");
+//             files.push(uploadedUrl);
+//         }
+//     }
+
+//     const transaction = await sequelize.transaction();
+
+//     try {
+//         let organization;
+
+//         // ------------ UPDATE FLOW ------------
+//         if (id) {
+//             organization = await Organization.findByPk(id, { transaction });
+
+//             if (!organization) {
+//                 await transaction.rollback();
+//                 return res.status(404).json({ error: "Organization not found" });
+//             }
+
+//             await organization.update({
+//                 address: addresses,
+//                 businessName,
+//                 description,
+//                 designation,
+//                 email,
+//                 googleCoordinates: JSON.parse(googleCoordinates),
+//                 gstNumber,
+//                 mobile,
+//                 name,
+//                 registrationId,
+//                 organizationType_id,
+//                 whatsapp,
+//                 bankName,
+//                 accountNumber,
+//                 accountHolder,
+//                 ifscCode,
+//                 upiId,
+//                 file1: file1 || organization.file1,
+//                 file2: fileextras
+//             }, { transaction });
+
+//             if (files.length > 0) {
+//                 const existingImages = organization.file2 ? organization.file2.split(",") : [];
+//                 const updatedImages = [...new Set([...existingImages, ...files])].slice(0, 3);
+//                 await organization.update({ file2: updatedImages.join(",") }, { transaction });
+//             }
+
+//             // Update services in update flow (optional if needed)
+//             await TblOrganization_Service.destroy({ where: { organization_id: organization.id }, transaction });
+//             if (parsedServices.length > 0) {
+//                 const serviceData = parsedServices.map(service => ({
+//                     organization_id: organization.id,
+//                     service_id: service.id,
+//                     price: service.price
+//                 }));
+//                 await TblOrganization_Service.bulkCreate(serviceData, { transaction });
+//             }
+
+//             await transaction.commit();
+//             return res.status(200).json({ message: "Organization updated successfully", data: organization });
+//         }
+
+//         // ------------ CREATE FLOW ------------
+//         const organizationWithName = await Organization.findOne({ where: { name, organizationType_id } });
+//         const organizationWithNumber = await Organization.findOne({ where: { mobile }, transaction });
+
+//         if (organizationWithName) {
+//             await transaction.rollback();
+//             return res.status(400).json({ error: "Organization with this name already exists" });
+//         } else if (organizationWithNumber) {
+//             await transaction.rollback();
+//             return res.status(400).json({ error: "Organization with this number already exists" });
+//         }
+
+//         const parsedAddresses = Array.isArray(addresses)
+//             ? addresses
+//             : (typeof addresses === "string" ? JSON.parse(addresses) : []);
+//         const primaryAddress = parsedAddresses[0] || "N/A";
+
+//         organization = await Organization.create({
+//             address: addresses,
+//             businessName,
+//             description,
+//             designation,
+//             email,
+//             googleCoordinates: JSON.parse(googleCoordinates),
+//             gstNumber,
+//             mobile,
+//             name,
+//             registrationId,
+//             organizationType_id,
+//             whatsapp,
+//             bankName,
+//             accountNumber,
+//             accountHolder,
+//             ifscCode,
+//             upiId,
+//             file1,
+//             file2: files.join(","),
+//             beneficiary_id: "NULL"
+//         }, { transaction });
+
+//         // 🛠️ Fix: Use `organization.id` after create
+//         if (parsedServices.length > 0) {
+//             const serviceData = parsedServices.map(service => ({
+//                 organization_id: organization.id,
+//                 service_id: service.id,
+//                 price: service.price
+//             }));
+//             await TblOrganization_Service.bulkCreate(serviceData, { transaction });
+//         }
+
+//         await transaction.commit();
+//         return res.status(201).json({ message: "Organization created successfully", data: organization });
+
+//     } catch (error) {
+//         console.error("Error inserting/updating organization:", error);
+//         await transaction.rollback();
+//         return res.status(500).json({ error: "Internal Server Error", details: error.message });
+//     }
+// };
+
 const upsertOrganizations = async (req, res) => {
     const uid = req.user?.id;
     const {
@@ -70,12 +367,12 @@ const upsertOrganizations = async (req, res) => {
     let file1 = null;
     let files = [];
 
-    // Upload file1 to S3
+    // Upload file1
     if (req.files?.file1) {
         file1 = await uploadToS3(req.files.file1[0], "organization");
     }
 
-    // Upload file2 to S3
+    // Upload file2
     if (req.files?.file2) {
         for (const file of req.files.file2) {
             const uploadedUrl = await uploadToS3(file, "Extraorganization");
@@ -88,7 +385,7 @@ const upsertOrganizations = async (req, res) => {
     try {
         let organization;
 
-        // ---------- UPDATE FLOW ----------
+        // ------------ UPDATE FLOW ------------
         if (id) {
             organization = await Organization.findByPk(id, { transaction });
 
@@ -120,35 +417,84 @@ const upsertOrganizations = async (req, res) => {
             }, { transaction });
 
             if (files.length > 0) {
-                let existingImages = organization.file2 ? organization.file2.split(",") : [];
-                let updatedImages = [...existingImages, ...files];
-                updatedImages = Array.from(new Set(updatedImages)).slice(0, 3);
-
+                const existingImages = organization.file2 ? organization.file2.split(",") : [];
+                const updatedImages = [...new Set([...existingImages, ...files])].slice(0, 3);
                 await organization.update({ file2: updatedImages.join(",") }, { transaction });
+            }
+
+            // Update services in update flow
+            const existingServices = await TblOrganization_Service.findAll({
+                where: { organization_id: organization.id },
+                transaction
+            });
+
+            const existingServiceMap = new Map(
+                existingServices.map(s => [s.service_id, s])
+            );
+
+            const incomingServiceMap = new Map(
+                parsedServices.map(s => [s.id, s])
+            );
+
+            // 1. Update or create services
+            const serviceUpserts = parsedServices.map(async (service) => {
+                const existingService = existingServiceMap.get(service.id);
+                if (existingService) {
+                    // Update existing service (e.g., price)
+                    await existingService.update(
+                        { price: service.price },
+                        { transaction }
+                    );
+                } else {
+                    // Create new service
+                    await TblOrganization_Service.create(
+                        {
+                            organization_id: organization.id,
+                            service_id: service.id,
+                            price: service.price
+                        },
+                        { transaction }
+                    );
+                }
+            });
+
+            await Promise.all(serviceUpserts);
+
+            // 2. Remove services that are no longer included
+            const servicesToDelete = existingServices.filter(
+                s => !incomingServiceMap.has(s.service_id)
+            );
+
+            if (servicesToDelete.length > 0) {
+                await TblOrganization_Service.destroy({
+                    where: {
+                        organization_id: organization.id,
+                        service_id: servicesToDelete.map(s => s.service_id)
+                    },
+                    transaction
+                });
             }
 
             await transaction.commit();
             return res.status(200).json({ message: "Organization updated successfully", data: organization });
         }
 
-        // ---------- CREATE FLOW ----------
+        // ------------ CREATE FLOW ------------
         const organizationWithName = await Organization.findOne({ where: { name, organizationType_id } });
         const organizationWithNumber = await Organization.findOne({ where: { mobile }, transaction });
 
         if (organizationWithName) {
+            await transaction.rollback();
             return res.status(400).json({ error: "Organization with this name already exists" });
         } else if (organizationWithNumber) {
+            await transaction.rollback();
             return res.status(400).json({ error: "Organization with this number already exists" });
         }
 
-        // Parse addresses and get only the first one
         const parsedAddresses = Array.isArray(addresses)
             ? addresses
             : (typeof addresses === "string" ? JSON.parse(addresses) : []);
         const primaryAddress = parsedAddresses[0] || "N/A";
-
-        // Generate temporary beneficiary_id to satisfy NOT NULL
-        const tempBeneficiaryId = `temp_${Date.now()}`;
 
         organization = await Organization.create({
             address: addresses,
@@ -173,75 +519,9 @@ const upsertOrganizations = async (req, res) => {
             beneficiary_id: "NULL"
         }, { transaction });
 
-        const organizationId = organization.id.replace(/-/g, ''); // Remove hyphens
-        // Sanitize beneId: Remove special characters (e.g., hyphens) and ensure it's alphanumeric
-        const sanitizedBeneId = `merchant_${organizationId}`.replace(/[^a-zA-Z0-9]/g, '');
-        if (sanitizedBeneId.length > 50) {
-            return res.status(400).json({ error: "Beneficiary ID exceeds maximum length of 50 characters" });
-        }
-
-        // Validate IFSC code
-        const ifscValidation = validateIFSC(ifscCode);
-        if (!ifscValidation.valid) {
-            await transaction.rollback();
-            return res.status(400).json({ error: ifscValidation.message });
-        }
-
-        const beneficiaryDetails = {
-            beneId: sanitizedBeneId,
-            name: accountHolder,
-            email,
-            phone: mobile,
-            bankAccount: accountNumber,
-            ifsc: ifscValidation.ifsc, // Use validated and sanitized IFSC
-            address1: primaryAddress,
-            city: "NA",
-            state: "NA",
-            pincode: "000000"
-        };
-
-        let token;
-        try {
-            token = await generateToken();
-        } catch (error) {
-            console.error("Skipping Cashfree beneficiary creation due to token generation failure:", error.message);
-            await organization.update({ beneficiary_id: sanitizedBeneId }, { transaction });
-        }
-
-        if (token) {
-            const apiUrl =
-                process.env.CASHFREE_ENV === 'production'
-                    ? 'https://payout-api.cashfree.com/payout/v1/addBeneficiary'
-                    : 'https://payout-gamma.cashfree.com/payout/v1/addBeneficiary';
-
-            const headers = {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${token}`,
-            };
-
-            try {
-                const response = await axios.post(apiUrl, beneficiaryDetails, { headers });
-                console.log("Cashfree Beneficiary Created:", response.data);
-
-                if (response.data.status !== 'SUCCESS') {
-                    throw new Error(`Failed to create beneficiary: ${response.data.message}`);
-                }
-
-                if (response.data.status === 'SUCCESS') {
-                    await organization.update({ beneficiary_id: sanitizedBeneId }, { transaction });
-                }
-
-                
-            } catch (error) {
-                console.error("Error creating beneficiary in Cashfree:", error.response?.data || error.message);
-                await transaction.rollback();
-                return res.status(500).json({ error: "Failed to create beneficiary in Cashfree", details: error.message });
-            }
-        }
-
         if (parsedServices.length > 0) {
             const serviceData = parsedServices.map(service => ({
-                organization_id: organizationId,
+                organization_id: organization.id,
                 service_id: service.id,
                 price: service.price
             }));
@@ -257,6 +537,12 @@ const upsertOrganizations = async (req, res) => {
         return res.status(500).json({ error: "Internal Server Error", details: error.message });
     }
 };
+
+
+
+
+
+
 
 
 const getAll = async (req, res) => {
