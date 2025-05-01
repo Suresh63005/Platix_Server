@@ -46,8 +46,8 @@ const editprofile = async (req, res) => {
       type,
       registrationId,
       role_id,
-      whatsappNo,
-      is_freelancer
+      is_freelancer,
+      ...(whatsappNo && { whatsappNo })
     };
 
     if (req.file) {
