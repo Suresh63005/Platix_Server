@@ -8,6 +8,7 @@ const TblOrganization_Service = require("../Models/tblOrganizationService");
 const Services = require("../Models/TblServices.model");
 const axios = require("axios");
 require('dotenv').config();
+const User = require("../Models/ReportsModel/User.model")
 
 
 
@@ -355,7 +356,7 @@ const upsertOrganizations = async (req, res) => {
     const {
         id, addresses, businessName, description, designation, email, googleCoordinates,
         gstNumber, mobile, name, registrationId, organizationType_id, whatsapp, bankName,
-        accountNumber, accountHolder, ifscCode, upiId, services, fileextras
+        accountNumber, accountHolder, ifscCode, upiId, services, fileextras, googlemaplink
     } = req.body;
 
     const parsedServices = typeof services === "string" ? JSON.parse(services) : services;
@@ -413,7 +414,8 @@ const upsertOrganizations = async (req, res) => {
                 ifscCode,
                 upiId,
                 file1: file1 || organization.file1,
-                file2: fileextras
+                file2: fileextras,
+                googlemaplink
             }, { transaction });
 
             if (files.length > 0) {
@@ -516,7 +518,8 @@ const upsertOrganizations = async (req, res) => {
             upiId,
             file1,
             file2: files.join(","),
-            beneficiary_id: "NULL"
+            beneficiary_id: "NULL",
+            googlemaplink
         }, { transaction });
 
         if (parsedServices.length > 0) {
@@ -626,13 +629,25 @@ const deleteOrganization = async (req, res) => {
             return res.status(400).json({ error: "Organization is already soft deleted." });
         }
 
-        // 🔥 Delete related child records first
+        // Check if there are any users associated with the organization
+        const associatedUsers = await User.findAll({
+            where: { organization_id: id },
+            paranoid: true, // Only consider non-deleted users
+            transaction: t,
+        });
+
+        if (associatedUsers.length > 0) {
+            await t.rollback();
+            return res.status(400).json({ error: "Cannot delete organization because it has associated users." });
+        }
+
+        // Delete related child records (services)
         await TblOrganization_Service.destroy({
             where: { organization_id: id },
             transaction: t,
         });
 
-        // 🔥 Now delete the parent organization
+        // Now delete the parent organization
         if (forceDelete === "true") {
             await organization.destroy({ force: true, transaction: t }); // Hard delete
         } else {
