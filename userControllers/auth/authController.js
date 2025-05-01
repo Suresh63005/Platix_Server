@@ -7,6 +7,7 @@ const Organization = require("../../Models/Organization.model");
 const TblOrganization_Service = require("../../Models/tblOrganizationService");
 const Services = require("../../Models/TblServices.model");
 const Roles = require("../../Models/TblRoles.model");
+const { sequelize } = require("../../config/db");
 
 let otpStore={};
 
@@ -123,57 +124,104 @@ const verifyMobile = async (req, res) => {
 };
 
 // this role details for when user sucessfully logined  and  set their roles at that time send email otp 
-
 const RoleDetails = async (req, res) => {
-    const { firstName, lastName, email, role_id, id } = req.body;
-
+    const { firstName, lastName, email, role_id } = req.body;
     const userid = req.user.id;
-
   
-
     if (!firstName || !lastName || !email || !role_id || !userid) {
-        return res.status(400).json({ message: "All fields are required!" });
+      return res.status(400).json({ message: "All fields are required!" });
     }
-
+  
+    const transaction = await sequelize.transaction({ autocommit: false });
+  
     try {
-        let user = await User.findOne({ where: {id: userid } });
-        if (!user) {
-            return res.status(404).json({ message: "User not found!" });
-        }
-
-        const validateRole = await Roles.findByPk(role_id);
-
-      
-
-        if (!["Dentist", "dentist"].includes(validateRole.rolename)) {
-            return res.status(401).json({ message: "Unauthorized role" });
-          }
-          
-
-        // Update role details
+      // Fetch user with all fields
+      const user = await User.findOne({ where: { id: userid }, transaction });
+      if (!user) {
+        await transaction.rollback();
+        return res.status(404).json({ message: "User not found!" });
+      }
+  
+      // Validate role
+      const validateRole = await Roles.findByPk(role_id, { transaction });
+      if (!validateRole) {
+        await transaction.rollback();
+        return res.status(404).json({ message: "Role not found!" });
+      }
+  
+      if (!["Dentist", "dentist"].includes(validateRole.rolename)) {
+        await transaction.rollback();
+        return res.status(401).json({ message: "Unauthorized role" });
+      }
+  
+      // Check if data has changed
+      const isDataUnchanged =
+        user.firstName === firstName &&
+        user.lastName === lastName &&
+        user.email === email &&
+        user.role_id === role_id;
+  
+      if (isDataUnchanged) {
+        await transaction.rollback();
+        // Return all user details
+        return res.status(200).json({
+          message: "No changes detected. User details are already up to date.",
+          user: user.dataValues // Include all fields
+        });
+      }
+  
+      // Check if a valid OTP exists
+      const existingOtp = otpStore[userid];
+      if (existingOtp && existingOtp.expiry > Date.now()) {
+        // Update user details
         await User.update(
-            { firstName, lastName, email, role_id },
-            { where: { id:userid } }
+          { firstName, lastName, email, role_id },
+          { where: { id: userid }, transaction }
         );
-       // await subscribeUser(email)
-        // Generate OTP
-        const otp = generateOTP();
-
-        // Store OTP in memory with expiration time
-        otpStore[userid] = { otp, expiry: Date.now() + 5 * 60 * 1000 };  // Expiry after 5 minutes
-
-        const subject = 'Your OTP Code';
-        const text = `Your 6-digit OTP code is: ${otp}`;
-        console.log(otp)
-        await sendEmail(email, subject, text);
-
-        return res.status(200).json({ message: "Role details updated successfully! OTP has been sent to your email." ,user:user});
-
+  
+        // Fetch updated user
+        const updatedUser = await User.findOne({ where: { id: userid }, transaction });
+  
+        await transaction.commit();
+        return res.status(200).json({
+          message: "Role details updated successfully. Please use the existing OTP sent to your email.",
+          user: updatedUser.dataValues // Include all fields
+        });
+      }
+  
+      // Update user details
+      await User.update(
+        { firstName, lastName, email, role_id },
+        { where: { id: userid }, transaction }
+      );
+  
+      // Generate and store OTP
+      const otp = generateOTP();
+      otpStore[userid] = { otp, expiry: Date.now() + 5 * 60 * 1000 }; // 5-minute expiry
+  
+      // Send OTP email
+      const subject = 'Your OTP Code';
+      const text = `Your 6-digit OTP code is: ${otp}`;
+      console.log(`OTP for user ${userid}: ${otp}`);
+      await sendEmail(email, subject, text);
+  
+      // Fetch updated user
+      const updatedUser = await User.findOne({ where: { id: userid }, transaction });
+  
+      await transaction.commit();
+  
+      return res.status(200).json({
+        message: "Role details updated successfully! OTP has been sent to your email.",
+        user: updatedUser.dataValues // Include all fields
+      });
     } catch (error) {
-        console.error("Error assigning/updating role:", error.message);
-        return res.status(500).json({ message: "Internal server error: " + error.message });
+      if (transaction.finished !== 'commit') {
+        await transaction.rollback();
+      }
+      console.error("Error assigning/updating role:", error.message);
+      return res.status(500).json({ message: "Internal server error: " + error.message });
     }
-};
+  };
 
 const sentEmailverify = async (req, res)=>{
     const {  email,  } = req.body;
