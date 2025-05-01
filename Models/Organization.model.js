@@ -22,7 +22,7 @@ const Organization = sequelize.define("Organization", {
     allowNull: true,
   },
   googleCoordinates: {
-    type: DataTypes.JSON, // ✅ Correct type for coordinates
+    type: DataTypes.JSON,
     allowNull: false,
   },
   mobile: {
@@ -65,7 +65,7 @@ const Organization = sequelize.define("Organization", {
     allowNull: false,
   },
   file2: {
-    type: DataTypes.JSON, // ✅ Use JSON instead of TEXT[]
+    type: DataTypes.JSON,
     allowNull: true,
   },
   admin_id: {
@@ -92,11 +92,14 @@ const Organization = sequelize.define("Organization", {
     type: DataTypes.STRING,
     allowNull: false,
   },
-  beneficiary_id:{
-    type:DataTypes.STRING,
-    allowNull:false
+  beneficiary_id: {
+    type: DataTypes.STRING,
+    allowNull: false
+  },
+  googlemaplink: {
+    type: DataTypes.STRING,
+    allowNull: true,
   }
-
 }, {
   tableName: "Organization",
   timestamps: true,

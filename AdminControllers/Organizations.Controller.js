@@ -7,6 +7,7 @@ const { upsertOrganizationSchema, deleteOrganizationSchema, organizationGetByidS
 const TblOrganization_Service = require("../Models/tblOrganizationService");
 const Services = require("../Models/TblServices.model");
 const axios = require("axios");
+const { createVendor } = require("./Vendor.controller");
 require('dotenv').config();
 
 
@@ -58,14 +59,16 @@ const upsertOrganizations = async (req, res) => {
     const {
         id, addresses, businessName, description, designation, email, googleCoordinates,
         gstNumber, mobile, name, registrationId, organizationType_id, whatsapp, bankName,
-        accountNumber, accountHolder, ifscCode, upiId, services, fileextras
+        accountNumber, accountHolder, ifscCode, upiId, services, fileextras,pan, gst, accountType,
+        aadhaar, cin, businessType, drivingLicense, voterId, passportNumber
     } = req.body;
 
-    const parsedServices = typeof services === "string" ? JSON.parse(services) : services;
+    const parsedServices = typeof services === "string" ? JSON.parse(services) : services || [];
 
-    if (!Array.isArray(parsedServices)) {
-        return res.status(400).json({ error: "Invalid services format" });
-    }
+  // Validate services format if provided
+  if (parsedServices && !Array.isArray(parsedServices)) {
+    return res.status(400).json({ error: "Invalid services format" });
+  }
 
     let file1 = null;
     let files = [];
@@ -230,6 +233,26 @@ const upsertOrganizations = async (req, res) => {
             }));
             await TblOrganization_Service.bulkCreate(serviceData, { transaction });
         }
+
+        // create vendor
+        // await createVendor({
+        //     organizationId: organization.id,
+        //     pan,
+        //     gstNumber,
+        //     accountType,
+        //     aadhaar,
+        //     cin,
+        //     businessType,
+        //     drivingLicense,
+        //     voterId,
+        //     passportNumber,
+        //     name:name,
+        //     email:email,
+        //     phone:mobile,
+        //     bankAccountNumber:accountNumber,
+        //     bankAccountHolder:accountHolder,
+        //     bankIfsc:ifscCode,
+        //   }, transaction);
 
         await transaction.commit();
         return res.status(201).json({ message: "Organization created successfully", data: organization });
