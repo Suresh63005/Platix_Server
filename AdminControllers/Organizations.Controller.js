@@ -356,7 +356,7 @@ const upsertOrganizations = async (req, res) => {
     const {
         id, addresses, businessName, description, designation, email, googleCoordinates,
         gstNumber, mobile, name, registrationId, organizationType_id, whatsapp, bankName,
-        accountNumber, accountHolder, ifscCode, upiId, services, fileextras, googlemaplink
+        accountNumber, accountHolder, ifscCode, upiId,beneficiary_id, services, fileextras, googlemaplink
     } = req.body;
 
     const parsedServices = typeof services === "string" ? JSON.parse(services) : services;
@@ -413,6 +413,7 @@ const upsertOrganizations = async (req, res) => {
                 accountHolder,
                 ifscCode,
                 upiId,
+                beneficiary_id,
                 file1: file1 || organization.file1,
                 file2: fileextras,
                 googlemaplink
@@ -516,9 +517,10 @@ const upsertOrganizations = async (req, res) => {
             accountHolder,
             ifscCode,
             upiId,
+            beneficiary_id,
             file1,
             file2: files.join(","),
-            beneficiary_id: "NULL",
+            beneficiary_id,
             googlemaplink
         }, { transaction });
 
