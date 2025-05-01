@@ -181,6 +181,18 @@ const statusOrder = async (req, res) => {
                     ]
                 },
                 {
+                    model: User,
+                    as: "userDetails",
+                    attributes: ["id","prefix", "firstName","lastName"],
+                    include: [
+                      {
+                        model: Organization,
+                        as: "organization",
+                        attributes: ["id","name"],
+                      },
+                    ]
+                  },
+                {
                     model: OrderServices, 
                     as: "orderServices",
                     include: [
