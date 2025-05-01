@@ -172,7 +172,7 @@ const orderDetailsGetById = async (req, res) => {
             {
               model: Organization,
               as: 'organization',
-              attributes: ['id', 'name'],
+              attributes: ['id', 'name',"googlemaplink"],
             }
           ]
         },
