@@ -145,6 +145,7 @@ const editprofile = async (req, res) => {
         mobile: finalOrganization.mobile,
         email: finalOrganization.email,
         whatsapp: finalOrganization.whatsapp,
+        googlemaplink: finalOrganization.googlemaplink,
         deletedAt: finalOrganization.deletedAt
       };
     }
@@ -227,7 +228,7 @@ const ownerOrTechnicianProfileEdit = async (req, res) => {
       {
         model: Organization,
         as: 'organization',
-        attributes: ['id', 'name', 'upiId', 'deletedAt', 'mobile', 'email', 'whatsapp'],
+        attributes: ['id', 'name', 'upiId', 'deletedAt', 'mobile', 'email', 'whatsapp','googlemaplink'],
         include: [
           {
             model: TblOrganizationType,

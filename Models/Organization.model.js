@@ -97,7 +97,9 @@ const Organization = sequelize.define("Organization", {
     allowNull: false
   },
   googlemaplink: {
-    type: DataTypes.STRING,
+
+    type: DataTypes.TEXT,
+
     allowNull: true,
   }
 }, {
