@@ -10,14 +10,14 @@ const Vendor = sequelize.define(
       primaryKey: true,
       defaultValue: DataTypes.UUIDV4,
     },
-    organizationId:{
-        type: DataTypes.UUID,
-        allowNull: true,
+    organizationId: {
+      type: DataTypes.UUID,
+      allowNull: false,
     },
     aadhaar: {
       type: DataTypes.STRING,
       allowNull: true,
-      field: "aadhaar", 
+      field: "aadhaar",
     },
     pan: {
       type: DataTypes.STRING,
@@ -28,9 +28,12 @@ const Vendor = sequelize.define(
     },
     gst: {
       type: DataTypes.STRING,
-      allowNull: false,
+      allowNull: true, // Allow null for Individual vendors
       validate: {
-        is: /^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z]{1}[1-9A-Z]{1}Z[0-9A-Z]{1}$/, 
+        is: {
+          args: /^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z]{1}[1-9A-Z]{1}Z[0-9A-Z]{1}$/,
+          msg: "Invalid GST format",
+        },
       },
     },
     cin: {
@@ -38,12 +41,12 @@ const Vendor = sequelize.define(
       allowNull: true,
     },
     accountType: {
-      type: DataTypes.ENUM("Individual"),
+      type: DataTypes.ENUM("Individual", "Business"),
       allowNull: false,
     },
     businessType: {
       type: DataTypes.STRING,
-      allowNull: true,
+      allowNull: true, // Will store organization type label
     },
     drivingLicense: {
       type: DataTypes.STRING,
@@ -62,9 +65,9 @@ const Vendor = sequelize.define(
     },
   },
   {
-    tableName: "vendors", 
+    tableName: "vendors",
     timestamps: true,
-    paranoid: true, 
+    paranoid: true,
     underscored: true,
   }
 );
