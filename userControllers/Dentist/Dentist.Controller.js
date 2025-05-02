@@ -437,74 +437,74 @@ const cancelledOrders = async (req, res) => {
     }
 
 
-    try {
-      const orderResponse = await axios.get(`${CASHFREE_BASE_URL}/orders/${cashfreeOrderId}`, {
-        headers: {
-          'Content-Type': 'application/json',
-          'x-api-version': CASHFREE_API_VERSION,
-          'x-client-id': CASHFREE_APP_ID,
-          'x-client-secret': CASHFREE_SECRET_KEY
-        }
-      });
+    // try {
+    //   const orderResponse = await axios.get(`${CASHFREE_BASE_URL}/orders/${cashfreeOrderId}`, {
+    //     headers: {
+    //       'Content-Type': 'application/json',
+    //       'x-api-version': CASHFREE_API_VERSION,
+    //       'x-client-id': CASHFREE_APP_ID,
+    //       'x-client-secret': CASHFREE_SECRET_KEY
+    //     }
+    //   });
 
-      cashfreeOrderStatus = orderResponse.data.order_status;
-      orderAmount = orderResponse.data.order_amount;
+    //   cashfreeOrderStatus = orderResponse.data.order_status;
+    //   orderAmount = orderResponse.data.order_amount;
 
-    } catch (error) {
-      console.error(`Failed to fetch Cashfree order ${cashfreeOrderId}:`, error.response?.data || error.message);
-      await transaction.rollback();
-      return res.status(500).json({
-        success: false,
-        message: "Failed to verify payment status",
-        error: error.response?.data || error.message
-      });
-    }
+    // } catch (error) {
+    //   console.error(`Failed to fetch Cashfree order ${cashfreeOrderId}:`, error.response?.data || error.message);
+    //   await transaction.rollback();
+    //   return res.status(500).json({
+    //     success: false,
+    //     message: "Failed to verify payment status",
+    //     error: error.response?.data || error.message
+    //   });
+    // }
 
-    if(cashfreeOrderStatus !=='PAID'){
-      await transaction.rollback()
-      return res.status(400).json({success:false,message:"Order is not paid or not eligible for refund"})
-    }
+    // if(cashfreeOrderStatus !=='PAID'){
+    //   await transaction.rollback()
+    //   return res.status(400).json({success:false,message:"Order is not paid or not eligible for refund"})
+    // }
 
-    // Check if order is already refunded
-    if (orderReport.refundId) {
-      await transaction.rollback();
-      return res.status(400).json({
-        success: false,
-        message: "Order has already been refunded",
-      });
-    }
-    // Initiate refund for the full order amount
-    const refundId = `refund_${cashfreeOrderId}_${Date.now()}`;
-    let refundResponse = null;
+    // // Check if order is already refunded
+    // if (orderReport.refundId) {
+    //   await transaction.rollback();
+    //   return res.status(400).json({
+    //     success: false,
+    //     message: "Order has already been refunded",
+    //   });
+    // }
+    // // Initiate refund for the full order amount
+    // const refundId = `refund_${cashfreeOrderId}_${Date.now()}`;
+    // let refundResponse = null;
 
-    try {
-      const refundData = {
-        refund_amount: parseFloat(orderAmount),
-        refund_id: refundId,
-        refund_note: `Refund for cancelled order ${orderReport.orderId}`,
-        refund_speed: 'STANDARD' // Use 'INSTANT' if enabled
-      };
+    // try {
+    //   const refundData = {
+    //     refund_amount: parseFloat(orderAmount),
+    //     refund_id: refundId,
+    //     refund_note: `Refund for cancelled order ${orderReport.orderId}`,
+    //     refund_speed: 'STANDARD' // Use 'INSTANT' if enabled
+    //   };
 
-      refundResponse = await axios.post(`${CASHFREE_BASE_URL}/orders/${cashfreeOrderId}/refunds`, refundData, {
-        headers: {
-          'Content-Type': 'application/json',
-          'x-api-version': CASHFREE_API_VERSION,
-          'x-client-id': CASHFREE_APP_ID,
-          'x-client-secret': CASHFREE_SECRET_KEY,
-          'x-idempotency-key': generateIdempotencyKey()
-        }
-      });
+    //   refundResponse = await axios.post(`${CASHFREE_BASE_URL}/orders/${cashfreeOrderId}/refunds`, refundData, {
+    //     headers: {
+    //       'Content-Type': 'application/json',
+    //       'x-api-version': CASHFREE_API_VERSION,
+    //       'x-client-id': CASHFREE_APP_ID,
+    //       'x-client-secret': CASHFREE_SECRET_KEY,
+    //       'x-idempotency-key': generateIdempotencyKey()
+    //     }
+    //   });
 
-      console.log(`Refund initiated for order ${cashfreeOrderId}:`, refundResponse.data);
-    } catch (error) {
-      console.error(`Failed to initiate refund for order ${cashfreeOrderId}:`, error.response?.data || error.message);
-      await transaction.rollback();
-      return res.status(500).json({
-        success: false,
-        message: "Failed to initiate refund",
-        error: error.response?.data || error.message
-      });
-    }
+    //   console.log(`Refund initiated for order ${cashfreeOrderId}:`, refundResponse.data);
+    // } catch (error) {
+    //   console.error(`Failed to initiate refund for order ${cashfreeOrderId}:`, error.response?.data || error.message);
+    //   await transaction.rollback();
+    //   return res.status(500).json({
+    //     success: false,
+    //     message: "Failed to initiate refund",
+    //     error: error.response?.data || error.message
+    //   });
+    // }
 
     // Update order status to cancelled
     await orderReport.update(
