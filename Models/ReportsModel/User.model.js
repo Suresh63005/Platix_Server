@@ -99,8 +99,8 @@ const User = sequelize.define(
       allowNull: true,
     },
     one_subscription:{
-      type:DataTypes.TEXT,
-      allowNull:true
+      type:DataTypes.JSON,
+      allowNull:true,
     },
     Email_verification:{
       type:DataTypes.BOOLEAN,
