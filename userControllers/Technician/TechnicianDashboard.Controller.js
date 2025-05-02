@@ -467,17 +467,21 @@ const CloseOrder = async (req, res) => {
         console.error(`Failed to create notification for technician ID ${uid} for order ID ${order.orderId}:`, error.message);
       }
 
-      if (technician.one_subscription) {
+      let technicianSubscriptions = technician.one_subscription || [];
+      if (!Array.isArray(technicianSubscriptions)) {
+        console.warn(`Invalid one_subscription for technician ${uid}:`, technician.one_subscription);
+        technicianSubscriptions = [];
+      }
+
+      if (technicianSubscriptions.length > 0) {
         try {
           const response = await axios.post(
             "https://onesignal.com/api/v1/notifications",
             {
               app_id: process.env.ONESIGNAL_APP_ID,
-              include_player_ids: [technician.one_subscription],
+              include_player_ids: technicianSubscriptions,
               headings: { en: "Order Completed" },
-              contents: {
-                en: `Order ${order.orderId} has been marked as completed by you.`,
-              },
+              contents: { en: `Order ${order.orderId} has been marked as completed by you.` },
             },
             {
               headers: {
@@ -486,12 +490,12 @@ const CloseOrder = async (req, res) => {
               },
             }
           );
-          console.log(`OneSignal push notification sent successfully to technician ID ${uid} for order ID ${order.orderId}`, response.data);
+          console.log(`✅ OneSignal push notification sent successfully to technician ID ${uid} for order ID ${order.orderId} on ${technicianSubscriptions.length} devices:`, response.data);
         } catch (error) {
-          console.error(`Failed to send OneSignal push notification to technician ID ${uid} for order ID ${order.orderId}:`, error.response?.data || error.message);
+          console.error(`⚠️ Failed to send OneSignal push notification to technician ID ${uid} for order ID ${order.orderId}:`, error.response?.data || error.message);
         }
       } else {
-        console.log(`No OneSignal push notification sent to technician ID ${uid} for order ID ${order.orderId}: one_subscription is missing`);
+        console.log(`No OneSignal push notification sent to technician ID ${uid} for order ID ${order.orderId}: no subscriptions found`);
       }
     }
 
@@ -527,17 +531,21 @@ const CloseOrder = async (req, res) => {
           console.error(`Failed to create notification for dentist ID ${order.userUUID} for order ID ${order.orderId}:`, error.message);
         }
 
-        if (dentist.one_subscription) {
+        let dentistSubscriptions = dentist.one_subscription || [];
+        if (!Array.isArray(dentistSubscriptions)) {
+          console.warn(`Invalid one_subscription for dentist ${order.userUUID}:`, dentist.one_subscription);
+          dentistSubscriptions = [];
+        }
+
+        if (dentistSubscriptions.length > 0) {
           try {
             const response = await axios.post(
               "https://onesignal.com/api/v1/notifications",
               {
                 app_id: process.env.ONESIGNAL_APP_ID,
-                include_player_ids: [dentist.one_subscription],
+                include_player_ids: dentistSubscriptions,
                 headings: { en: "Order Completed" },
-                contents: {
-                  en: `Order ${order.orderId} has been marked as completed by the technician.`,
-                },
+                contents: { en: `Order ${order.orderId} has been marked as completed by the technician.` },
               },
               {
                 headers: {
@@ -546,12 +554,12 @@ const CloseOrder = async (req, res) => {
                 },
               }
             );
-            console.log(`OneSignal push notification sent successfully to dentist ID ${order.userUUID} for order ID ${order.orderId}`, response.data);
+            console.log(`✅ OneSignal push notification sent successfully to dentist ID ${order.userUUID} for order ID ${order.orderId} on ${dentistSubscriptions.length} devices:`, response.data);
           } catch (error) {
-            console.error(`Failed to send OneSignal push notification to dentist ID ${order.userUUID} for order ID ${order.orderId}:`, error.response?.data || error.message);
+            console.error(`⚠️ Failed to send OneSignal push notification to dentist ID ${order.userUUID} for order ID ${order.orderId}:`, error.response?.data || error.message);
           }
         } else {
-          console.log(`No OneSignal push notification sent to dentist ID ${order.userUUID} for order ID ${order.orderId}: one_subscription is missing`);
+          console.log(`No OneSignal push notification sent to dentist ID ${order.userUUID} for order ID ${order.orderId}: no subscriptions found`);
         }
       }
     }
@@ -593,17 +601,17 @@ const CloseOrder = async (req, res) => {
       }
 
       const pushNotifications = ownersFromOrganization
-        .filter((owner) => owner.one_subscription)
-        .map((owner) =>
-          axios.post(
+      .filter((owner) => owner.one_subscription && Array.isArray(owner.one_subscription) && owner.one_subscription.length > 0)
+      .map((owner) => {
+        console.log(`Sending OneSignal push notification to organization owner ID ${owner.id} for order ID ${order.orderId} on ${owner.one_subscription.length} devices`);
+        return axios
+          .post(
             "https://onesignal.com/api/v1/notifications",
             {
               app_id: process.env.ONESIGNAL_APP_ID,
-              include_player_ids: [owner.one_subscription],
+              include_player_ids: owner.one_subscription,
               headings: { en: "Order Completed" },
-              contents: {
-                en: `Order ${order.orderId} has been marked as completed by the technician.`,
-              },
+              contents: { en: `Order ${order.orderId} has been marked as completed by the technician.` },
             },
             {
               headers: {
@@ -612,22 +620,30 @@ const CloseOrder = async (req, res) => {
               },
             }
           )
-        );
+          .then((response) => {
+            console.log(`✅ OneSignal push notification sent successfully to organization owner ID ${owner.id} for order ID ${order.orderId} on ${owner.one_subscription.length} devices:`, response.data);
+            return response;
+          })
+          .catch((error) => {
+            console.error(`⚠️ Failed to send OneSignal push notification to organization owner ID ${owner.id} for order ID ${order.orderId}:`, error.response?.data || error.message);
+            throw error;
+          });
+      });
 
-      if (pushNotifications.length > 0) {
-        try {
-          const responses = await Promise.all(pushNotifications);
-          console.log(`OneSignal push notifications sent successfully to ${pushNotifications.length} owners of organization ID ${toOrganization} for order ID ${order.orderId}`, responses.map((r) => r.data));
-        } catch (error) {
-          console.error(`Failed to send one or more OneSignal push notifications to owners of organization ID ${toOrganization} for order ID ${order.orderId}:`, error.response?.data || error.message);
-        }
-      } else {
-        console.log(`No OneSignal push notifications sent to owners of organization ID ${toOrganization} for order ID ${order.orderId}: no owners with one_subscription`);
+    if (pushNotifications.length > 0) {
+      try {
+        const responses = await Promise.all(pushNotifications);
+        console.log(`✅ OneSignal push notifications sent successfully to ${pushNotifications.length} owners of organization ID ${toOrganization} for order ID ${order.orderId}:`, responses.map((r) => r.data));
+      } catch (error) {
+        console.error(`⚠️ Failed to send one or more OneSignal push notifications to owners of organization ID ${toOrganization} for order ID ${order.orderId}:`, error.message);
       }
     } else {
-      console.log(`No owners found for organization ID ${toOrganization} for order ID ${order.orderId}`);
+      console.log(`No OneSignal push notifications sent to owners of organization ID ${toOrganization} for order ID ${order.orderId}: no owners with valid subscriptions`);
     }
-
+  } else {
+    console.log(`No owners found for organization ID ${toOrganization} for order ID ${order.orderId}`);
+  }
+  
     await transaction.commit();
     return res.status(200).json({ message: "Order has been successfully technician completed!" });
   } catch (error) {
