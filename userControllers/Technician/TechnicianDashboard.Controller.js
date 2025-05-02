@@ -131,7 +131,7 @@ const FetchTechnicianOrdersByStatus = async (req, res) => {
       
     } else if (orderStatus === "cancelled") {
       whereClause.orderStatus = "cancelled";
-      whereClause.assignment_status = "assigned_to_technician"
+      whereClause.technician_assignment_status = "assigned_to_technician"
     }
 
     const orders = await OrderReports.findAll({
@@ -440,12 +440,12 @@ const CloseOrder = async (req, res) => {
 
    if(isRadiology){
       order.orderStatus = "completed";
-      order.assignment_status = "technician_completed";
+      order.technician_assignment_status = "technician_completed";
       await order.save({ transaction });
     }
     else{
       order.orderStatus = "processing";
-      order.assignment_status = "technician_completed";
+      order.technician_assignment_status = "technician_completed";
       await order.save({ transaction });
     }
 
