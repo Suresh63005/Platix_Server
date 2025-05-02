@@ -8,7 +8,7 @@ const TblOrganization_Service = require("./tblOrganizationService");
 const OrderServices = require("./ReportsModel/OrderServices.model");
 const UploadImages = require("./ReportsModel/UploadImages.model");
 const orderTransaction = require("./ReportsModel/OrderTransaction.model");
-
+const Vendor = require("./Vendor.model")
 Organization.belongsTo(TblOrganizationType, {
   foreignKey: "organizationType_id",
   as: "organizationType",
@@ -131,3 +131,12 @@ OrderReports.belongsTo(User,{
   foreignKey:'delivery_boy',
   as:'deliveryBoy'
 })
+
+Organization.hasOne(Vendor, {
+  foreignKey: "organizationId",
+  as: "vendor",
+});
+Vendor.belongsTo(Organization, {
+  foreignKey: "organizationId",
+  as: "organization",
+});
