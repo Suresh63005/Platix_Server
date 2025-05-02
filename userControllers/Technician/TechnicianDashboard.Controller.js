@@ -1248,7 +1248,8 @@ const CloseOrder = async (req, res) => {
         {
           where: {
             technician: uid,
-            technician_assignment_status: "cancelled",
+            orderStatus: "cancelled",
+            // technician_assignment_status: "cancelled",
             is_visible_to_technician: true
           },
         }
