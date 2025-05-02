@@ -1416,7 +1416,7 @@ const cancelledOrders = async (req, res) => {
             title: "Order Cancelled",
             description: `Order ${orderReport.orderId} has been cancelled.`,
           },
-          { transaction }
+          
         )
       );
     }
