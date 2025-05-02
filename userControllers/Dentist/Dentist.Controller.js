@@ -214,7 +214,7 @@ const fromDentist = async (req, res) => {
 
       let smsContent = '';
       if (creator.prefix === "DR") {
-        // when doctor create msg recived radilogy
+        // when doctor create order msg recived radilogy or Dental Laboratory owner
         if (organizationType === 'Radiology') {
           smsContent = `A Radiology order was raised by ${creator.firstName, creator.lastName} on ${new Date(orderReport.createdAt).toISOString().split('T')[0]}. Check it on the Platix app. Download from Play Store or App Store. – Team Platix`;
         } else if (organizationType === 'Dental Laboratory') {
