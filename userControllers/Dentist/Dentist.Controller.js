@@ -324,8 +324,8 @@ const fromDentist = async (req, res) => {
         organization_id: toOrganization,
         uid: owner.id,
         datetime: new Date(),
-        title: "New Order Received",
-        description: `New Order ${orderReport.orderId} has been received to your organization.`,
+        title: id ? `Order Updated`:`New Order Received`,
+        description: id ? ` Order ${orderReport.orderId} has been sucessfully updated`:`New Order ${orderReport.orderId} has been received to your organization.`,
       }));
       await Notification.bulkCreate(notifications, { transaction });
       console.log(`✅ Database notifications created for ${ownersFromOrganization.length} organization owners for order ${orderReport.orderId}`);
@@ -344,8 +344,8 @@ const fromDentist = async (req, res) => {
               {
                 app_id: process.env.ONESIGNAL_APP_ID,
                 include_player_ids: ownerSubscriptions,
-                headings: { en: "New Order Received" },
-                contents: { en: `New Order ${orderReport.orderId} has been received to your organization.` },
+                headings: { en: id ? `Order Updated`:`New Order Received` },
+                contents: { en: id ? ` Order ${orderReport.orderId} has been sucessfully updated`:`New Order ${orderReport.orderId} has been received to your organization.` },
               },
               {
                 headers: {
