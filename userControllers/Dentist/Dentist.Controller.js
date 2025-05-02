@@ -14,6 +14,7 @@ const Roles = require("../../Models/TblRoles.model");
 const axios = require("axios");
 const UploadImages = require("../../Models/ReportsModel/UploadImages.model");
 const { initiateRefund } = require("../Payments/cashFree");
+const { sendSMS } = require("../../helper/sendSms");
 
 // If I pass only the userUUID, it means the request is coming from the owner. If I pass both the userUUID and delivery_boy, it means the request is coming from the delivery boy. If I do not pass the delivery_boy and userUUID, it means the request is coming from the dentist.
 const fromDentist = async (req, res) => {
@@ -174,6 +175,67 @@ const fromDentist = async (req, res) => {
       } else {
         console.log(`No doctor notification sent for order ${orderReport.orderId}: ${isDentist ? "User is a dentist" : "userUUID not provided"}`);
       }
+
+      // send sms lab owner or radilogy owner
+      const ownersFromOrganization = await User.findAll({
+        where: {
+          organization_id: toOrganization,
+        },
+        include: [
+          {
+            model: Roles,
+            as: "role",
+            attributes: ["id", "rolename"],
+            where: {
+              rolename: "owner",
+            },
+          },
+        ],
+        transaction,
+      });
+
+      // Fetch organization type
+      const organization = await Organization.findByPk(toOrganization, {
+        include: [
+          {
+            model: TblOrganizationType,
+            as: "organizationType",
+            attributes: ["id", "organizationType"]
+          }
+        ]
+      });
+
+      const organizationType = organization?.organizationType?.organizationType;
+
+      let smsContent = '';
+      if(creator.prefix === "DR"){
+        if (organizationType === 'Radiology') {
+          smsContent = `A Radiology order was raised by ${creator.firstName, creator.lastName} on ${new Date(orderReport.createdAt).toISOString().split('T')[0]}. Check it on the Platix app. Download from Play Store or App Store. – Team Platix`;
+        } else if (organizationType === 'Dental Laboratory') {
+          smsContent = `A lab order was raised by ${creator.firstName, creator.lastName} on ${new Date(orderReport.createdAt).toISOString().split('T')[0]}. Check it on the Platix app. Download from Play Store or App Store. – Team Platix`;
+        } else {
+          console.log('Unknown organization type. SMS not sent.');
+          return;
+        }
+  
+        if (ownersFromOrganization.length > 0) {
+          console.log(`Sending SMS to ${ownersFromOrganization.length} owners for order ${orderReport.orderId}`);
+  
+          for (const owner of ownersFromOrganization) {
+            const phoneNumber = owner.mobile; 
+  
+            if (phoneNumber) {
+              await sendSMS(smsContent, phoneNumber);
+              console.log(`SMS sent to ${phoneNumber}: ${smsContent}`);
+            } else {
+              console.log(`No phone number available for owner (userId: ${owner.id}) for order ${orderReport.orderId}. SMS not sent.`);
+            }
+          }
+        } else {
+          console.log(`No owners found for organization (organization_id: ${toOrganization}) for order ${orderReport.orderId}. SMS not sent.`);
+        }
+      }
+
     }
 
     const sendUserId = await User.findByPk(userId);
@@ -435,76 +497,6 @@ const cancelledOrders = async (req, res) => {
         message: "Order not found",
       });
     }
-
-
-    // try {
-    //   const orderResponse = await axios.get(`${CASHFREE_BASE_URL}/orders/${cashfreeOrderId}`, {
-    //     headers: {
-    //       'Content-Type': 'application/json',
-    //       'x-api-version': CASHFREE_API_VERSION,
-    //       'x-client-id': CASHFREE_APP_ID,
-    //       'x-client-secret': CASHFREE_SECRET_KEY
-    //     }
-    //   });
-
-    //   cashfreeOrderStatus = orderResponse.data.order_status;
-    //   orderAmount = orderResponse.data.order_amount;
-
-    // } catch (error) {
-    //   console.error(`Failed to fetch Cashfree order ${cashfreeOrderId}:`, error.response?.data || error.message);
-    //   await transaction.rollback();
-    //   return res.status(500).json({
-    //     success: false,
-    //     message: "Failed to verify payment status",
-    //     error: error.response?.data || error.message
-    //   });
-    // }
-
-    // if(cashfreeOrderStatus !=='PAID'){
-    //   await transaction.rollback()
-    //   return res.status(400).json({success:false,message:"Order is not paid or not eligible for refund"})
-    // }
-
-    // // Check if order is already refunded
-    // if (orderReport.refundId) {
-    //   await transaction.rollback();
-    //   return res.status(400).json({
-    //     success: false,
-    //     message: "Order has already been refunded",
-    //   });
-    // }
-    // // Initiate refund for the full order amount
-    // const refundId = `refund_${cashfreeOrderId}_${Date.now()}`;
-    // let refundResponse = null;
-
-    // try {
-    //   const refundData = {
-    //     refund_amount: parseFloat(orderAmount),
-    //     refund_id: refundId,
-    //     refund_note: `Refund for cancelled order ${orderReport.orderId}`,
-    //     refund_speed: 'STANDARD' // Use 'INSTANT' if enabled
-    //   };
-
-    //   refundResponse = await axios.post(`${CASHFREE_BASE_URL}/orders/${cashfreeOrderId}/refunds`, refundData, {
-    //     headers: {
-    //       'Content-Type': 'application/json',
-    //       'x-api-version': CASHFREE_API_VERSION,
-    //       'x-client-id': CASHFREE_APP_ID,
-    //       'x-client-secret': CASHFREE_SECRET_KEY,
-    //       'x-idempotency-key': generateIdempotencyKey()
-    //     }
-    //   });
-
-    //   console.log(`Refund initiated for order ${cashfreeOrderId}:`, refundResponse.data);
-    // } catch (error) {
-    //   console.error(`Failed to initiate refund for order ${cashfreeOrderId}:`, error.response?.data || error.message);
-    //   await transaction.rollback();
-    //   return res.status(500).json({
-    //     success: false,
-    //     message: "Failed to initiate refund",
-    //     error: error.response?.data || error.message
-    //   });
-    // }
 
     // Update order status to cancelled
     await orderReport.update(
@@ -851,9 +843,9 @@ const orderDetailsgetById = async (req, res) => {
           attributes: ['transactionId', 'amount', 'createdAt'],
         },
         {
-          model:UploadImages,
-          as:"orderImages",
-          attributes:["order_id","images"]
+          model: UploadImages,
+          as: "orderImages",
+          attributes: ["order_id", "images"]
         }
       ],
     });

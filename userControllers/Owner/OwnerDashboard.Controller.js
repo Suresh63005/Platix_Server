@@ -16,7 +16,7 @@ const uploadToS3 = require("../../config/fileUpload.aws");
 const UploadImages = require("../../Models/ReportsModel/UploadImages.model");
 const moment = require("moment-timezone");
 const axios = require("axios");
-
+const { sendSMS } = require("../../helper/sendSms");
 
 // Fetch total payable bills, active orders, closed orders, received payments, and order list
 const labOrders = async (req, res) => {
@@ -41,7 +41,7 @@ const labOrders = async (req, res) => {
         delivery_boy: { [Op.is]: null },
         technician: { [Op.is]: null },
       },
-      include:[
+      include: [
         { model: Organization, as: "toOrg", attributes: ["name"] },
         {
           model: User,
@@ -56,7 +56,7 @@ const labOrders = async (req, res) => {
           ]
         },
       ],
-      order:[["created_at","DESC"]]
+      order: [["created_at", "DESC"]]
     });
 
     // if (orders.length === 0) {
@@ -118,12 +118,12 @@ const labAllOrders = async (req, res) => {
         {
           model: User,
           as: "userDetails",
-          attributes: ["id","prefix", "firstName","lastName"],
+          attributes: ["id", "prefix", "firstName", "lastName"],
           include: [
             {
               model: Organization,
               as: "organization",
-              attributes: ["id","name"],
+              attributes: ["id", "name"],
             },
           ]
         },
@@ -1015,6 +1015,17 @@ const ownerUpsertOrder = async (req, res) => {
         },
         { transaction }
       );
+      //send sms to dentist (lab owner-> dentist)
+
+      const organization = await Organization.findOne({
+        where: { id: organization_id },
+      });
+
+      const labName = organization ? organization.name : "Unknown Lab";
+      const message = `Hello ${user.firstName, user.lastName}, a lab order has been raised by ${labName} on ${new Date(orderReport.createdAt).toISOString().split('T')[0]}. View it on the Platix app. Download it from the Play Store or App Store. – Team Platix`;
+      //  await sendSMS(message,user.mobileNo)
+      await sendSMS(message, "+919121182295")
+
     }
 
     //send notification
@@ -1506,9 +1517,9 @@ const raiseInvoiceAndCloseOrder = async (req, res) => {
       await checkOrder.update({
         orderStatus: "completed",
         payment_status: "processing",
-      },{transaction});
+      }, { transaction });
 
-      const dentist = await User.findByPk(checkOrder.userUUID,{transaction})
+      const dentist = await User.findByPk(checkOrder.userUUID, { transaction })
       if (!dentist) {
         await transaction.rollback();
         return res.status(404).json({
@@ -1638,12 +1649,28 @@ const uploadImagesByOwner = async (req, res) => {
           as: "toOrg",
           attributes: ["name"],
         },
+        {
+          model: User,
+          as: "userDetails",
+          attributes: ["id", "mobileNo", "firstName", "lastName"]
+        }
       ],
     });
 
     if (!order) {
       return res.status(404).json({
         message: "Order not found or you don't have permission to upload images for it!",
+      });
+    }
+
+    const user = order.userDetails;
+    const DoctormobileNo = user ? user.mobileNo : null;
+    const DoctorFirstName = user ? user.firstName : null
+    const DoctorLastName = user ? user.lastName : null
+
+    if (!DoctormobileNo) {
+      return res.status(404).json({
+        message: "User mobile number not found, cannot send SMS",
       });
     }
 
@@ -1680,6 +1707,9 @@ const uploadImagesByOwner = async (req, res) => {
       images: JSON.stringify(validUrls), // Only store valid URLs
     });
 
+    // send sms
+    const message = `Hello ${DoctorFirstName, DoctorLastName}, a radiology image was uploaded by ${order.toOrg.name} on ${new Date(uploadRecord.createdAt).toISOString().split('T')[0]}. View it on the Platix app. Download from Play Store or App Store. – Team Platix`;
+    await sendSMS(message, DoctormobileNo)
     return res.status(200).json({
       message: "Images uploaded successfully!",
       data: {
@@ -1803,11 +1833,11 @@ const getRadiologyOwnerOrdersByStatus = async (req, res) => {
           model: User,
           as: "userDetails", // doctor name
           attributes: ["prefix", "firstName", "lastName"],
-          include:[
+          include: [
             {
-              model:Organization,
-              as:"organization",
-              attributes:["id","name"]
+              model: Organization,
+              as: "organization",
+              attributes: ["id", "name"]
             }
           ]
         }
