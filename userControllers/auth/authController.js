@@ -429,7 +429,7 @@ const loginwithnumber = async (req, res) => {
     const {  one_subscription } = req.body;
 
     if ( !one_subscription) {
-        return res.status(400).json({ message: "OneSignal ID are required!" });
+        return res.status(400).json({ message: "OneSignal ID is required!" });
     }
 
     try {
@@ -439,7 +439,27 @@ const loginwithnumber = async (req, res) => {
             return res.status(404).json({ message: "User not found!" });
         }
 
-        await User.update({ one_subscription }, { where: { id: userId } });
+        let subscriptions = user.one_subscription || [];
+        if (!Array.isArray(subscriptions)) {
+          console.warn(`Invalid one_subscription for user ${userId}:`, user.one_subscription);
+          subscriptions = [];
+        }
+ 
+        if (!subscriptions.includes(one_subscription)) {
+            subscriptions.push(one_subscription);
+            await User.update(
+              { one_subscription: subscriptions },
+              { where: { id: userId } }
+            );
+            console.log(`Added subscription ID ${one_subscription} for user ${userId}. Current subscriptions:`, subscriptions);
+          } else {
+            console.log(`Subscription ID ${one_subscription} already exists for user ${userId}`);
+          }
+    //   else{
+    //     console.log(`Subscription ID ${one_subscription} already exists for user ${userId}`);
+    // }
+
+        // await User.update({ one_subscription }, { where: { id: userId } });
 
         return res.status(200).json({ message: "OneSignal ID updated successfully!" });
     } catch (error) {
@@ -459,7 +479,25 @@ const removeOneSignal = async (req, res) => {
         if (!user) {
             return res.status(404).json({ message: "User not found!" });
         }
-        await User.update({ one_subscription: null }, { where: { id: userId } });
+
+        let subscriptions = user.one_subscription || [];
+        if (!Array.isArray(subscriptions)) {
+          console.warn(`Invalid one_subscription for user ${userId}:`, user.one_subscription);
+          subscriptions = [];
+        }
+        
+        if (!subscriptions.includes(one_subscription)) {
+            return res.status(404).json({ message: "OneSignal subscription ID not found!" });
+          }
+
+          const updatedSubscriptions = subscriptions.filter(sub => sub !== one_subscription);
+          await User.update(
+            { one_subscription: updatedSubscriptions },
+            { where: { id: userId } }
+          );
+          console.log(`Removed subscription ID ${one_subscription} for user ${userId}. Current subscriptions:`, updatedSubscriptions);
+
+        // await User.update({ one_subscription: null }, { where: { id: userId } });
         return res.status(200).json({ message: "OneSignal ID removed successfully!" });
     }
     catch (error) {
