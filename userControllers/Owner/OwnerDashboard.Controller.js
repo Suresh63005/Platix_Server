@@ -1068,8 +1068,8 @@ const ownerUpsertOrder = async (req, res) => {
         organization_id: toOrganization,
         uid: owner.id,
         datetime: new Date(),
-        title: "New Order Received",
-        description: `New Order ${orderReport.orderId} has been received to your organization.`,
+        title: id ? `New Order Received` : `Order Updated`,
+       description: id ? `Order ${orderReport.orderId} has been successfully updated.` : `New Order ${orderReport.orderId} has been received to your organization.`,
       }));
 
       await Notification.bulkCreate(notifications, { transaction });
@@ -1110,9 +1110,9 @@ const ownerUpsertOrder = async (req, res) => {
               {
                 app_id: process.env.ONESIGNAL_APP_ID,
                 include_player_ids: owner.one_subscription,
-                headings: { en: "New Order Received" },
+                headings: { en: id ? `New Order Received` : `Order Updated` },
                 contents: {
-                  en: `New Order ${orderReport.orderId} has been received to your organization.`,
+                  en: id ? `Order ${orderReport.orderId} has been successfully updated.` : `New Order ${orderReport.orderId} has been received to your organization.`,
                 },
               },
               {
