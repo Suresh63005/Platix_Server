@@ -48,6 +48,7 @@ const Vendor = sequelize.define(
       type: DataTypes.STRING,
       allowNull: true, // Will store organization type label
     },
+    
     drivingLicense: {
       type: DataTypes.STRING,
       allowNull: true,
