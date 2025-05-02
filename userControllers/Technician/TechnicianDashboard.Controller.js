@@ -332,6 +332,330 @@ const UploadImagesByTechnician = async (req, res) => {
   }
 };
   
+// const CloseOrder = async (req, res) => {
+//   const uid = req.user?.id;
+//   const { orderId } = req.body;
+//   const { action } = req.query;
+
+//   // Input validation
+//   if (!uid) {
+//     return res.status(401).json({ message: "Unauthorized: User not found!" });
+//   }
+//   if (!orderId) {
+//     return res.status(400).json({ message: "Order ID is required!" });
+//   }
+//   if (action !== "completed") {
+//     return res.status(400).json({ message: "Invalid action! Action must be 'completed'." });
+//   }
+
+//   const transaction = await sequelize.transaction({ autocommit: false });
+
+//   try {
+//     // Find technician with organization details
+//     const technician = await User.findOne({
+//       where: { id: uid },
+//       include: [
+//         {
+//           model: Organization,
+//           as: "organization",
+//           attributes: ["id"],
+//           include: [
+//             {
+//               model: TblOrganizationType,
+//               as: "organizationType",
+//               attributes: ["organizationType"],
+//             },
+//           ],
+//         },
+//       ],
+//       transaction,
+//     });
+
+//     if (!technician || !technician.organization || !technician.organization.organizationType) {
+//       await transaction.rollback();
+//       return res.status(404).json({ message: "User, organization, or organization type not found!" });
+//     }
+
+//     const organizationType = technician.organization.organizationType.organizationType;
+//     const isRadiology = organizationType === "Radiology";
+//     const isDentalLaboratory = organizationType === "Dental Laboratory";
+
+//     if (!isRadiology && !isDentalLaboratory) {
+//       await transaction.rollback();
+//       return res.status(400).json({ message: `Invalid organization type: ${organizationType}` });
+//     }
+
+//     // Find order
+//     const order = await OrderReports.findOne({
+//       where: { id: orderId,is_visible_to_technician: true },
+//       transaction,
+//     });
+
+//     if (!order) {
+//       await transaction.rollback();
+//       return res.status(404).json({ message: "Order not found!" });
+//     }
+
+//     // Verify technician permission
+//     if (order.technician !== uid) {
+//       await transaction.rollback();
+//       return res.status(403).json({ message: "You don't have permission to modify this order!" });
+//     }
+
+//     // Verify assignment status
+//     if (order.technician_assignment_status !== "assigned_to_technician") {
+//       await transaction.rollback();
+//       return res.status(400).json({ message: "Order cannot be closed by technician in current status!" });
+//     }
+
+//     // Verify organization consistency
+//     const toOrganization = order.to_organization || order.dataValues.toOrganization;
+//     if (!toOrganization) {
+//       await transaction.rollback();
+//       return res.status(400).json({ message: "Order is missing organization information!" });
+//     }
+//     if (toOrganization !== technician.organization.id) {
+//       await transaction.rollback();
+//       return res.status(400).json({ message: "Order organization does not match technician's organization!" });
+//     }
+
+//     // Check current status
+//     if (order.orderStatus === "completed" && order.technician_assignment_status === "technician_completed") {
+//       await transaction.rollback();
+//       return res.status(400).json({ message: "Order is already marked as completed." });
+//     }
+
+//     if(isRadiology){
+//       order.orderStatus = "completed";
+//       order.technician_assignment_status = "technician_completed";
+//       await order.save({ transaction });
+//     }
+//     else{
+//       order.orderStatus = "processing";
+//       order.technician_assignment_status = "technician_completed";
+//       await order.save({ transaction });
+//     }
+
+//     // Update status
+
+//    if(isRadiology){
+//       order.orderStatus = "completed";
+//       order.technician_assignment_status = "technician_completed";
+//       await order.save({ transaction });
+//     }
+//     else{
+//       order.orderStatus = "processing";
+//       order.technician_assignment_status = "technician_completed";
+//       await order.save({ transaction });
+//     }
+
+
+//     // Notify technician (only for Radiology)
+//     if (isRadiology) {
+//       try {
+//         await Notification.create(
+//           {
+//             uid: uid,
+//             datetime: new Date(),
+//             title: "Order Completed",
+//             description: `Order ${order.orderId} has been marked as completed by you.`,
+//           },
+//           { transaction }
+//         );
+//         console.log(`Notification created successfully for technician ID ${uid} for order ID ${order.orderId}`);
+//       } catch (error) {
+//         console.error(`Failed to create notification for technician ID ${uid} for order ID ${order.orderId}:`, error.message);
+//       }
+
+//       let technicianSubscriptions = technician.one_subscription || [];
+//       if (!Array.isArray(technicianSubscriptions)) {
+//         console.warn(`Invalid one_subscription for technician ${uid}:`, technician.one_subscription);
+//         technicianSubscriptions = [];
+//       }
+
+//       if (technicianSubscriptions.length > 0) {
+//         try {
+//           const response = await axios.post(
+//             "https://onesignal.com/api/v1/notifications",
+//             {
+//               app_id: process.env.ONESIGNAL_APP_ID,
+//               include_player_ids: technicianSubscriptions,
+//               headings: { en: "Order Completed" },
+//               contents: { en: `Order ${order.orderId} has been marked as completed by you.` },
+//             },
+//             {
+//               headers: {
+//                 "Content-Type": "application/json",
+//                 Authorization: `Basic ${process.env.ONESIGNAL_API_KEY}`,
+//               },
+//             }
+//           );
+//           console.log(`✅ OneSignal push notification sent successfully to technician ID ${uid} for order ID ${order.orderId} on ${technicianSubscriptions.length} devices:`, response.data);
+//         } catch (error) {
+//           console.error(`⚠️ Failed to send OneSignal push notification to technician ID ${uid} for order ID ${order.orderId}:`, error.response?.data || error.message);
+//         }
+//       } else {
+//         console.log(`No OneSignal push notification sent to technician ID ${uid} for order ID ${order.orderId}: no subscriptions found`);
+//       }
+//     }
+
+//     // Notify dentist ( if payment_status is paid)
+//     if (isRadiology || isDentalLaboratory && order.payment_status === "paid") {
+//       const dentist = await User.findOne({
+//         where: { id: order.userUUID },
+//         include: [
+//           {
+//             model: Organization,
+//             as: "organization",
+//             attributes: ["id"],
+//           },
+//         ],
+//         transaction,
+//       });
+
+//       if (!dentist) {
+//         console.log(`No dentist found for userUUID ${order.userUUID} for order ID ${order.orderId}`);
+//       } else {
+//         try {
+//           await Notification.create(
+//             {
+//               uid: order.userUUID,
+//               datetime: new Date(),
+//               title: "Order Completed",
+//               description: `Order ${order.orderId} has been marked as completed by the technician.`,
+//             },
+//             { transaction }
+//           );
+//           console.log(`Notification created successfully for dentist ID ${order.userUUID} for order ID ${order.orderId}`);
+//         } catch (error) {
+//           console.error(`Failed to create notification for dentist ID ${order.userUUID} for order ID ${order.orderId}:`, error.message);
+//         }
+
+//         let dentistSubscriptions = dentist.one_subscription || [];
+//         if (!Array.isArray(dentistSubscriptions)) {
+//           console.warn(`Invalid one_subscription for dentist ${order.userUUID}:`, dentist.one_subscription);
+//           dentistSubscriptions = [];
+//         }
+
+//         if (dentistSubscriptions.length > 0) {
+//           try {
+//             const response = await axios.post(
+//               "https://onesignal.com/api/v1/notifications",
+//               {
+//                 app_id: process.env.ONESIGNAL_APP_ID,
+//                 include_player_ids: dentistSubscriptions,
+//                 headings: { en: "Order Completed" },
+//                 contents: { en: `Order ${order.orderId} has been marked as completed by the technician.` },
+//               },
+//               {
+//                 headers: {
+//                   "Content-Type": "application/json",
+//                   Authorization: `Basic ${process.env.ONESIGNAL_API_KEY}`,
+//                 },
+//               }
+//             );
+//             console.log(`✅ OneSignal push notification sent successfully to dentist ID ${order.userUUID} for order ID ${order.orderId} on ${dentistSubscriptions.length} devices:`, response.data);
+//           } catch (error) {
+//             console.error(`⚠️ Failed to send OneSignal push notification to dentist ID ${order.userUUID} for order ID ${order.orderId}:`, error.response?.data || error.message);
+//           }
+//         } else {
+//           console.log(`No OneSignal push notification sent to dentist ID ${order.userUUID} for order ID ${order.orderId}: no subscriptions found`);
+//         }
+//       }
+//     }
+
+//     // Notify organization owners (for both Radiology and Dental Laboratory)
+//     const ownersFromOrganization = await User.findAll(
+//       {
+//         where: {
+//           organization_id: toOrganization,
+//         },
+//         include: [
+//           {
+//             model: Roles,
+//             as: "role",
+//             attributes: ["id", "rolename"],
+//             where: {
+//               rolename: "owner",
+//             },
+//           },
+//         ],
+//       },
+//       { transaction }
+//     );
+
+//     if (ownersFromOrganization.length > 0) {
+//       const ownerNotifications = ownersFromOrganization.map((owner) => ({
+//         organization_id: toOrganization,
+//         uid: owner.id,
+//         datetime: new Date(),
+//         title: "Order Completed",
+//         description: `Order ${order.orderId} has been marked as completed by the technician.`,
+//       }));
+
+//       try {
+//         await Notification.bulkCreate(ownerNotifications, { transaction });
+//         console.log(`Notifications created successfully for ${ownersFromOrganization.length} owners of organization ID ${toOrganization} for order ID ${order.orderId}`);
+//       } catch (error) {
+//         console.error(`Failed to create notifications for owners of organization ID ${toOrganization} for order ID ${order.orderId}:`, error.message);
+//       }
+
+//       const pushNotifications = ownersFromOrganization
+//       .filter((owner) => owner.one_subscription && Array.isArray(owner.one_subscription) && owner.one_subscription.length > 0)
+//       .map((owner) => {
+//         console.log(`Sending OneSignal push notification to organization owner ID ${owner.id} for order ID ${order.orderId} on ${owner.one_subscription.length} devices`);
+//         return axios
+//           .post(
+//             "https://onesignal.com/api/v1/notifications",
+//             {
+//               app_id: process.env.ONESIGNAL_APP_ID,
+//               include_player_ids: owner.one_subscription,
+//               headings: { en: "Order Completed" },
+//               contents: { en: `Order ${order.orderId} has been marked as completed by the technician.` },
+//             },
+//             {
+//               headers: {
+//                 "Content-Type": "application/json",
+//                 Authorization: `Basic ${process.env.ONESIGNAL_API_KEY}`,
+//               },
+//             }
+//           )
+//           .then((response) => {
+//             console.log(`✅ OneSignal push notification sent successfully to organization owner ID ${owner.id} for order ID ${order.orderId} on ${owner.one_subscription.length} devices:`, response.data);
+//             return response;
+//           })
+//           .catch((error) => {
+//             console.error(`⚠️ Failed to send OneSignal push notification to organization owner ID ${owner.id} for order ID ${order.orderId}:`, error.response?.data || error.message);
+//             throw error;
+//           });
+//       });
+
+//     if (pushNotifications.length > 0) {
+//       try {
+//         const responses = await Promise.all(pushNotifications);
+//         console.log(`✅ OneSignal push notifications sent successfully to ${pushNotifications.length} owners of organization ID ${toOrganization} for order ID ${order.orderId}:`, responses.map((r) => r.data));
+//       } catch (error) {
+//         console.error(`⚠️ Failed to send one or more OneSignal push notifications to owners of organization ID ${toOrganization} for order ID ${order.orderId}:`, error.message);
+//       }
+//     } else {
+//       console.log(`No OneSignal push notifications sent to owners of organization ID ${toOrganization} for order ID ${order.orderId}: no owners with valid subscriptions`);
+//     }
+//   } else {
+//     console.log(`No owners found for organization ID ${toOrganization} for order ID ${order.orderId}`);
+//   }
+  
+//     await transaction.commit();
+//     return res.status(200).json({ message: "Order has been successfully technician completed!" });
+//   } catch (error) {
+//     if (transaction.finished !== "commit") {
+//       await transaction.rollback();
+//     }
+//     console.error("Error while updating order:", error.stack);
+//     return res.status(500).json({ message: "Internal server error: " + error.message });
+//   }
+// };
+
+
 const CloseOrder = async (req, res) => {
   const uid = req.user?.id;
   const { orderId } = req.body;
@@ -387,7 +711,7 @@ const CloseOrder = async (req, res) => {
 
     // Find order
     const order = await OrderReports.findOne({
-      where: { id: orderId,is_visible_to_technician: true },
+      where: { id: orderId, is_visible_to_technician: true },
       transaction,
     });
 
@@ -425,30 +749,27 @@ const CloseOrder = async (req, res) => {
       return res.status(400).json({ message: "Order is already marked as completed." });
     }
 
-    if(isRadiology){
-      order.orderStatus = "completed";
-      order.technician_assignment_status = "technician_completed";
-      await order.save({ transaction });
-    }
-    else{
-      order.orderStatus = "processing";
-      order.technician_assignment_status = "technician_completed";
-      await order.save({ transaction });
-    }
-
     // Update status
-
-   if(isRadiology){
+    if (isRadiology) {
       order.orderStatus = "completed";
       order.technician_assignment_status = "technician_completed";
       await order.save({ transaction });
-    }
-    else{
+    } else {
       order.orderStatus = "processing";
       order.technician_assignment_status = "technician_completed";
       await order.save({ transaction });
     }
 
+    // Duplicate status update (preserved as provided)
+    if (isRadiology) {
+      order.orderStatus = "completed";
+      order.technician_assignment_status = "technician_completed";
+      await order.save({ transaction });
+    } else {
+      order.orderStatus = "processing";
+      order.technician_assignment_status = "technician_completed";
+      await order.save({ transaction });
+    }
 
     // Notify technician (only for Radiology)
     if (isRadiology) {
@@ -499,8 +820,8 @@ const CloseOrder = async (req, res) => {
       }
     }
 
-    // Notify dentist (only for Radiology, if payment_status is paid)
-    if (isRadiology || isDentalLaboratory && order.payment_status === "paid") {
+    // Notify dentist (only if payment_status is paid)
+    if (order.payment_status === "paid") {
       const dentist = await User.findOne({
         where: { id: order.userUUID },
         include: [
@@ -564,7 +885,7 @@ const CloseOrder = async (req, res) => {
       }
     }
 
-    // Notify organization owners (for both Radiology and Dental Laboratory)
+    // Notify organization owners (for both paid and unpaid)
     const ownersFromOrganization = await User.findAll(
       {
         where: {
@@ -580,8 +901,8 @@ const CloseOrder = async (req, res) => {
             },
           },
         ],
-      },
-      { transaction }
+        transaction,
+      }
     );
 
     if (ownersFromOrganization.length > 0) {
@@ -601,49 +922,49 @@ const CloseOrder = async (req, res) => {
       }
 
       const pushNotifications = ownersFromOrganization
-      .filter((owner) => owner.one_subscription && Array.isArray(owner.one_subscription) && owner.one_subscription.length > 0)
-      .map((owner) => {
-        console.log(`Sending OneSignal push notification to organization owner ID ${owner.id} for order ID ${order.orderId} on ${owner.one_subscription.length} devices`);
-        return axios
-          .post(
-            "https://onesignal.com/api/v1/notifications",
-            {
-              app_id: process.env.ONESIGNAL_APP_ID,
-              include_player_ids: owner.one_subscription,
-              headings: { en: "Order Completed" },
-              contents: { en: `Order ${order.orderId} has been marked as completed by the technician.` },
-            },
-            {
-              headers: {
-                "Content-Type": "application/json",
-                Authorization: `Basic ${process.env.ONESIGNAL_API_KEY}`,
+        .filter((owner) => owner.one_subscription && Array.isArray(owner.one_subscription) && owner.one_subscription.length > 0)
+        .map((owner) => {
+          console.log(`Sending OneSignal push notification to organization owner ID ${owner.id} for order ID ${order.orderId} on ${owner.one_subscription.length} devices`);
+          return axios
+            .post(
+              "https://onesignal.com/api/v1/notifications",
+              {
+                app_id: process.env.ONESIGNAL_APP_ID,
+                include_player_ids: owner.one_subscription,
+                headings: { en: "Order Completed" },
+                contents: { en: `Order ${order.orderId} has been marked as completed by the technician.` },
               },
-            }
-          )
-          .then((response) => {
-            console.log(`✅ OneSignal push notification sent successfully to organization owner ID ${owner.id} for order ID ${order.orderId} on ${owner.one_subscription.length} devices:`, response.data);
-            return response;
-          })
-          .catch((error) => {
-            console.error(`⚠️ Failed to send OneSignal push notification to organization owner ID ${owner.id} for order ID ${order.orderId}:`, error.response?.data || error.message);
-            throw error;
-          });
-      });
+              {
+                headers: {
+                  "Content-Type": "application/json",
+                  Authorization: `Basic ${process.env.ONESIGNAL_API_KEY}`,
+                },
+              }
+            )
+            .then((response) => {
+              console.log(`✅ OneSignal push notification sent successfully to organization owner ID ${owner.id} for order ID ${order.orderId} on ${owner.one_subscription.length} devices:`, response.data);
+              return response;
+            })
+            .catch((error) => {
+              console.error(`⚠️ Failed to send OneSignal push notification to organization owner ID ${owner.id} for order ID ${order.orderId}:`, error.response?.data || error.message);
+              throw error;
+            });
+        });
 
-    if (pushNotifications.length > 0) {
-      try {
-        const responses = await Promise.all(pushNotifications);
-        console.log(`✅ OneSignal push notifications sent successfully to ${pushNotifications.length} owners of organization ID ${toOrganization} for order ID ${order.orderId}:`, responses.map((r) => r.data));
-      } catch (error) {
-        console.error(`⚠️ Failed to send one or more OneSignal push notifications to owners of organization ID ${toOrganization} for order ID ${order.orderId}:`, error.message);
+      if (pushNotifications.length > 0) {
+        try {
+          const responses = await Promise.all(pushNotifications);
+          console.log(`✅ OneSignal push notifications sent successfully to ${pushNotifications.length} owners of organization ID ${toOrganization} for order ID ${order.orderId}:`, responses.map((r) => r.data));
+        } catch (error) {
+          console.error(`⚠️ Failed to send one or more OneSignal push notifications to owners of organization ID ${toOrganization} for order ID ${order.orderId}:`, error.message);
+        }
+      } else {
+        console.log(`No OneSignal push notifications sent to owners of organization ID ${toOrganization} for order ID ${order.orderId}: no owners with valid subscriptions`);
       }
     } else {
-      console.log(`No OneSignal push notifications sent to owners of organization ID ${toOrganization} for order ID ${order.orderId}: no owners with valid subscriptions`);
+      console.log(`No owners found for organization ID ${toOrganization} for order ID ${order.orderId}`);
     }
-  } else {
-    console.log(`No owners found for organization ID ${toOrganization} for order ID ${order.orderId}`);
-  }
-  
+
     await transaction.commit();
     return res.status(200).json({ message: "Order has been successfully technician completed!" });
   } catch (error) {
