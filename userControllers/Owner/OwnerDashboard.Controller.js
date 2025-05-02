@@ -2002,7 +2002,7 @@ const getRadiologyOwnerOrdersByStatus = async (req, res) => {
 };
 
 const payNow = async (req, res) => {
-  const { organization_id, id: userId } = req.user; 
+  const { organization_id, id: userId } = req.user;
   console.log(req.user, "req.user");
 
   if (!organization_id) {
@@ -2032,21 +2032,22 @@ const payNow = async (req, res) => {
 
     await orderReport.update({ payment_status: "paid" }, { transaction });
 
-    // Send notifications
-    const sendUser = await User.findByPk(userId, { transaction });
+    const pushPromises = [];
+    const notifPromises = [];
+
+    // Send notifications to dentist
+    const sendUser = await User.findByPk(orderReport.userUUID, { transaction });
 
     if (!sendUser) {
       await transaction.rollback();
-      return res.status(404).json({ message: "User not found" });
+      return res.status(404).json({ message: "Dentist not found" });
     }
 
     let userSubscriptions = sendUser.one_subscription || [];
     if (!Array.isArray(userSubscriptions)) {
-      console.warn(`Invalid one_subscription for user ${userId}:`, sendUser.one_subscription);
+      console.warn(`Invalid one_subscription for dentist ${orderReport.userUUID}:`, sendUser.one_subscription);
       userSubscriptions = [];
     }
-
-    const pushPromises = [];
 
     if (userSubscriptions.length > 0) {
       pushPromises.push(
@@ -2069,30 +2070,78 @@ const payNow = async (req, res) => {
             }
           )
           .then((response) => {
-            console.log(`✅ OneSignal push notification sent successfully to user ID ${userId} for order ID ${orderReport.orderId} on ${userSubscriptions.length} devices:`, response.data);
+            console.log(`✅ OneSignal push notification sent successfully to dentist ID ${orderReport.userUUID} for order ID ${orderReport.orderId} on ${userSubscriptions.length} devices:`, response.data);
             return response;
           })
           .catch((error) => {
-            console.error(`⚠️ Failed to send OneSignal push notification to user ID ${userId} for order ID ${orderReport.orderId}:`, error.response?.data || error.message);
+            console.error(`⚠️ Failed to send OneSignal push notification to dentist ID ${orderReport.userUUID} for order ID ${orderReport.orderId}:`, error.response?.data || error.message);
             throw error;
           })
       );
     } else {
-      console.log(`No OneSignal push notification sent to user ID ${userId} for order ID ${orderReport.orderId}: no subscriptions found`);
+      console.log(`No OneSignal push notification sent to dentist ID ${orderReport.userUUID} for order ID ${orderReport.orderId}: no subscriptions found`);
     }
 
-    const notifPromises = [
+    notifPromises.push(
       Notification.create(
         {
-          uid: userId,
+          uid: orderReport.userUUID,
           datetime: new Date(),
           title: "Payment Confirmation",
           description: `Order ₹${amount} for bill ${orderReport.orderId} has been successfully processed.`,
         },
         { transaction }
-      ),
-    ];
+      )
+    );
 
+    // Send in-app notifications to organization owners
+    const toOrganization = orderReport.to_organization || orderReport.dataValues?.toOrganization;
+    if (!toOrganization) {
+      await transaction.rollback();
+      return res.status(400).json({ message: "Order is missing organization information" });
+    }
+
+    const ownersFromOrganization = await User.findAll(
+      {
+        where: {
+          organization_id: toOrganization,
+        },
+        include: [
+          {
+            model: Roles,
+            as: "role",
+            attributes: ["id", "rolename"],
+            where: {
+              rolename: "owner",
+            },
+          },
+        ],
+        transaction,
+      }
+    );
+
+    if (ownersFromOrganization.length > 0) {
+      const ownerNotifications = ownersFromOrganization.map((owner) => ({
+        organization_id: toOrganization,
+        uid: owner.id,
+        datetime: new Date(),
+        title: "Payment Confirmation",
+        description: `Order ₹${amount} for bill ${orderReport.orderId} has been successfully processed.`,
+      }));
+
+      notifPromises.push(
+        Notification.bulkCreate(ownerNotifications, { transaction }).then(() => {
+          console.log(`Notifications created successfully for ${ownersFromOrganization.length} owners of organization ID ${toOrganization} for order ID ${orderReport.orderId}`);
+        }).catch((error) => {
+          console.error(`Failed to create notifications for owners of organization ID ${toOrganization} for order ID ${orderReport.orderId}:`, error.message);
+          throw error;
+        })
+      );
+    } else {
+      console.log(`No owners found for organization ID ${toOrganization} for order ID ${orderReport.orderId}`);
+    }
+
+    // Execute all notifications before any rollback conditions
     await Promise.allSettled([...pushPromises, ...notifPromises]);
 
     await transaction.commit();
