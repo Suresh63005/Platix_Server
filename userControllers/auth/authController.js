@@ -473,6 +473,8 @@ const removeOneSignal = async (req, res) => {
     if(!userId){
         return res.status(400).json({ message: "Unauthorized!" });
     }
+
+    const { one_subscription } = req.body;
     
     try {
         const user = await User.findOne({ where: { id: userId } });
