@@ -810,14 +810,14 @@ const upsertDoctor = async (req, res) => {
     lastName,
     email,
     mobileNo,
-    hospital_name,
+    organization_id1,
     address,
     googleMapLink
   } = req.body;
 
   try {
     if (id) {
-      const doctor = await User.findOne({ where: { id, organization_id } });
+      const doctor = await User.findByPk(id);
 
       if (!doctor) {
         return res.status(404).json({ message: "Doctor not found" });
@@ -828,7 +828,7 @@ const upsertDoctor = async (req, res) => {
         lastName,
         email,
         mobileNo,
-        hospital_name,
+        organization_id: organization_id1,
         address,
         googleMapLink
       });
@@ -846,13 +846,15 @@ const upsertDoctor = async (req, res) => {
       return res.status(400).json({ message: "Email already exists" });
     }
 
+
+
     const newDoctor = await User.create({
       prefix,
       firstName,
       lastName,
       email,
       mobileNo,
-      hospital_name,
+      organization_id: organization_id1,
       address,
       googleMapLink,
       role_id: "b83bfdf1-7a7e-4284-8da9-9e332a18f889"
