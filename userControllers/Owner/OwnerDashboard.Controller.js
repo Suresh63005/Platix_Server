@@ -1149,8 +1149,8 @@ const ownerUpsertOrder = async (req, res) => {
       organization_id: toOrganization,
       uid: userUUID,
       datetime: new Date(),
-      title: "Order Confirmation",
-      description: `Your Order ${orderReport.orderId} has been confirmed and is now being processed.`,
+      title: id ? `Order Updated` : `Order Confirmation` ,
+      description: id ? `Your Order ${orderReport.orderId} has been sucessfully updated`: `Your Order ${orderReport.orderId} has been confirmed and is now being processed.`,
     });
 
     let doctorSubscriptions = user.one_subscription || [];
@@ -1166,9 +1166,9 @@ const ownerUpsertOrder = async (req, res) => {
           {
             app_id: process.env.ONESIGNAL_APP_ID,
             include_player_ids: doctorSubscriptions,
-            headings: { en: "Order Confirmation" },
+            headings: { en: id ? `Order Updated` : `Order Confirmation` },
             contents: {
-              en: `Your Order ${orderReport.orderId} has been confirmed and is now being processed.`,
+              en: id ? `Your Order ${orderReport.orderId} has been sucessfully updated`: `Your Order ${orderReport.orderId} has been confirmed and is now being processed.`,
             },
           },
           {
