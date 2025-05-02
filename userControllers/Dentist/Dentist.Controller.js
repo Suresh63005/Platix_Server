@@ -213,7 +213,8 @@ const fromDentist = async (req, res) => {
       const organizationType = organization?.organizationType?.organizationType;
 
       let smsContent = '';
-      if(creator.prefix === "DR"){
+      if (creator.prefix === "DR") {
+        // when doctor create msg recived radilogy
         if (organizationType === 'Radiology') {
           smsContent = `A Radiology order was raised by ${creator.firstName, creator.lastName} on ${new Date(orderReport.createdAt).toISOString().split('T')[0]}. Check it on the Platix app. Download from Play Store or App Store. – Team Platix`;
         } else if (organizationType === 'Dental Laboratory') {
@@ -222,13 +223,13 @@ const fromDentist = async (req, res) => {
           console.log('Unknown organization type. SMS not sent.');
           return;
         }
-  
+
         if (ownersFromOrganization.length > 0) {
           console.log(`Sending SMS to ${ownersFromOrganization.length} owners for order ${orderReport.orderId}`);
-  
+
           for (const owner of ownersFromOrganization) {
-            const phoneNumber = owner.mobile; 
-  
+            const phoneNumber = owner.mobile;
+
             if (phoneNumber) {
               await sendSMS(smsContent, phoneNumber);
               console.log(`SMS sent to ${phoneNumber}: ${smsContent}`);
@@ -239,7 +240,20 @@ const fromDentist = async (req, res) => {
         } else {
           console.log(`No owners found for organization (organization_id: ${toOrganization}) for order ${orderReport.orderId}. SMS not sent.`);
         }
+      } else {
+        // msg recived dentist when delivery boy create an order
+        const dentist = await User.findByPk(orderReport.userUUID, { transaction });
+        if (!dentist) {
+          await transaction.rollback();
+          return res.status(404).json({
+            success: false,
+            message: "Dentist not found",
+          });
+        }
+        smsContent = `Deliver boy ${creator.firstName} ${creator.lastName} created an order in ${organization.name}`;
+        await sendSMS(smsContent,dentist.mobileNo)
       }
+
 
     }
 
@@ -1325,7 +1339,7 @@ const payNow = async (req, res) => {
         `No OneSignal push notification sent to user ID ${uid} for order ID ${orderReport.orderId}: no subscriptions found`
       );
     }
-    
+
     await Notification.create({
       uid: uid,
       datetime: new Date(),
