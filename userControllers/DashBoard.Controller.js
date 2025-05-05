@@ -56,10 +56,10 @@ const allOrders = async (req, res) => {
 const all = async (req, res) => {
     // const { search, page = 1, limit = 10 } = req.query;
     // const offset = (page - 1) * limit;
-    const uid=req.user?.id;
-    if(!uid){
-        return res.status(401).json({ message: "Unauthorized!" });
-    }
+    // const uid=req.user?.id;
+    // if(!uid){
+    //     return res.status(401).json({ message: "Unauthorized!" });
+    // }
 
     try {
         const organizations = await Organization.findAll({
