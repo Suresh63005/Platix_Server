@@ -51,6 +51,7 @@ const technicianDashboardData = async (req, res) => {
     const orderList = await OrderReports.findAll({
       where: {
         technician: uid,
+        orderStatus: "processing",
         technician_assignment_status: "assigned_to_technician",
       },
       include: [
