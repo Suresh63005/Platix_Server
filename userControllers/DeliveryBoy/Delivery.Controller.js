@@ -39,18 +39,34 @@ const getAll = async (req, res) => {
           delivery_boy: uid,
           orderStatus: "processing"
         },
+        
+        // include: [
+          
+        // //   {
+        // //     model: Organization,
+        // //     as: 'fromOrg',
+        // //     attributes: ['name'],
+        // //   }
+        // ],
         include: [
-          {
-            model: Organization,
-            as: 'toOrg',
-            attributes: ['name'],
-          },
-          {
-            model: Organization,
-            as: 'fromOrg',
-            attributes: ['name'],
-          }
-        ],
+        {
+          model: User,
+          as: 'userDetails',
+          attributes: ['id', 'firstName', 'email', 'address', 'hospital_name'],
+          include: [
+            {
+              model: Organization, // from organization
+              as: "organization",
+              attributes: ["id", "name"]
+            }
+          ]
+        }
+        ,{
+          model: Organization,
+          as: 'toOrg',
+          attributes: ['name'],
+        },
+      ],
         order: [['createdAt', 'DESC']]
       });
 
@@ -61,14 +77,26 @@ const getAll = async (req, res) => {
     } else {
       // If no search term is provided, retrieve active orders and completed orders 
       orderList = await OrderReports.findAll({
+        
         include: [
-          {
-            model: Organization,
-            attributes: ['name'],
-            as: 'toOrg',
-            required: false
-          }
-        ],
+        {
+          model: User,
+          as: 'userDetails',
+          attributes: ['id', 'firstName', 'email', 'address', 'hospital_name'],
+          include: [
+            {
+              model: Organization, // from organization
+              as: "organization",
+              attributes: ["id", "name"]
+            }
+          ]
+        },
+        {
+          model: Organization,
+          as: 'toOrg',
+          attributes: ['name'],
+        },
+      ],
         order: [['createdAt', 'DESC']],
         where: {
           delivery_boy: uid,
