@@ -7,6 +7,10 @@ const Service = require('../Models/TblServices.model');
 const TblOrganizationType = require("../Models/TblOrganizationType.model");
 
 const OrganizationTypeUpsert = async (req, res) => {
+    const admin = req.admin?.id;
+    if (!admin) {
+      return res.status(401).json({ message: "Unauthorized!" });
+    }
     const t = await sequelize.transaction(); // Start transaction
 
     try {
@@ -47,6 +51,10 @@ const OrganizationTypeUpsert = async (req, res) => {
 };
 
 const organizationDelete = async (req, res) => {
+    const admin = req.admin?.id;
+    if (!admin) {
+      return res.status(401).json({ message: "Unauthorized!" });
+    }
     const t = await sequelize.transaction(); // Start transaction
 
     try {
@@ -96,6 +104,10 @@ const organizationDelete = async (req, res) => {
 };
 
 const getAll = async (req, res) => {
+    const admin=req.admin?.id;
+    if(!admin){
+        return res.status().json({message:"Unauthorized!"})
+    }
     try {
         const { page = 1, limit = 10, filter = '', search = '' } = req.query;
 
@@ -130,7 +142,7 @@ const getAll = async (req, res) => {
             ];
         }
 
-        console.log("whereConditions:", JSON.stringify(whereConditions, null, 2));
+        // console.log("whereConditions:", JSON.stringify(whereConditions, null, 2));
 
         // Get the total count of matching organization types
         const totalCount = await OrganizationType.count({ where: whereConditions });
@@ -185,7 +197,7 @@ const getAll = async (req, res) => {
         );
 
         // Send back the response with the organization data and total count
-        console.log(formattedOrganizations)
+        // console.log(formattedOrganizations)
         return res.status(200).json({
             results: formattedOrganizations,
             totalCount: totalCount,
@@ -198,6 +210,10 @@ const getAll = async (req, res) => {
 };
 
 const assignServiceToOrganization = async (req, res) => {
+    const admin = req.admin?.id;
+    if (!admin) {
+      return res.status(401).json({ message: "Unauthorized!" });
+    }
     
     try {
         const { organizationType_id, service_id } = req.body;
@@ -247,22 +263,45 @@ const assignServiceToOrganization = async (req, res) => {
 
 
 const organizationGetByid = async (req, res) => {
-    try {
-        const { id } = req.params;
-        const organizationtype = await OrganizationType.findByPk(id);
-        
-        if (!organizationtype) {
-            return res.status(404).json({ message: "Organization not found" });
-        }
-
-        return res.json({ data: organizationtype });
-    } catch (error) {
-        console.error("Error in organizationGetByid:", error);
-        return res.status(500).json({ message: "Internal Server Error" });
+    const admin = req.admin?.id;
+    if (!admin) {
+      return res.status(401).json({ message: "Unauthorized!" });
     }
-};
+  
+    try {
+      const { id } = req.params;
+      const organizationType = await OrganizationType.findByPk(id);
+  
+      if (!organizationType) {
+        return res.status(404).json({ message: "Organization not found" });
+      }
+  
+      const data = organizationType.toJSON();
+  
+      const formatDate = (dateValue) => {
+        const date = new Date(dateValue);
+        return isNaN(date.getTime()) ? null : date.toISOString().split("T")[0];
+      };
+  
+      const formattedData = {
+        ...data,
+        fromDate: formatDate(data.fromDate),
+        toDate: formatDate(data.toDate),
+      };
+  
+      return res.json({ data: formattedData });
+    } catch (error) {
+      console.error("Error in organizationGetByid:", error);
+      return res.status(500).json({ message: "Internal Server Error" });
+    }
+  };
+  
 
 const getOrganizationService = async (req, res) => {
+    const admin = req.admin?.id;
+    if (!admin) {
+      return res.status(401).json({ message: "Unauthorized!" });
+    }
     try {
       const { service_id } = req.params; 
       
