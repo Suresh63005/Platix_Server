@@ -1218,7 +1218,7 @@ const CloseOrder = async (req, res) => {
         {
           where: {
             technician: uid,
-            orderStatus: "completed",
+            orderStatus:{[Op.or]:["processing","completed"]},
             technician_assignment_status: "technician_completed",
             is_visible_to_technician: true
           },
