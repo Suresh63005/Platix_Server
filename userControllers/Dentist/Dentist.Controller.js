@@ -1173,10 +1173,10 @@ const orderAndPaymentSearch = async (req, res) => {
 
 // get organization details get by id
 const getorganizationDetailsById = async (req, res) => {
-  const uid = req.user?.id;
-  if (!uid) {
-    return res.status(401).json({ message: "Unauthorized!" });
-  }
+  // const uid = req.user?.id;
+  // if (!uid) {
+  //   return res.status(401).json({ message: "Unauthorized!" });
+  // }
   const id = req.params.id;
 
   try {
