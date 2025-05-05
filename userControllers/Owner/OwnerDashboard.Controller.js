@@ -56,7 +56,7 @@ const labOrders = async (req, res) => {
           ]
         },
       ],
-      order: [["created_at", "DESC"]]
+      order: [["createdAt", "DESC"]]
     });
 
     // if (orders.length === 0) {
@@ -72,7 +72,6 @@ const labOrders = async (req, res) => {
 
 
     ]);
-
     // Sum received amounts
     const receivedAmounts =
       (await OrderReports.sum("paidAmount", {
@@ -151,6 +150,11 @@ const labAllOrders = async (req, res) => {
 
       order: [["createdAt", "DESC"]],
     });
+//     console.log("Org ID:", organization_id);
+// console.log("Completed Count (Sequelize):", await OrderReports.count({ 
+//   where: { orderStatus: "completed", toOrganization: organization_id },
+//   paranoid: false
+// }));
 
     return res.status(200).json({
       [orderStatus]: allOrders.map(order => ({
@@ -397,6 +401,18 @@ const searchOrdersGetByDate = async (req, res) => {
           model: Organization,
           as: 'toOrg',
           attributes: ['id', 'name'],
+        },
+        {
+          model: User,
+          as: "userDetails",
+          attributes: ["id", "firstName","lastName"],
+          include: [
+            {
+              model: Organization,
+              as: "organization",
+              attributes: ["name"],
+            },
+          ]
         },
         {
           model: OrderServices,
