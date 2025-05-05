@@ -10,6 +10,10 @@ const { Op } = require("sequelize");
 
 // ✅ Create or Update Order Report
 const upsertOrderReport = asyncHandler(async (req, res) => {
+  const admin = req.admin?.id;
+    if (!admin) {
+      return res.status(401).json({ message: "Unauthorized!" });
+    }
   const { 
     id, 
     orderDate, 
@@ -122,7 +126,10 @@ const upsertOrderReport = asyncHandler(async (req, res) => {
 
 // ✅ Get All Order Reports (with Pagination & Associations)
 const getAllOrderReports = asyncHandler(async (req, res) => {
- 
+  const admin = req.admin?.id;
+  if (!admin) {
+    return res.status(401).json({ message: "Unauthorized!" });
+  }
   try {
     const orderReports = await OrderReports.findAll({
       include: [
@@ -158,6 +165,10 @@ const getAllOrderReports = asyncHandler(async (req, res) => {
 });
 
 const filterByOrderDate = async (req, res) => {
+  const admin = req.admin?.id;
+    if (!admin) {
+      return res.status(401).json({ message: "Unauthorized!" });
+    }
   try {
     const { fromDate, toDate } = req.params;
 

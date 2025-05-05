@@ -2,6 +2,10 @@ const uploadToS3 = require("../config/fileUpload.aws");
 const Settings = require("../Models/TblSettings.model");
 
 const getSettingsById = async (req, res) => {
+  const admin = req.admin?.id;
+    if (!admin) {
+      return res.status(401).json({ message: "Unauthorized!" });
+    }
   try {
     const { id } = req.params;
     const settings = await Settings.findByPk(id);
