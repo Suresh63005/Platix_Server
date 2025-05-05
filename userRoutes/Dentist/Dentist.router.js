@@ -20,8 +20,8 @@ router.put("/dentist/delete/:status",authMiddleware.isAuthenticated,DentistContr
 router.post("/dentist/paynow",authMiddleware.isAuthenticated,DentistController.payNow)
 router.get("/dashboard/all-orders",authMiddleware.isAuthenticated,dashBoardController.allOrders)
 router.get("/dashboard/all",dashBoardController.all)
-router.get("/dashboard/all/organizations/search",authMiddleware.isAuthenticated, dashBoardController.searchOrganizations);
-router.get("/dashboard/all/organizationstype/search",authMiddleware.isAuthenticated, dashBoardController.searchByOrganizationType);
+router.get("/dashboard/all/organizations/search", dashBoardController.searchOrganizations);
+router.get("/dashboard/all/organizationstype/search", dashBoardController.searchByOrganizationType);
 router.get("/dashboard/status/:status/:userUUID",authMiddleware.isAuthenticated,dashBoardController.statusOrder)
 // for settings
 router.get("/settings",dashBoardController.termAndConditions)
