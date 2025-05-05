@@ -289,8 +289,11 @@ const searchOrganizations = async (req, res) => {
             where: {
                 [Op.or]: [
                     { name: { [Op.like]: `%${search}%` } }, 
+                    { address: { [Op.like]: `%${search}%` } }, 
+                    { mobile: { [Op.like]: `%${search}%` } }, 
                     { description: { [Op.like]: `%${search}%` } }, 
-                    { "$organizationType.organizationType$": { [Op.like]: `%${search}%` } } 
+                    { "$organizationType.organizationType$": { [Op.like]: `%${search}%` } } ,
+                    { "$organization_service.servicess.servicename$": { [Op.like]: `%${search}%` } } ,
                 ],
             },
         });
