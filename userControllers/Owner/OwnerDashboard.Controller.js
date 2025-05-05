@@ -227,7 +227,14 @@ const searchOrders = async (req, res) => {
         {
           model: User,
           as: "userDetails", // doctor name
-          attributes: ["prefix", "firstName", "lastName"]
+          attributes: ["prefix", "firstName", "lastName"],
+          include:[
+            {
+              model:Organization,
+              as:"organization",
+              attributes:["name"]
+            }
+          ]
         }
       ]
     });
