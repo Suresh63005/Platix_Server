@@ -779,6 +779,7 @@ const orderReport = async (req, res) => {
       orderStatus: {
         [Op.eq]: "completed",
       },
+      payment_status:"paid",
       userUUID: uid
     };
 
