@@ -391,6 +391,7 @@ const searchOrdersGetByDate = async (req, res) => {
     // Fetch the report data based on the whereCondition
     const reportData = await OrderReports.findAll({
       where: whereCondition,
+      order:[["createdAt","DESC"]],
       include: [
         {
           model: Organization,
