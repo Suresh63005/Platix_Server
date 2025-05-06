@@ -231,7 +231,11 @@ const fromDentist = async (req, res) => {
             const phoneNumber = owner.mobile;
 
             if (phoneNumber) {
-              await sendSMS(smsContent, phoneNumber);
+              try {
+                await sendSMS(smsContent, phoneNumber);
+              } catch (error) {
+                console.log(error)
+              }
               console.log(`SMS sent to ${phoneNumber}: ${smsContent}`);
             } else {
               console.log(`No phone number available for owner (userId: ${owner.id}) for order ${orderReport.orderId}. SMS not sent.`);
@@ -251,7 +255,11 @@ const fromDentist = async (req, res) => {
           });
         }
         smsContent = `Hello Dr ${creator.firstName} ${creator.lastName} created an order in ${organization.name}. View it on the Platix app. Get it from Play Store or App Store. – Team Platix`;
-        await sendSMS(smsContent,dentist.mobileNo)
+        try {
+          await sendSMS(smsContent,dentist.mobileNo)
+        } catch (error) {
+             console.log(error)
+        }
       }
 
 

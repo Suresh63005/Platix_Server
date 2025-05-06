@@ -187,11 +187,12 @@ const searchOrders = async (req, res) => {
         { "$userDetails.firstName$": { [Op.like]: `%${search}%` } },
         { "$userDetails.lastName$": { [Op.like]: `%${search}%` } },
         { "$userDetails.organization.name$": { [Op.like]: `%${search}%` } },
+        { created_at: { [Op.like]: `%${search}%` } },
+
         // Full date
         where(fn("DATE_FORMAT", col("OrderReports.created_at"), "%Y-%m-%d"), {
           [Op.like]: `%${search}%`
-        }),
-
+        })
       ]
     };
 
@@ -206,25 +207,25 @@ const searchOrders = async (req, res) => {
 
         },
         {
-                model: OrderServices,
-                as: "orderServices",
-                attributes: ["quantity", "price"],
-                include: [
-                  {
-                    model: TblOrganization_Service,
-                    as: "orgservice",
-                    attributes: ["id"],
-                    required: false,
-                    include: [
-                      {
-                        model: Services,
-                        as: "servicess",
-                        attributes: ["servicename"]
-                      }
-                    ]
-                  }
-                ]
-              },
+          model: OrderServices,
+          as: "orderServices",
+          attributes: ["quantity", "price"],
+          include: [
+            {
+              model: TblOrganization_Service,
+              as: "orgservice",
+              attributes: ["id"],
+              required: false,
+              include: [
+                {
+                  model: Services,
+                  as: "servicess",
+                  attributes: ["servicename"]
+                }
+              ]
+            }
+          ]
+        },
 
         {
           model: User,
@@ -247,6 +248,9 @@ const searchOrders = async (req, res) => {
     return res.status(500).json({ message: "An error occurred while searching for orders" });
   }
 };
+
+
+
 
 // Retrieve order or payment reports
 // const labOrderAndPaymentReport = async (req, res) => {
@@ -481,7 +485,7 @@ const orderAndPaymentSearch = async (req, res) => {
     const whereConditions = {
       toOrganization: organization_id,
       orderStatus: "completed",
-      payment_status:"paid",
+      payment_status: "paid",
       // delivery_boy: { [Op.is]: null },
       // technician: { [Op.is]: null },
       [Op.or]: [
@@ -845,7 +849,7 @@ const upsertDoctor = async (req, res) => {
   if (!mobileNo || !mobileNo.startsWith("+91")) {
     return res.status(400).json({ message: "Mobile number must start with +91" });
   }
-  
+
   try {
     if (id) {
       const doctor = await User.findByPk(id);
@@ -1073,7 +1077,11 @@ const ownerUpsertOrder = async (req, res) => {
 
       const labName = organization ? organization.name : "Unknown Lab";
       const message = `Hello ${user.firstName, user.lastName}, a lab order has been raised by ${labName} on ${new Date(orderReport.createdAt).toISOString().split('T')[0]}. View it on the Platix app. Download it from the Play Store or App Store. – Team Platix`;
-       await sendSMS(message,user.mobileNo)
+      try {
+        await sendSMS(message, user.mobileNo)
+      } catch (error) {
+        console.log("Error in sending messages", error);
+      }
 
     }
 
@@ -1914,7 +1922,11 @@ const uploadImagesByOwner = async (req, res) => {
 
     // send sms
     const message = `Hello ${DoctorFirstName, DoctorLastName}, a radiology image was uploaded by ${order.toOrg.name} on ${new Date(uploadRecord.createdAt).toISOString().split('T')[0]}. View it on the Platix app. Download from Play Store or App Store. – Team Platix`;
-    await sendSMS(message, DoctormobileNo)
+    try {
+      await sendSMS(message, DoctormobileNo)
+    } catch (error) {
+      console.log(error)
+    }
     return res.status(200).json({
       message: "Images uploaded successfully!",
       data: {
