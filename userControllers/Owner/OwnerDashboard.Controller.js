@@ -1067,7 +1067,7 @@ const ownerUpsertOrder = async (req, res) => {
       const labName = organization ? organization.name : "Unknown Lab";
       const message = `Hello ${user.firstName, user.lastName}, a lab order has been raised by ${labName} on ${new Date(orderReport.createdAt).toISOString().split('T')[0]}. View it on the Platix app. Download it from the Play Store or App Store. – Team Platix`;
       //  await sendSMS(message,user.mobileNo)
-      await sendSMS(message, "+919121182295")
+      await sendSMS(message, "+917381277084")
 
     }
 
