@@ -20,7 +20,7 @@ router.post('/admin/forgotpassword', forgotPassword);
 router.post('/admin/createnewpass/:token', resetPassword);
 
 router.post("/admin/createrole" ,verifyAdmin, createRole)
-router.get("/admin/viewrole",verifyAdmin, viewRoles)
+router.get("/admin/viewrole", viewRoles)
 router.post("/admin/createservice",verifyAdmin, upsertService);
 router.get("/admin/getbyid/:id",verifyAdmin, serviceGetByid);
 
