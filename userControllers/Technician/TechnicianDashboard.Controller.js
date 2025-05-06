@@ -150,6 +150,26 @@ const FetchTechnicianOrdersByStatus = async (req, res) => {
             },
           ],
         },
+        {
+          model: OrderServices,
+          as: "orderServices",
+          attributes: ["id"],
+          required: false,
+          include: [
+            {
+              model: TblOrganization_Service,
+              as: "orgservice",
+              attributes: ["id", "organization_id", "service_id"],
+              include: [
+                {
+                  model: Services,
+                  as: "servicess",
+                  attributes: ["id", "servicename"],
+                },
+              ],
+            },
+          ],
+        },
       ],
       order: [["created_at", "DESC"]],
     });
@@ -654,62 +674,181 @@ const CloseOrder = async (req, res) => {
   }
 };
 
-  const SearchAPI = async(req,res)=>{
-    const uid = req.user?.id;
-    if(!uid){
-        return res.status(401).json({message:"Unauthorized: User not found!"})
-    }
-    const {orderId,orderDate,fromOrg} = req.query;
-    const whereClause = {technician:uid}
+const SearchAPI = async (req, res) => {
+  const uid = req.user?.id;
+  if (!uid) {
+    return res.status(401).json({ message: "Unauthorized: User not found!" });
+  }
 
-    if(orderId){
-        whereClause.id = {[Op.like]:`${orderId}`}
-    }
-    if(fromOrg){
+  // Extract search term from query
+  const searchTerm = Object.keys(req.query)[0]?.trim();
+  console.log("Search Term:", searchTerm);
 
-    }
-    if(orderDate){
-        whereClause.orderDate={
-            [Op.gte]:new Date(orderDate).setHours(0,0,0,0),
-            [Op.lte]: new Date(orderDate).setHours(23,59,59,999)
-        }
-    }
-    try {
-      const orders = await OrderReports.findAll({
-        where: whereClause,
-        include: [
+  if (!searchTerm || searchTerm === "") {
+    return res.status(400).json({ message: "A valid search term is required" });
+  }
+
+  try {
+    // Safe search term for SQL
+    const searchPattern = `%${searchTerm}%`;
+    console.log("Preparing query with searchPattern:", searchPattern);
+
+    // Fetch orders with search across orderId, orderDate, organization name, service name, patientName, fromOrganization, and doctorName
+    const orders = await OrderReports.findAll({
+      where: {
+        technician: uid,
+        orderStatus: "processing",
+        technician_assignment_status: "assigned_to_technician",
+        is_visible_to_technician: true,
+        [Op.or]: [
+          { orderId: { [Op.like]: searchPattern } },
+          // Cast orderDate to DD-MM-YYYY for search
+          OrderReports.sequelize.where(
+            OrderReports.sequelize.fn(
+              "DATE_FORMAT",
+              OrderReports.sequelize.col("order_date"),
+              "%d-%m-%Y"
+            ),
+            { [Op.like]: searchPattern }
+          ),
+          // Subquery for organization name
           {
-            model: Organization,
-            as: "fromOrg",
-            attributes: ["name"],
-            where: fromOrg
-              ? { name: { [Op.like]: `%${fromOrg}%` } }
-              : undefined,
+            userUUID: {
+              [Op.in]: Sequelize.literal(`
+                (SELECT id FROM User
+                 WHERE organization_id IN (
+                   SELECT id FROM Organization
+                   WHERE name LIKE ?)
+                )
+              `),
+            },
+          },
+          // Subquery for service name
+          {
+            id: {
+              [Op.in]: Sequelize.literal(`
+                (SELECT order_id FROM OrderServices
+                 WHERE orgservice_id IN (
+                   SELECT id FROM Organization_Service
+                   WHERE service_id IN (
+                     SELECT id FROM Services
+                     WHERE servicename LIKE ?)
+                 ))
+              `),
+            },
+          },
+          // Search by patientName
+          { patientName: { [Op.like]: searchPattern } },
+          // Search by fromOrganization
+          { fromOrganization: { [Op.like]: searchPattern } },
+          // Subquery for doctorName (User.firstName)
+          {
+            userUUID: {
+              [Op.in]: Sequelize.literal(`
+                (SELECT id FROM User
+                 WHERE firstName LIKE ?)
+              `),
+            },
           },
         ],
-        order: [["orderDate", "DESC"]],
-      });
-      if (!orders || orders.length === 0) {
-        return res
-          .status(404)
-          .json({ message: "No orders found matching the search criteria!" });
-      }
-      const response = orders.map((order) => ({
-        ...order.toJSON(),
-        fromOrganizationName: order.fromOrg ? order.fromOrg.name : "Unknown",
-      }));
+      },
+      include: [
+        {
+          model: User,
+          as: "userDetails",
+          attributes: ["id", "firstName"],
+          required: false,
+          include: [
+            {
+              model: Organization,
+              as: "organization",
+              attributes: ["id", "name"],
+              required: false,
+            },
+          ],
+        },
+        {
+          model: OrderServices,
+          as: "orderServices",
+          attributes: ["id"],
+          required: false,
+          include: [
+            {
+              model: TblOrganization_Service,
+              as: "orgservice",
+              attributes: ["id", "organization_id", "service_id"],
+              include: [
+                {
+                  model: Services,
+                  as: "servicess",
+                  attributes: ["id", "servicename"],
+                },
+              ],
+            },
+          ],
+        },
+      ],
+      attributes: [
+        "id",
+        "orderId",
+        "orderDate",
+        "requiredDate",
+        "toothName",
+        "shades",
+        "remarks",
+        "patientId",
+        "patientName",
+        "subTotal",
+        "totalAmount",
+        "payment_status",
+        "fromOrganization",
+        "userUUID",
+      ],
+      order: [["orderDate", "DESC"]],
+      replacements: [searchPattern, searchPattern, searchPattern], // For organization, service, and doctorName subqueries
+    });
 
-      return res.status(200).json({
-        message: "Orders fetched successfully!",
-        orders: response,
-      });
-    } catch (error) {
-      console.error("Error in SearchAPI:", error);
-      return res
-        .status(500)
-        .json({ message: "Internal Server Error: " + error.message });
+    console.log("Raw Orders:", JSON.stringify(orders, null, 2));
+
+    if (!orders || orders.length === 0) {
+      return res.status(404).json({ message: "No orders found matching the search criteria!" });
     }
+
+    // Map orders to response format
+    const filteredOrders = orders.map((order) => {
+      console.log(`Order ID: ${order.orderId}, userUUID: ${order.userUUID}, userDetails:`, order.userDetails);
+      return {
+        id: order.id,
+        orderId: order.orderId,
+        orderDate: order.orderDate,
+        requiredDate: order.requiredDate,
+        toothName: order.toothName,
+        shades: order.shades,
+        remarks: order.remarks,
+        patientId: order.patientId,
+        patientName: order.patientName?.trim() || "",
+        subTotal: order.subTotal,
+        totalAmount: order.totalAmount,
+        payment_status: order.payment_status,
+        fromOrganizationId: order.userDetails?.organization?.id || order.fromOrganization || null,
+        fromOrganizationName: order.userDetails?.organization?.name || "Unknown",
+        doctorName: order.userDetails?.firstName || "Unknown",
+        services: order.orderServices.map((service) => ({
+          id: service.id,
+          servicename: service.orgservice?.servicess?.servicename || "Unknown",
+        })),
+      };
+    });
+
+    return res.status(200).json({
+      message: "Orders fetched successfully!",
+      filteredOrders,
+    });
+  } catch (error) {
+    console.error("Error in SearchAPI:", error.stack);
+    return res.status(500).json({ message: "Internal Server Error: " + error.message });
   }
+};
 
   const TechnicianDashboardOrderSearch = async (req, res) => {
     const uid = req.user?.id;
