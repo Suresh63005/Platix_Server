@@ -91,7 +91,6 @@ const editprofile = async (req, res) => {
         email,
         whatsapp: whatsappNo,
         organizationType_id: orgType.id,
-        googlemaplink:googleMapLink,
         businessName: businessName || null,
         googleCoordinates: { "latitude": "00.000", "longitude": "00.000" },
         file1: "https://media.istockphoto.com/id/1363477135/vector/cartoon-dentist-mascot-holding-teeth-and-celebrating-national-dentist-day.jpg?s=612x612&w=0&k=20&c=xLEh88Hu_UH0X2V5b5lWd8ZrBMP6kUIjV6XRuCkGjb0=",
