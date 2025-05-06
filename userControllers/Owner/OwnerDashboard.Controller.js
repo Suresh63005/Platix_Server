@@ -150,11 +150,11 @@ const labAllOrders = async (req, res) => {
 
       order: [["createdAt", "DESC"]],
     });
-//     console.log("Org ID:", organization_id);
-// console.log("Completed Count (Sequelize):", await OrderReports.count({ 
-//   where: { orderStatus: "completed", toOrganization: organization_id },
-//   paranoid: false
-// }));
+    //     console.log("Org ID:", organization_id);
+    // console.log("Completed Count (Sequelize):", await OrderReports.count({ 
+    //   where: { orderStatus: "completed", toOrganization: organization_id },
+    //   paranoid: false
+    // }));
 
     return res.status(200).json({
       [orderStatus]: allOrders.map(order => ({
@@ -183,23 +183,16 @@ const searchOrders = async (req, res) => {
       [Op.or]: [
         { orderId: { [Op.like]: `%${search}%` } },
         { "$toOrg.name$": { [Op.like]: `%${search}%` } },
-        { "$toOrg.organization_service.servicess.servicename$": { [Op.like]: `%${search}%` } },
+        { "$orderServices.orgservice.servicess.servicename$": { [Op.like]: `%${search}%` } },
         { "$userDetails.firstName$": { [Op.like]: `%${search}%` } },
-        { "$userDetails.lastName$": { [Op.like]: `%${search}%` } }
+        { "$userDetails.lastName$": { [Op.like]: `%${search}%` } },
+        { "$userDetails.organization.name$": { [Op.like]: `%${search}%` } },
+        where(fn("DATE_FORMAT", col("OrderReports.created_at"), "%Y-%m-%d"), {
+          [Op.like]: `%${search}%`
+        })
+        // search using creatred at and from org name way
       ]
     };
-
-    const isDate = moment(search, "YYYY-MM-DD", true).isValid();
-    if (isDate) {
-      whereConditions[Op.or].push({
-        createdAt: {
-          [Op.between]: [
-            moment(search, "YYYY-MM-DD").startOf("day").toDate(),
-            moment(search, "YYYY-MM-DD").endOf("day").toDate()
-          ]
-        }
-      });
-    }
 
     const orders = await OrderReports.findAll({
       where: whereConditions,
@@ -209,30 +202,38 @@ const searchOrders = async (req, res) => {
           model: Organization,
           as: "toOrg",
           attributes: ["name"],
-          include: [
-            {
-              model: TblOrganization_Service,
-              as: "organization_service",
-              attributes: ["service_id", "price"],
-              include: [
-                {
-                  model: Services,
-                  as: "servicess",
-                  attributes: ["servicename"],
-                },
-              ],
-            },
-          ]
+
         },
+        {
+                model: OrderServices,
+                as: "orderServices",
+                attributes: ["quantity", "price"],
+                include: [
+                  {
+                    model: TblOrganization_Service,
+                    as: "orgservice",
+                    attributes: ["id"],
+                    required: false,
+                    include: [
+                      {
+                        model: Services,
+                        as: "servicess",
+                        attributes: ["servicename"]
+                      }
+                    ]
+                  }
+                ]
+              },
+
         {
           model: User,
           as: "userDetails", // doctor name
           attributes: ["prefix", "firstName", "lastName"],
-          include:[
+          include: [
             {
-              model:Organization,
-              as:"organization",
-              attributes:["name"]
+              model: Organization,
+              as: "organization",
+              attributes: ["name"]
             }
           ]
         }
@@ -402,7 +403,7 @@ const searchOrdersGetByDate = async (req, res) => {
     // Fetch the report data based on the whereCondition
     const reportData = await OrderReports.findAll({
       where: whereCondition,
-      order:[["createdAt","DESC"]],
+      order: [["createdAt", "DESC"]],
       include: [
         {
           model: Organization,
@@ -412,7 +413,7 @@ const searchOrdersGetByDate = async (req, res) => {
         {
           model: User,
           as: "userDetails",
-          attributes: ["id", "firstName","lastName"],
+          attributes: ["id", "firstName", "lastName"],
           include: [
             {
               model: Organization,
@@ -501,17 +502,17 @@ const orderAndPaymentSearch = async (req, res) => {
       ]
     };
 
-    const isDate = moment(search, "YYYY-MM-DD", true).isValid();
-    if (isDate) {
-      whereConditions[Op.or].push({
-        createdAt: {
-          [Op.between]: [
-            moment(search, "YYYY-MM-DD").startOf("day").toDate(),
-            moment(search, "YYYY-MM-DD").endOf("day").toDate()
-          ]
-        }
-      });
-    }
+    // const isDate = moment(search, "YYYY-MM-DD", true).isValid();
+    // if (isDate) {
+    //   whereConditions[Op.or].push({
+    //     createdAt: {
+    //       [Op.between]: [
+    //         moment(search, "YYYY-MM-DD").startOf("day").toDate(),
+    //         moment(search, "YYYY-MM-DD").endOf("day").toDate()
+    //       ]
+    //     }
+    //   });
+    // }
     const orderReports = await OrderReports.findAll({
       where: whereConditions,
       order: [["createdAt", "DESC"]],
@@ -1093,7 +1094,7 @@ const ownerUpsertOrder = async (req, res) => {
         uid: owner.id,
         datetime: new Date(),
         title: id ? `New Order Received` : `Order Updated`,
-       description: id ? `Order ${orderReport.orderId} has been successfully updated.` : `New Order ${orderReport.orderId} has been received to your organization.`,
+        description: id ? `Order ${orderReport.orderId} has been successfully updated.` : `New Order ${orderReport.orderId} has been received to your organization.`,
       }));
 
       await Notification.bulkCreate(notifications, { transaction });
@@ -1173,8 +1174,8 @@ const ownerUpsertOrder = async (req, res) => {
       organization_id: toOrganization,
       uid: userUUID,
       datetime: new Date(),
-      title: id ? `Order Updated` : `Order Confirmation` ,
-      description: id ? `Your Order ${orderReport.orderId} has been sucessfully updated`: `Your Order ${orderReport.orderId} has been confirmed and is now being processed.`,
+      title: id ? `Order Updated` : `Order Confirmation`,
+      description: id ? `Your Order ${orderReport.orderId} has been sucessfully updated` : `Your Order ${orderReport.orderId} has been confirmed and is now being processed.`,
     });
 
     let doctorSubscriptions = user.one_subscription || [];
@@ -1192,7 +1193,7 @@ const ownerUpsertOrder = async (req, res) => {
             include_player_ids: doctorSubscriptions,
             headings: { en: id ? `Order Updated` : `Order Confirmation` },
             contents: {
-              en: id ? `Your Order ${orderReport.orderId} has been sucessfully updated`: `Your Order ${orderReport.orderId} has been confirmed and is now being processed.`,
+              en: id ? `Your Order ${orderReport.orderId} has been sucessfully updated` : `Your Order ${orderReport.orderId} has been confirmed and is now being processed.`,
             },
           },
           {
@@ -1440,11 +1441,11 @@ const cancelledOrders = async (req, res) => {
             title: "Order Cancelled",
             description: `Order ${orderReport.orderId} has been cancelled.`,
           },
-          
+
         )
       );
     }
-    
+
     // Wait for notifications
     // await Promise.allSettled([pushPromise, ...notifPromises]);
     await Promise.allSettled([...pushPromises, ...notifPromises]);
@@ -1734,7 +1735,7 @@ const raiseInvoiceAndCloseOrder = async (req, res) => {
         console.error(`Failed to create notification for dentist ID ${checkOrder.userUUID} for order ID ${checkOrder.orderId}:`, error.message);
       }
 
-      
+
       let dentistSubscriptions = dentist.one_subscription || [];
       if (!Array.isArray(dentistSubscriptions)) {
         console.warn(`Invalid one_subscription for dentist ${checkOrder.userUUID}:`, dentist.one_subscription);
