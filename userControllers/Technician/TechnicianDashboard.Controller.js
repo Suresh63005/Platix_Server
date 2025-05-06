@@ -1056,6 +1056,9 @@ const CloseOrder = async (req, res) => {
       const orders = await OrderReports.findAll({
         where: {
           technician: uid,
+          orderStatus: "processing",
+          technician_assignment_status: "assigned_to_technician",
+          is_visible_to_technician: true,
           [Op.or]: [
             { orderId: { [Op.like]: searchPattern } },
             // Cast orderDate to YYYY-MM-DD for search
@@ -1063,7 +1066,7 @@ const CloseOrder = async (req, res) => {
               OrderReports.sequelize.fn(
                 "DATE_FORMAT",
                 OrderReports.sequelize.col("order_date"),
-                "%Y-%m-%d"
+                "%d-%m-%Y"
               ),
               { [Op.like]: searchPattern }
             ),
@@ -1098,6 +1101,7 @@ const CloseOrder = async (req, res) => {
                 ],
               },
             },
+            {patientName:{[Op.like]:searchPattern}}
           ],
         },
         include: [
