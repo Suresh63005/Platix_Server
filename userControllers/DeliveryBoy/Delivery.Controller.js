@@ -163,7 +163,27 @@ const deliveryAllOrders = async (req, res) => {
               attributes: ["id", "name"]
             }
           ]
-        }
+        },
+        {
+          model: OrderServices,
+          as: 'orderServices',
+          attributes: ["quantity"],
+          include: [
+            {
+              model: TblOrganization_Service,
+              as: "orgservice",
+              attributes: ["id", "price"],
+              include: [
+                {
+                  model: Services,
+                  as: 'servicess',
+                  attributes: ["servicename", 'servicedescription']
+                },
+
+              ],
+            }
+          ]
+        },
       ],
       order: [['createdAt', 'DESC']]
     });
