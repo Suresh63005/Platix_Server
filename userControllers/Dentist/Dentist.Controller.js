@@ -1138,6 +1138,7 @@ const orderAndPaymentSearch = async (req, res) => {
     const orderReports = await OrderReports.findAll({
       where: {
         orderStatus: "completed",
+        payment_status:"paid",
         userUUID: uid,
         [Op.or]: [
           { orderId: { [Op.like]: `%${search}%` } },
