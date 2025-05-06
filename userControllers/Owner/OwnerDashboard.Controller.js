@@ -840,6 +840,10 @@ const upsertDoctor = async (req, res) => {
     googleMapLink
   } = req.body;
 
+  if (!mobileNo || !mobileNo.startsWith("+91")) {
+    return res.status(400).json({ message: "Mobile number must start with +91" });
+  }
+  
   try {
     if (id) {
       const doctor = await User.findByPk(id);
@@ -847,6 +851,7 @@ const upsertDoctor = async (req, res) => {
       if (!doctor) {
         return res.status(404).json({ message: "Doctor not found" });
       }
+
       const updatedDoctor = await doctor.update({
         prefix,
         firstName,
