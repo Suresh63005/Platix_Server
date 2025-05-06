@@ -3,7 +3,7 @@ const jwt = require('jsonwebtoken');
 const {sendEmail} = require('../utils/sendEmail'); 
 const { generateToken } = require('../Middlewares/auth');
 const uploadToS3 = require("../config/fileUpload.aws");
-const registerSchema = require("../Middlewares/validation")
+const registerSchema = require("../Middlewares/validation");
 
 
 // Admin registration controller
