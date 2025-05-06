@@ -187,10 +187,11 @@ const searchOrders = async (req, res) => {
         { "$userDetails.firstName$": { [Op.like]: `%${search}%` } },
         { "$userDetails.lastName$": { [Op.like]: `%${search}%` } },
         { "$userDetails.organization.name$": { [Op.like]: `%${search}%` } },
+        // Full date
         where(fn("DATE_FORMAT", col("OrderReports.created_at"), "%Y-%m-%d"), {
           [Op.like]: `%${search}%`
-        })
-        // search using creatred at and from org name way
+        }),
+
       ]
     };
 
@@ -480,6 +481,7 @@ const orderAndPaymentSearch = async (req, res) => {
     const whereConditions = {
       toOrganization: organization_id,
       orderStatus: "completed",
+      payment_status:"paid",
       // delivery_boy: { [Op.is]: null },
       // technician: { [Op.is]: null },
       [Op.or]: [
@@ -1072,7 +1074,6 @@ const ownerUpsertOrder = async (req, res) => {
       const labName = organization ? organization.name : "Unknown Lab";
       const message = `Hello ${user.firstName, user.lastName}, a lab order has been raised by ${labName} on ${new Date(orderReport.createdAt).toISOString().split('T')[0]}. View it on the Platix app. Download it from the Play Store or App Store. – Team Platix`;
        await sendSMS(message,user.mobileNo)
-      // await sendSMS(message, "+917381277084")
 
     }
 
