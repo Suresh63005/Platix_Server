@@ -445,15 +445,12 @@ const searchOrdersGetByDate = async (req, res) => {
     whereCondition.toOrganization = organization_id;
 
     // Apply conditions based on report type
-    if (report === 'order') {
+   
       // In "order" screen: `orderStatus` is "completed", and `payment_status` can be "paid" or "unpaid"
       whereCondition.orderStatus = 'completed';
-      whereCondition.payment_status = { [Op.in]: ['paid', 'unpaid'] };
-    } else if (report === 'payment') {
-      // In "payment" screen: `orderStatus` is "completed", and `payment_status` should be "paid" only
-      whereCondition.orderStatus = 'completed';
-      whereCondition.payment_status = 'paid';
-    }
+      whereCondition.payment_status = { [Op.in]: ['paid'] };
+ 
+ 
 
     // Apply date filtering if provided
     const dateFilter = {};
