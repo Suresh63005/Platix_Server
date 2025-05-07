@@ -13,6 +13,7 @@ const { sequelize } = require("../../config/db");
 const Roles = require("../../Models/TblRoles.model");
 const axios = require("axios");
 const Notification = require("../../Models/Notification.model");
+const { sendSMS } = require("../../helper/sendSms");
 
 const technicianDashboardData = async (req, res) => {
   const uid = req.user?.id;
@@ -270,6 +271,7 @@ const ViewOrderDetails = async (req, res) => {
       technician: order.technician,
       doctorName: order.userDetails ? order.userDetails.firstName : "Unknown Doctor",
       laboratoryName: order.toOrg ? order.toOrg.name : "Unknown Laboratory",
+      hosptialName:order.userDetails?.organization ? order.userDetails.organization.name : "Unknown Hospital",
       orderServices: order.orderServices.map((service) => ({
         id: service.id,
         quantity: service.quantity,
@@ -310,6 +312,8 @@ const UploadImagesByTechnician = async (req, res) => {
     return res.status(400).json({ message: "At least one image is required!" });
   }
 
+  const transaction = await sequelize.transaction({ autocommit: false });
+
   try {
     const order = await OrderReports.findOne({
       where: {
@@ -318,8 +322,23 @@ const UploadImagesByTechnician = async (req, res) => {
         orderStatus:{[Op.in]:[ "processing","completed"]},
         technician_assignment_status: { [Op.in]: ["assigned_to_technician", "technician_completed"] },
       },
+      attributes:["id", "orderId", "userUUID", "payment_status"],
+      include: [
+        {
+          model: Organization,
+          as: "toOrg",
+          attributes: ["name"],
+        },
+        {
+          model: User,
+          as: "userDetails",
+          attributes: ["id", "mobileNo", "firstName", "lastName"],
+        },
+      ],
+      transaction,
     });
     if (!order) {
+      await transaction.rollback();
       return res.status(404).json({
         message: "Order not found, not in valid status, or you don't have permission to upload images for it!",
       });
@@ -335,8 +354,33 @@ const UploadImagesByTechnician = async (req, res) => {
       uid: uid,
       order_id: orderId,
       images: JSON.stringify(imageUrls),
-    });
+    },{transaction});
 
+    if (order.payment_status === "paid" || order.payment_status === "unpaid") {
+      console.log(`Checking dentist SMS for order ID ${order.orderId}, userUUID: ${order.userUUID}, payment_status: ${order.payment_status}`);
+      const dentist = order.userDetails;
+      if (!dentist) {
+        console.log(`No dentist found for userUUID ${order.userUUID} for order ID ${order.orderId}`);
+      } else {
+        console.log(`Dentist found: ID ${dentist.id}, mobileNo: ${dentist.mobileNo}, firstName: ${dentist.firstName}, lastName: ${dentist.lastName}`);
+        if (dentist.mobileNo && /^[+\d][\d\s-]{8,}$/.test(dentist.mobileNo)) {
+          const message = `Hello ${dentist.firstName} ${dentist.lastName || ''}, Images for Order ${order.orderId} were uploaded by ${order.toOrg?.name || 'Technician Organization'} on ${new Date(uploadRecord.createdAt).toISOString().split('T')[0]}. View them on the Platix app. Download from Play Store or App Store. – Team Platix`;
+          console.log(`Preparing SMS for dentist ID ${order.userUUID} at ${dentist.mobileNo}: ${message}`);
+          try {
+            await sendSMS(message, dentist.mobileNo);
+            console.log(`SMS sent successfully to dentist ID ${order.userUUID} at ${dentist.mobileNo} for order ID ${order.orderId}`);
+          } catch (error) {
+            console.error(`Failed to send SMS to dentist ID ${order.userUUID} at ${dentist.mobileNo} for order ID ${order.orderId}:`, error.message, error.stack);
+          }
+        } else {
+          console.log(`No SMS sent to dentist ID ${order.userUUID} for order ID ${order.orderId}: invalid or missing mobile number (${dentist.mobileNo})`);
+        }
+      }
+    } else {
+      console.log(`No dentist SMS sent for order ID ${order.orderId}: payment_status is ${order.payment_status}`);
+    }
+
+    await transaction.commit();
     return res.status(200).json({
       message: "Images uploaded successfully!",
       data: {
@@ -346,6 +390,9 @@ const UploadImagesByTechnician = async (req, res) => {
       },
     });
   } catch (error) {
+    if (transaction.finished !== "commit") {
+      await transaction.rollback();
+    }
     console.error("Error in UploadImagesByTechnician:", error);
     return res.status(500).json({
       message: "Internal server error: " + error.message,
