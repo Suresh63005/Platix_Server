@@ -228,7 +228,7 @@ const ownerOrTechnicianProfileEdit = async (req, res) => {
       {
         model: Organization,
         as: 'organization',
-        attributes: ['id', 'name', 'upiId', 'deletedAt', 'mobile', 'email', 'whatsapp','googlemaplink'],
+        attributes: ['id', 'name', 'upiId', 'deletedAt', 'mobile', 'email', 'whatsapp','googlemaplink',"address"],
         include: [
           {
             model: TblOrganizationType,
