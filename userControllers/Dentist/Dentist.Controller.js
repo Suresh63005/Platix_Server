@@ -254,7 +254,7 @@ const fromDentist = async (req, res) => {
             message: "Dentist not found",
           });
         }
-        smsContent = `Hello Dr ${creator.firstName} ${creator.lastName} created an order in ${organization.name}. View it on the Platix app. Get it from Play Store or App Store. – Team Platix`;
+        smsContent = `Hello Dr, ${creator.firstName} ${creator.lastName} created an order in ${organization.name}. View it on the Platix app. Get it from Play Store or App Store. – Team Platix`;
         try {
           await sendSMS(smsContent,dentist.mobileNo)
         } catch (error) {
