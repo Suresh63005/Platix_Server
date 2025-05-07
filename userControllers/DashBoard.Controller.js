@@ -11,44 +11,44 @@ const User = require("../Models/ReportsModel/User.model");
 const uploadToS3 = require("../config/fileUpload.aws");
 
 const allOrders = async (req, res) => {
-    const uid = req.user?.id; 
+    const uid = req.user?.id;
     if (!uid) {
         return res.status(401).json({ message: "Unauthorized!" });
     }
 
-    
+
 
     try {
         // Fetch order counts concurrently for the given user
         const orderCounts = await Promise.all([
-            OrderReports.count({ where: { userUUID: uid, orderStatus: "processing" } }), 
-            OrderReports.count({ where: { userUUID: uid,orderStatus :{[Op.in]: ["completed", "processing"]}, payment_status: "unpaid" } }), 
-            OrderReports.count({ where: { userUUID: uid, orderStatus: { [Op.in]: ["completed", "cancelled", "processing"] } } }), 
+            OrderReports.count({ where: { userUUID: uid, orderStatus: "processing" } }),
+            OrderReports.count({ where: { userUUID: uid, orderStatus: { [Op.in]: ["completed", "processing"] }, payment_status: "unpaid" } }),
+            OrderReports.count({ where: { userUUID: uid, orderStatus: { [Op.in]: ["completed", "cancelled", "processing"] } } }),
             OrderReports.count({ where: { userUUID: uid, orderStatus: { [Op.in]: ["processing"] } } }),
-            OrderReports.count({ where: { userUUID: uid, orderStatus: { [Op.in]: ["completed", "cancelled"] } } }), 
+            OrderReports.count({ where: { userUUID: uid, orderStatus: { [Op.in]: ["completed", "cancelled"] } } }),
         ]);
 
         // Fetch total paid amount for the given user
-        const receivedAmounts = await OrderReports.sum("paidAmount", { 
-            where: { 
+        const receivedAmounts = await OrderReports.sum("paidAmount", {
+            where: {
                 userUUID: uid,
-                orderStatus: { [Op.in]: ["completed", "cancelled", "processing"] } 
+                orderStatus: { [Op.in]: ["completed", "cancelled", "processing"] }
             }
         });
 
         const response = {
             activeOrders: orderCounts[0], // Processing orders
-            totalPayableBills: orderCounts[1], 
+            totalPayableBills: orderCounts[1],
             totalOrders: orderCounts[2], // All orders
             openOrders: orderCounts[3], // Processing 
             closedOrders: orderCounts[4], // Completed + Cancelled
             totalReceivedAmount: receivedAmounts || 0, // Total received amount
         };
 
-        return res.status(200).json(response); 
+        return res.status(200).json(response);
     } catch (error) {
         console.error("Error fetching order counts:", error);
-        return res.status(500).json({ message: "Internal Server Error" }); 
+        return res.status(500).json({ message: "Internal Server Error" });
     }
 };
 
@@ -63,7 +63,7 @@ const all = async (req, res) => {
 
     try {
         const organizations = await Organization.findAll({
-            
+
             attributes: ["id", "name", "address", "organizationType_id", "file1"],
             include: [
                 {
@@ -78,13 +78,13 @@ const all = async (req, res) => {
             // offset,
             // limit,
         });
-        
+
         const orgIds = organizations.map(org => org.id);
         // console.log(orgIds)
         // Fetch organization services
         const organizationServices = await TblOrganization_Service.findAll({
             where: { organization_id: { [Op.in]: orgIds } },
-            attributes: ["id","organization_id", "service_id", "price"],
+            attributes: ["id", "organization_id", "service_id", "price"],
         });
 
         const serviceIds = [...new Set(organizationServices.map(service => service.service_id))];
@@ -120,23 +120,23 @@ const all = async (req, res) => {
             const orgData = org.toJSON();
             orgData.organizationTypeName = orgData.organizationType?.organizationType || "";
             orgData.description = orgData.organizationType?.description || "";
-        
+
             try {
-                if (typeof orgData.address === 'string') {    
-                    orgData.address = JSON.parse(orgData.address);  
+                if (typeof orgData.address === 'string') {
+                    orgData.address = JSON.parse(orgData.address);
                 }
             } catch (error) {
-                if (typeof orgData.address === 'string') { 
-                    orgData.address = orgData.address; 
+                if (typeof orgData.address === 'string') {
+                    orgData.address = orgData.address;
                 }
             }
             // Attach services to organization
             orgData.services = organizationServiceMap[orgData.id] || [];
-        
+
             delete orgData.organizationType;
             return orgData;
         });
-        
+
         // Group data by organizationType
         const groupedData = Object.groupBy(formattedOrganizations, org => org.organizationTypeName);
         return res.status(200).json(groupedData);
@@ -151,64 +151,64 @@ const statusOrder = async (req, res) => {
     try {
         const { status, userUUID } = req.params;
 
-        const userId = req.user?.id ;
+        const userId = req.user?.id;
 
-        if(!userId){
+        if (!userId) {
             return res.status(401).json({ message: "Unauthorized" });
         }
 
-        
+
 
         const whereCondition = {};
         if (status) whereCondition.orderStatus = status;
         if (userId) whereCondition.userUUID = userId;
         whereCondition.is_visible_to_customer = true;
-        
+
         const orderStatus = await OrderReports.findAll({
             where: whereCondition,
             include: [
                 {
                     model: Organization,
                     as: "toOrg",
-                    attributes: ["name", "address", "file1","organizationType_id"],
+                    attributes: ["name", "address", "file1", "organizationType_id"],
                     include: [
                         {
                             model: TblOrganizationType,
-                            as:"organizationType",
-                            attributes:["organizationType"]
-                            
+                            as: "organizationType",
+                            attributes: ["organizationType"]
+
                         }
                     ]
                 },
                 {
                     model: User,
                     as: "userDetails",
-                    attributes: ["id","prefix", "firstName","lastName"],
+                    attributes: ["id", "prefix", "firstName", "lastName"],
                     include: [
-                      {
-                        model: Organization,
-                        as: "organization",
-                        attributes: ["id","name"],
-                      },
+                        {
+                            model: Organization,
+                            as: "organization",
+                            attributes: ["id", "name"],
+                        },
                     ]
-                  },
+                },
                 {
-                    model: OrderServices, 
+                    model: OrderServices,
                     as: "orderServices",
                     include: [
                         {
-                          model: TblOrganization_Service,
-                          as: 'orgservice',
-                          attributes: ['id'],
-                          include: [
-                            {
-                              model: Services,
-                              as: 'servicess',
-                              attributes: ['id', 'servicename'],
-                            }
-                          ]
+                            model: TblOrganization_Service,
+                            as: 'orgservice',
+                            attributes: ['id'],
+                            include: [
+                                {
+                                    model: Services,
+                                    as: 'servicess',
+                                    attributes: ['id', 'servicename'],
+                                }
+                            ]
                         },
-                      ],
+                    ],
                 },
             ],
             order: [["createdAt", "DESC"]],
@@ -223,7 +223,7 @@ const statusOrder = async (req, res) => {
                         order.toOrg.address = JSON.parse(order.toOrg.address);
                     } else {
                         // If it's not JSON, it's just a regular string, so no parsing is needed
-                        order.toOrg.address = [order.toOrg.address]; 
+                        order.toOrg.address = [order.toOrg.address];
                     }
                 } catch (error) {
                     console.error("Error parsing address:", error);
@@ -263,18 +263,18 @@ const searchOrganizations = async (req, res) => {
         }
 
         const organizations = await Organization.findAll({
-            attributes: ["id", "name", "address", "mobile", "email", "description","file1"],
+            attributes: ["id", "name", "address", "mobile", "email", "description", "file1"],
             include: [
                 {
                     model: TblOrganizationType,
                     as: "organizationType",
-                    attributes: ["id","organizationType"],
+                    attributes: ["id", "organizationType"],
                     required: false,
                 },
                 {
                     model: TblOrganization_Service,
-                    as: "organization_service", 
-                    attributes: ["service_id","price"],
+                    as: "organization_service",
+                    attributes: ["service_id", "price"],
                     include: [
                         {
                             model: Services,
@@ -287,15 +287,21 @@ const searchOrganizations = async (req, res) => {
                 },
             ],
             where: {
-                [Op.or]: [
-                    { name: { [Op.like]: `%${search}%` } }, 
-                    { address: { [Op.like]: `%${search}%` } }, 
-                    { mobile: { [Op.like]: `%${search}%` } }, 
-                    { description: { [Op.like]: `%${search}%` } }, 
-                    { "$organizationType.organizationType$": { [Op.like]: `%${search}%` } } ,
-                    { "$organization_service.servicess.servicename$": { [Op.like]: `%${search}%` } } ,
-                ],
-            },
+                [Op.and]: [
+                    { "$organizationType.organizationType$": { [Op.ne]: "dentist" || "Dentist" } },
+                    {
+                        [Op.or]: [
+                            { name: { [Op.like]: `%${search}%` } },
+                            { address: { [Op.like]: `%${search}%` } },
+                            { mobile: { [Op.like]: `%${search}%` } },
+                            { description: { [Op.like]: `%${search}%` } },
+                            { "$organizationType.organizationType$": { [Op.like]: `%${search}%` } },
+                            { "$organization_service.servicess.servicename$": { [Op.like]: `%${search}%` } },
+                        ]
+                    }
+                ]
+            }
+
         });
 
         // console.log(organizations)
@@ -305,7 +311,7 @@ const searchOrganizations = async (req, res) => {
 
         const result = organizations.map(org => {
             let addressList;
-            
+
             try {
                 addressList = JSON.parse(org.address);
                 // Ensure it's an array, otherwise wrap it
@@ -315,23 +321,23 @@ const searchOrganizations = async (req, res) => {
             } catch (error) {
                 addressList = [org.address];
             }
-        
+
             const services =
                 org.organization?.map(os => ({
                     servicename: os.servicess?.servicename,
                     price: os.price,
                 })).filter(service => service.servicename) || [];
-        
+
             return {
-                id:org.id, //organization id
+                id: org.id, //organization id
                 name: org.name, //organization name
                 file1: org.file1,
-                address: addressList, 
+                address: addressList,
                 mobile: org.mobile,
                 email: org.email,
                 description: org.description,
                 organizationType: org.organizationType?.organizationType || "N/A",
-                organizationTypeId:org.organizationType?.id || "N/A",
+                organizationTypeId: org.organizationType?.id || "N/A",
                 services: services,
             };
         });
@@ -345,115 +351,115 @@ const searchOrganizations = async (req, res) => {
 // here passed organization type name and respective organization
 const searchByOrganizationType = async (req, res) => {
     try {
-      const { search, organizationType } = req.query;
-  
-      // Validate required query param
-      if (!organizationType) {
-        return res.status(400).json({ message: "Organization type is required." });
-      }
-  
-      // Fetch organization type
-      const orgType = await TblOrganizationType.findOne({
-        where: {
-          organizationType: {
-            [Op.like]: `%${organizationType}%`,
-          },
-        },
-      });
-  
-      if (!orgType) {
-        return res.status(404).json({ message: "Organization type not found." });
-      }
-  
-      // Build dynamic where condition
-      const whereCondition = {
-        organizationType_id: orgType.id,
-      };
-  
-      if (search) {
-        whereCondition[Op.or] = [
-          { name: { [Op.like]: `%${search}%` } },
-          { address: { [Op.like]: `%${search}%` } },
-          { "$organization_service.servicess.servicename$": { [Op.like]: `%${search}%` } },
-        ];
-      }
-  
-      // Fetch data with includes
-      const organizations = await Organization.findAll({
-        where: whereCondition,
-        order: [["createdAt", "DESC"]],
-        attributes: ["id", "name", "organizationType_id", "address", "mobile", "email", "description", "file1"],
-        include: [
-          {
-            model: TblOrganizationType,
-            as: "organizationType",
-            attributes: ["id", "organizationType"],
-          },
-          {
-            model: TblOrganization_Service,
-            as: "organization_service",
-            attributes: ["service_id", "price"],
-            include: [
-              {
-                model: Services,
-                as: "servicess",
-                attributes: ["servicename"],
-              },
-            ],
-          },
-        ],
-      });
-  
-      if (!organizations.length) {
-        return res.status(404).json({ message: "No organizations found." });
-      }
-  
-      // Format the response like in version 1
-      const result = organizations.map(org => {
-        let addressList;
-        try {
-          addressList = JSON.parse(org.address);
-          if (!Array.isArray(addressList)) addressList = [addressList];
-        } catch {
-          addressList = [org.address];
+        const { search, organizationType } = req.query;
+
+        // Validate required query param
+        if (!organizationType) {
+            return res.status(400).json({ message: "Organization type is required." });
         }
-  
-        const services = org.organization_service?.map(os => ({
-          servicename: os.servicess?.servicename,
-          price: os.price,
-        })).filter(service => service.servicename) || [];
-  
-        return {
-          id: org.id,
-          name: org.name,
-          file1: org.file1,
-          address: addressList,
-          mobile: org.mobile,
-          email: org.email,
-          description: org.description,
-          organizationType: org.organizationType?.organizationType || "N/A",
-          organizationTypeId: org.organizationType?.id || "N/A",
-          services,
+
+        // Fetch organization type
+        const orgType = await TblOrganizationType.findOne({
+            where: {
+                organizationType: {
+                    [Op.like]: `%${organizationType}%`,
+                },
+            },
+        });
+
+        if (!orgType) {
+            return res.status(404).json({ message: "Organization type not found." });
+        }
+
+        // Build dynamic where condition
+        const whereCondition = {
+            organizationType_id: orgType.id,
         };
-      });
-  
-      return res.status(200).json(result.length === 1 ? result[0] : result);
-  
+
+        if (search) {
+            whereCondition[Op.or] = [
+                { name: { [Op.like]: `%${search}%` } },
+                { address: { [Op.like]: `%${search}%` } },
+                { "$organization_service.servicess.servicename$": { [Op.like]: `%${search}%` } },
+            ];
+        }
+
+        // Fetch data with includes
+        const organizations = await Organization.findAll({
+            where: whereCondition,
+            order: [["createdAt", "DESC"]],
+            attributes: ["id", "name", "organizationType_id", "address", "mobile", "email", "description", "file1"],
+            include: [
+                {
+                    model: TblOrganizationType,
+                    as: "organizationType",
+                    attributes: ["id", "organizationType"],
+                },
+                {
+                    model: TblOrganization_Service,
+                    as: "organization_service",
+                    attributes: ["service_id", "price"],
+                    include: [
+                        {
+                            model: Services,
+                            as: "servicess",
+                            attributes: ["servicename"],
+                        },
+                    ],
+                },
+            ],
+        });
+
+        if (!organizations.length) {
+            return res.status(404).json({ message: "No organizations found." });
+        }
+
+        // Format the response like in version 1
+        const result = organizations.map(org => {
+            let addressList;
+            try {
+                addressList = JSON.parse(org.address);
+                if (!Array.isArray(addressList)) addressList = [addressList];
+            } catch {
+                addressList = [org.address];
+            }
+
+            const services = org.organization_service?.map(os => ({
+                servicename: os.servicess?.servicename,
+                price: os.price,
+            })).filter(service => service.servicename) || [];
+
+            return {
+                id: org.id,
+                name: org.name,
+                file1: org.file1,
+                address: addressList,
+                mobile: org.mobile,
+                email: org.email,
+                description: org.description,
+                organizationType: org.organizationType?.organizationType || "N/A",
+                organizationTypeId: org.organizationType?.id || "N/A",
+                services,
+            };
+        });
+
+        return res.status(200).json(result.length === 1 ? result[0] : result);
+
     } catch (error) {
-      console.error("Search error:", error);
-      return res.status(500).json({ message: "Internal Server Error" });
+        console.error("Search error:", error);
+        return res.status(500).json({ message: "Internal Server Error" });
     }
-  };
-  
-  
+};
+
+
 // const searchByOrganizationType = async (req, res) => {
 //     try {
 //       const { search, organizationType } = req.query;
-  
+
 //       if (!organizationType) {
 //         return res.status(400).json({ message: "Organization type is required." });
 //       }
-  
+
 //       // 1. Get organization type
 //       const orgType = await TblOrganizationType.findOne({
 //         where: {
@@ -462,11 +468,11 @@ const searchByOrganizationType = async (req, res) => {
 //           },
 //         },
 //       });
-  
+
 //       if (!orgType) {
 //         return res.status(404).json({ message: "Organization type not found." });
 //       }
-  
+
 //       // 2. Prepare include block for services
 //       const organizationServiceInclude = {
 //         model: TblOrganization_Service,
@@ -480,7 +486,7 @@ const searchByOrganizationType = async (req, res) => {
 //           },
 //         ],
 //       };
-  
+
 //       if (search) {
 //         // When searching by service name, set where clause in nested include and required: true
 //         organizationServiceInclude.include[0].where = {
@@ -490,18 +496,18 @@ const searchByOrganizationType = async (req, res) => {
 //         };
 //         organizationServiceInclude.required = true;
 //       }
-  
+
 //       // 3. Prepare OR condition if search is provided
 //       const whereClause = {
 //         organizationType_id: orgType.id,
 //       };
-  
+
 //       if (search) {
 //         whereClause[Op.or] = [
 //           { name: { [Op.like]: `%${search}%` } }, // Org name
 //         ];
 //       }
-  
+
 //       // 4. Fetch organizations
 //       const organizations = await Organization.findAll({
 //         where: whereClause,
@@ -515,11 +521,11 @@ const searchByOrganizationType = async (req, res) => {
 //           organizationServiceInclude,
 //         ],
 //       });
-  
+
 //       if (!organizations.length) {
 //         return res.status(404).json({ message: "No organizations found." });
 //       }
-  
+
 //       // 5. Format result
 //       const result = organizations.map(org => {
 //         let addressList;
@@ -529,12 +535,12 @@ const searchByOrganizationType = async (req, res) => {
 //         } catch {
 //           addressList = [org.address];
 //         }
-  
+
 //         const services = org.organization_service?.map(os => ({
 //           servicename: os.servicess?.servicename,
 //           price: os.price,
 //         })).filter(s => s.servicename) || [];
-  
+
 //         return {
 //           id: org.id,
 //           name: org.name,
@@ -548,7 +554,7 @@ const searchByOrganizationType = async (req, res) => {
 //           services,
 //         };
 //       });
-  
+
 //       return res.status(200).json(result.length === 1 ? result[0] : result);
 //     } catch (error) {
 //       console.error("Error in searchByOrganizationType:", error);
@@ -560,7 +566,7 @@ const searchByOrganizationType = async (req, res) => {
 const termAndConditions = async (req, res) => {
     try {
         const settings = await Settings.findOne({
-            attributes: ["termsAndConditions", "privacyPolicy","platformFee"]
+            attributes: ["termsAndConditions", "privacyPolicy", "platformFee"]
         });
 
         if (!settings) {
@@ -574,4 +580,4 @@ const termAndConditions = async (req, res) => {
     }
 };
 
-module.exports={allOrders,all,statusOrder,searchOrganizations,searchByOrganizationType,termAndConditions }
+module.exports = { allOrders, all, statusOrder, searchOrganizations, searchByOrganizationType, termAndConditions }

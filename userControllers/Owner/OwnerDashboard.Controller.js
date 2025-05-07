@@ -1,4 +1,4 @@
-const { Op, literal, where, fn, col } = require("sequelize");
+const { Op, literal, where, fn, col, Sequelize } = require("sequelize");
 const { v4: uuidv4 } = require("uuid");
 const OrderReports = require("../../Models/ReportsModel/OrderReport.model");
 const Organization = require("../../Models/Organization.model");
@@ -170,6 +170,84 @@ const labAllOrders = async (req, res) => {
 };
 
 // (dashboard) Search orders by order ID or organization name or doctor name or servicename or orderdate(createdat)
+// const searchOrders = async (req, res) => {
+//   const { organization_id } = req.user;
+//   const { search } = req.query;
+
+//   try {
+//     const whereConditions = {
+//       toOrganization: organization_id,
+//       orderStatus: "processing",
+//       delivery_boy: { [Op.is]: null },
+//       technician: { [Op.is]: null },
+//       [Op.or]: [
+//         { orderId: { [Op.like]: `%${search}%` } },
+//         { "$toOrg.name$": { [Op.like]: `%${search}%` } },
+//         { "$orderServices.orgservice.servicess.servicename$": { [Op.like]: `%${search}%` } },
+//         { "$userDetails.firstName$": { [Op.like]: `%${search}%` } },
+//         { "$userDetails.lastName$": { [Op.like]: `%${search}%` } },
+//         { "$userDetails.organization.name$": { [Op.like]: `%${search}%` } },
+//         // Full date
+//         Sequelize.literal(`DATE_FORMAT(OrderReports.createdAt, '%Y-%m-%d') LIKE '%${search}%'`)
+
+//       ]
+//     };
+
+//     const orders = await OrderReports.findAll({
+//       where: whereConditions,
+//       order: [["createdAt", "DESC"]],
+//       include: [
+//         {
+//           model: Organization,
+//           as: "toOrg",
+//           attributes: ["name"],
+
+//         },
+//         {
+//           model: OrderServices,
+//           as: "orderServices",
+//           attributes: ["quantity", "price"],
+//           include: [
+//             {
+//               model: TblOrganization_Service,
+//               as: "orgservice",
+//               attributes: ["id"],
+//               required: false,
+//               include: [
+//                 {
+//                   model: Services,
+//                   as: "servicess",
+//                   attributes: ["servicename"]
+//                 }
+//               ]
+//             }
+//           ]
+//         },
+
+//         {
+//           model: User,
+//           as: "userDetails", // doctor name
+//           attributes: ["prefix", "firstName", "lastName"],
+//           include: [
+//             {
+//               model: Organization,
+//               as: "organization",
+//               attributes: ["name"]
+//             }
+//           ]
+//         }
+//       ]
+//     });
+
+//     return res.status(200).json({ success: true, orders });
+//   } catch (error) {
+//     console.error("Error during order search:", error);
+//     return res.status(500).json({ message: "An error occurred while searching for orders" });
+//   }
+// };
+
+
+
 const searchOrders = async (req, res) => {
   const { organization_id } = req.user;
   const { search } = req.query;
@@ -187,12 +265,11 @@ const searchOrders = async (req, res) => {
         { "$userDetails.firstName$": { [Op.like]: `%${search}%` } },
         { "$userDetails.lastName$": { [Op.like]: `%${search}%` } },
         { "$userDetails.organization.name$": { [Op.like]: `%${search}%` } },
-        { created_at: { [Op.like]: `%${search}%` } },
-
-        // Full date
-        where(fn("DATE_FORMAT", col("OrderReports.created_at"), "%Y-%m-%d"), {
-          [Op.like]: `%${search}%`
-        })
+        // Fix: Use Sequelize.where() with DATE_FORMAT
+        Sequelize.where(
+          Sequelize.fn("DATE_FORMAT", Sequelize.col("OrderReports.createdAt"), "%Y-%m-%d"),
+          { [Op.like]: `%${search}%` }
+        )
       ]
     };
 
@@ -204,7 +281,6 @@ const searchOrders = async (req, res) => {
           model: Organization,
           as: "toOrg",
           attributes: ["name"],
-
         },
         {
           model: OrderServices,
@@ -226,7 +302,6 @@ const searchOrders = async (req, res) => {
             }
           ]
         },
-
         {
           model: User,
           as: "userDetails", // doctor name
@@ -239,7 +314,8 @@ const searchOrders = async (req, res) => {
             }
           ]
         }
-      ]
+      ],
+      logging: console.log
     });
 
     return res.status(200).json({ success: true, orders });
@@ -248,9 +324,6 @@ const searchOrders = async (req, res) => {
     return res.status(500).json({ message: "An error occurred while searching for orders" });
   }
 };
-
-
-
 
 // Retrieve order or payment reports
 // const labOrderAndPaymentReport = async (req, res) => {
@@ -502,26 +575,19 @@ const orderAndPaymentSearch = async (req, res) => {
         { "$toOrg.organization_service.servicess.servicename$": { [Op.like]: `%${search}%` } },
         { "$userDetails.firstName$": { [Op.like]: `%${search}%` } },
         { "$userDetails.lastName$": { [Op.like]: `%${search}%` } },
-        where(fn("concat", col("firstName"), " ", col("lastName")), {
-          [Op.like]: `%${search}%`
-        })
+        where(fn("concat", col("firstName"), " ", col("lastName")), {[Op.like]: `%${search}%`}),
+        Sequelize.where(Sequelize.fn("DATE_FORMAT", Sequelize.col("OrderReports.created_at"), "%Y-%m-%d"),{ [Op.like]: `%${search}%` }),
+        Sequelize.where(Sequelize.fn("DATE_FORMAT", Sequelize.col("OrderReports.created_at"), "%d-%m-%Y"),{ [Op.like]: `%${search}%` }),
+        Sequelize.where(Sequelize.fn("DATE_FORMAT", Sequelize.col("OrderReports.created_at"), "%d-%m"),   { [Op.like]: `%${search}%` }),
+        Sequelize.where(Sequelize.fn("DATE_FORMAT", Sequelize.col("OrderReports.created_at"), "%m"),      { [Op.like]: `%${search}%` }),
+        Sequelize.where(Sequelize.fn("DATE_FORMAT", Sequelize.col("OrderReports.created_at"), "%d"),      { [Op.like]: `%${search}%` })
       ]
     };
-
-    // const isDate = moment(search, "YYYY-MM-DD", true).isValid();
-    // if (isDate) {
-    //   whereConditions[Op.or].push({
-    //     createdAt: {
-    //       [Op.between]: [
-    //         moment(search, "YYYY-MM-DD").startOf("day").toDate(),
-    //         moment(search, "YYYY-MM-DD").endOf("day").toDate()
-    //       ]
-    //     }
-    //   });
-    // }
+    
     const orderReports = await OrderReports.findAll({
       where: whereConditions,
       order: [["createdAt", "DESC"]],
+      // logging: console.log,
       include: [
         {
           model: Organization,
@@ -547,7 +613,7 @@ const orderAndPaymentSearch = async (req, res) => {
           as: "userDetails", // doctor name
           attributes: ["prefix", "firstName", "lastName"]
         }
-      ]
+      ],
     });
 
     return res.status(200).json({ orderReports });
