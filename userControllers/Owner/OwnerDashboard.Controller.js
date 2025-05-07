@@ -266,10 +266,11 @@ const searchOrders = async (req, res) => {
         { "$userDetails.lastName$": { [Op.like]: `%${search}%` } },
         { "$userDetails.organization.name$": { [Op.like]: `%${search}%` } },
         // Fix: Use Sequelize.where() with DATE_FORMAT
-        Sequelize.where(
-          Sequelize.fn("DATE_FORMAT", Sequelize.col("OrderReports.createdAt"), "%Y-%m-%d"),
-          { [Op.like]: `%${search}%` }
-        )
+        Sequelize.where(Sequelize.fn("DATE_FORMAT", Sequelize.col("OrderReports.created_at"), "%Y-%m-%d"),{ [Op.like]: `%${search}%` }),
+        Sequelize.where(Sequelize.fn("DATE_FORMAT", Sequelize.col("OrderReports.created_at"), "%d-%m-%Y"),{ [Op.like]: `%${search}%` }),
+        Sequelize.where(Sequelize.fn("DATE_FORMAT", Sequelize.col("OrderReports.created_at"), "%d-%m"),   { [Op.like]: `%${search}%` }),
+        Sequelize.where(Sequelize.fn("DATE_FORMAT", Sequelize.col("OrderReports.created_at"), "%m"),      { [Op.like]: `%${search}%` }),
+        Sequelize.where(Sequelize.fn("DATE_FORMAT", Sequelize.col("OrderReports.created_at"), "%d"),      { [Op.like]: `%${search}%` })
       ]
     };
 
