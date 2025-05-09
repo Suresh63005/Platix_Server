@@ -98,6 +98,7 @@ const upsertOrganizations = async (req, res) => {
         // Fetch organization type for businessType
         const orgType = await TblOrganizationType.findByPk(organizationType_id, { transaction });
         const businessType = orgType ? orgType.organizationType : null;
+        const isDentist = businessType.toLowerCase() === "dentist";
 
         // ------------ UPDATE FLOW ------------
         if (id) {
@@ -192,11 +193,11 @@ const upsertOrganizations = async (req, res) => {
             }
 
             // Upsert Vendor
-            if (parsedVendorData) {
+            if (!isDentist && parsedVendorData) {
                 const vendorDetails = {
-                    organizationId: organization.id,
-                    accountType: parsedVendorData.accountType,
-                    pan: parsedVendorData.pan,
+                    organizationId: organization.id ,
+                    accountType: parsedVendorData.accountType || null,
+                    pan: parsedVendorData.pan|| null,
                     gst: parsedVendorData.gst || null,
                     cin: parsedVendorData.cin || null,
                     aadhaar: parsedVendorData.aadhaar || null,
