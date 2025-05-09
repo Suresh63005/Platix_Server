@@ -52,10 +52,7 @@ const validateIFSC = (ifscCode) => {
 };
 
 const upsertOrganizations = async (req, res) => {
-    const admin = req.admin?.id;
-    if (!admin) {
-      return res.status(401).json({ message: "Unauthorized!" });
-    }
+    const uid = req.user?.id;
     const {
         id, addresses, businessName, description, designation, email, googleCoordinates,
         gstNumber, mobile, name, registrationId, organizationType_id, whatsapp, bankName,
@@ -64,7 +61,7 @@ const upsertOrganizations = async (req, res) => {
         googlemaplink
     } = req.body;
 
-    console.log(vendorData,"vendordaata")
+    console.log(vendorData, "vendordaata");
 
     const parsedServices = typeof services === "string" ? JSON.parse(services) : services || [];
     const parsedVendorData = vendorData ? (typeof vendorData === "string" ? JSON.parse(vendorData) : vendorData) : null; // Parse vendorData
@@ -95,10 +92,16 @@ const upsertOrganizations = async (req, res) => {
     try {
         let organization;
 
-        // Fetch organization type for businessType
+        // Fetch organization type for businessType and to check if it's Dentist
         const orgType = await TblOrganizationType.findByPk(organizationType_id, { transaction });
-        const businessType = orgType ? orgType.organizationType : null;
-        const isDentist = businessType.toLowerCase() === "dentist";
+        if (!orgType) {
+            await transaction.rollback();
+            return res.status(400).json({ error: "Invalid organization type" });
+        }
+        const businessType = orgType.organizationType;
+
+        // Check if the organization type is Dentist
+        const isDentist = orgType.organizationType.toLowerCase() === "dentist";
 
         // ------------ UPDATE FLOW ------------
         if (id) {
@@ -192,12 +195,12 @@ const upsertOrganizations = async (req, res) => {
                 });
             }
 
-            // Upsert Vendor
+            // Upsert Vendor only if not Dentist
             if (!isDentist && parsedVendorData) {
                 const vendorDetails = {
-                    organizationId: organization.id ,
-                    accountType: parsedVendorData.accountType || null,
-                    pan: parsedVendorData.pan|| null,
+                    organizationId: organization.id,
+                    accountType: parsedVendorData.accountType,
+                    pan: parsedVendorData.pan,
                     gst: parsedVendorData.gst || null,
                     cin: parsedVendorData.cin || null,
                     aadhaar: parsedVendorData.aadhaar || null,
@@ -283,8 +286,8 @@ const upsertOrganizations = async (req, res) => {
             await TblOrganization_Service.bulkCreate(serviceData, { transaction });
         }
 
-        // Create Vendor
-        if (parsedVendorData) {
+        // Create Vendor only if not Dentist
+        if (!isDentist && parsedVendorData) {
             const vendorDetails = {
                 id: require("uuid").v4(), // Use uuid v4 for new Vendor ID
                 organizationId: organization.id,
@@ -313,10 +316,6 @@ const upsertOrganizations = async (req, res) => {
 };
 
 const getAll = async (req, res) => {
-    const admin = req.admin?.id;
-    if (!admin) {
-      return res.status(401).json({ message: "Unauthorized!" });
-    }
     console.log("Fetching organizations...");
 
     const { page = 1, limit = 10, filter = "", search = "" } = req.query;
@@ -372,10 +371,6 @@ const getAll = async (req, res) => {
 };
 
 const deleteOrganization = async (req, res) => {
-    const admin = req.admin?.id;
-    if (!admin) {
-      return res.status(401).json({ message: "Unauthorized!" });
-    }
     const t = await sequelize.transaction();
     try {
         const { error } = deleteOrganizationSchema.validate({ ...req.params, ...req.query });
@@ -439,10 +434,6 @@ const deleteOrganization = async (req, res) => {
 };
 
 const organizationGetByid = async (req, res) => {
-    const admin = req.admin?.id;
-    if (!admin) {
-      return res.status(401).json({ message: "Unauthorized!" });
-    }
     const t = await sequelize.transaction();
 
     try {
