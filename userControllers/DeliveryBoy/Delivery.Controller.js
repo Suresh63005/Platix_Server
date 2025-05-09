@@ -1,4 +1,4 @@
-const { Op } = require("sequelize");
+const { Op, where, col, fn } = require("sequelize");
 const Organization = require("../../Models/Organization.model");
 const OrderReports = require("../../Models/ReportsModel/OrderReport.model");
 const User = require("../../Models/ReportsModel/User.model");
@@ -8,9 +8,10 @@ const Services = require("../../Models/TblServices.model");
 const TblOrganizationType = require("../../Models/TblOrganizationType.model");
 const Roles = require("../../Models/TblRoles.model");
 const Notification = require("../../Models/Notification.model");
-const axios=require("axios")
+const axios = require("axios")
 
 // getall dashboard data and searching also
+
 const getAll = async (req, res) => {
   const uid = req.user?.id;
   if (!uid) {
@@ -20,81 +21,113 @@ const getAll = async (req, res) => {
   const { search } = req.query;
 
   try {
-    let orderList = [];
-    let activeOrders = 0;
-    let completedOrders = 0;
-
-    [activeOrders, completedOrders] = await Promise.all([
-      OrderReports.count({ where: { orderStatus: "processing", delivery_boy: uid } }),
-      OrderReports.count({ where: { orderStatus: "completed", delivery_boy: uid } })
+    const [activeOrders, completedOrders] = await Promise.all([
+      OrderReports.count({
+        where: { orderStatus: "processing", delivery_boy: uid }
+      }),
+      OrderReports.count({
+        where: { orderStatus: "completed", delivery_boy: uid }
+      })
     ]);
-    // If search query is provided, perform search
+
+    const baseIncludes = [
+      {
+        model: User,
+        as: 'userDetails',
+        attributes: ['id', 'firstName', 'lastName', 'email', 'address', 'hospital_name'],
+        include: [
+          {
+            model: Organization,
+            as: 'organization',
+            attributes: ['id', 'name'],
+            required: false
+          }
+        ]
+      },
+      {
+        model: Organization,
+        as: 'toOrg',
+        attributes: ['name'],
+        required: false
+      },
+      {
+        model: OrderServices,
+        as: "orderServices",
+        attributes: ["quantity", "price"],
+        include: [
+          {
+            model: TblOrganization_Service,
+            as: "orgservice",
+            attributes: ["id"],
+            required: false,
+            include: [
+              {
+                model: Services,
+                as: "servicess",
+                attributes: ["servicename"]
+              }
+            ]
+          }
+        ]
+      }
+    ];
+
+    let orderList = [];
+
     if (search) {
       orderList = await OrderReports.findAll({
         where: {
-          [Op.or]: [
-            { orderId: { [Op.like]: `%${search}%` } },
-            { "$toOrg.name$": { [Op.like]: `%${search}%` } }
-          ],
-          delivery_boy: uid,
-          orderStatus: "processing"
+          [Op.and]: [
+            {
+              [Op.or]: [
+                { orderId: { [Op.like]: `%${search}%` } },
+                { '$toOrg.name$': { [Op.like]: `%${search}%` } },
+                { '$userDetails.organization.name$': { [Op.like]: `%${search}%` } },
+                { '$userDetails.address$': { [Op.like]: `%${search}%` } },
+                { '$orderServices.orgservice.servicess.servicename$': { [Op.like]: `%${search}%` } },
+                where(fn("concat", col("userDetails.firstName"), " ", col("userDetails.lastName")), {
+                  [Op.like]: `%${search}%`
+                }),
+                // Optional: cast createdAt to string for partial date search
+                where(fn("DATE_FORMAT", col("OrderReports.created_at"), "%Y-%m-%d"), {
+                  [Op.like]: `%${search}%`
+                })
+              ]
+            },
+            {
+              delivery_boy: uid,
+              orderStatus: "processing"
+            }
+          ]
         },
-        include: [
-          {
-            model: Organization,
-            as: 'toOrg',
-            attributes: ['name'],
-          },
-          {
-            model: Organization,
-            as: 'fromOrg',
-            attributes: ['name'],
-          }
-        ],
+        include: baseIncludes,
         order: [['createdAt', 'DESC']]
       });
-
-      // if (orderList.length === 0) {
-      //   return res.status(404).json({ message: "No orders found matching your search." });
-      // }
-
     } else {
-      // If no search term is provided, retrieve active orders and completed orders 
       orderList = await OrderReports.findAll({
-        include: [
-          {
-            model: Organization,
-            attributes: ['name'],
-            as: 'toOrg',
-            required: false
-          }
-        ],
-        order: [['createdAt', 'DESC']],
         where: {
           delivery_boy: uid,
           orderStatus: "processing"
-        }
+        },
+        include: baseIncludes,
+        order: [['createdAt', 'DESC']]
       });
     }
 
-    const response = {
+    return res.status(200).json({
       activeOrders,
       completedOrders,
-      orderList: orderList.map(order => ({
-        ...order.toJSON(),
-      }))
-    };
-
-    return res.status(200).json(response);
-
+      orderList: orderList.map(order => order.toJSON())
+    });
   } catch (error) {
-    console.error('Error fetching order counts:', error);
+    console.error('Error fetching orders:', error);
     return res.status(500).json({
-      message: 'Failed to retrieve order counts. Please try again later.',
+      message: 'Failed to retrieve order data. Please try again later.',
       error: error.message
     });
   }
 };
+
 
 //get all active || cancelled || closed order data
 const deliveryAllOrders = async (req, res) => {
@@ -130,7 +163,27 @@ const deliveryAllOrders = async (req, res) => {
               attributes: ["id", "name"]
             }
           ]
-        }
+        },
+        {
+          model: OrderServices,
+          as: 'orderServices',
+          attributes: ["quantity"],
+          include: [
+            {
+              model: TblOrganization_Service,
+              as: "orgservice",
+              attributes: ["id", "price"],
+              include: [
+                {
+                  model: Services,
+                  as: 'servicess',
+                  attributes: ["servicename", 'servicedescription']
+                },
+
+              ],
+            }
+          ]
+        },
       ],
       order: [['createdAt', 'DESC']]
     });
@@ -167,12 +220,12 @@ const orderDetailsGetById = async (req, res) => {
         {
           model: User,
           as: 'userDetails',
-          attributes: ['id', 'firstName', 'email', 'address', 'hospital_name',"googleMapLink"],
+          attributes: ['id', 'firstName', 'email', 'address', 'hospital_name', "googleMapLink"],
           include: [
             {
               model: Organization,
               as: 'organization',
-              attributes: ['id', 'name',"googlemaplink"],
+              attributes: ['id', 'name', "googlemaplink"],
             }
           ]
         },
@@ -360,7 +413,7 @@ const closedOrder = async (req, res) => {
     const sendUser = await User.findByPk(uid);
     const organizationId = sendUser.organization_id;
 
-    console.log(organizationId,"uuuuuuuuuuuuuuuuuuuu");
+    console.log(organizationId, "uuuuuuuuuuuuuuuuuuuu");
     (async () => {
 
       const pushPromise = sendUser?.one_subscription
@@ -409,7 +462,7 @@ const closedOrder = async (req, res) => {
       ]
     });
 
-    console.log(ownersFromOrganization,"ownerrrrrrrrrrrrrrrrrrrrrrr")
+    console.log(ownersFromOrganization, "ownerrrrrrrrrrrrrrrrrrrrrrr")
     // console.log(ownersFromOrganization, "ownersFromOrganization");
     if (ownersFromOrganization.length > 0) {
       const notifications = ownersFromOrganization.map((owner) => {

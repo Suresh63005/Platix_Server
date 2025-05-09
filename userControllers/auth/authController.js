@@ -42,7 +42,7 @@ const verifyMobile = async (req, res) => {
                 {
                     model: Organization,
                     as: 'organization',
-                    attributes: ['id', 'name', 'upiId', 'deletedAt', 'mobile', 'email', 'whatsapp','googlemaplink'],
+                    attributes: ['id', 'name', 'upiId', 'deletedAt','address', 'mobile', 'email', 'whatsapp','googlemaplink'],
                     include: [
                         {
                             model: TblOrganizationType,
@@ -333,7 +333,7 @@ const loginwithnumber = async (req, res) => {
                 {
                     model: Organization,
                     as: 'organization',
-                    attributes: ['id', 'name', 'upiId', 'deletedAt', 'mobile', 'email', 'whatsapp','googlemaplink'],
+                    attributes: ['id', 'name', 'upiId', 'deletedAt', 'mobile', 'email','address', 'whatsapp','googlemaplink'],
                     include: [
                         {
                             model: TblOrganizationType,

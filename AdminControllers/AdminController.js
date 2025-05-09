@@ -3,7 +3,7 @@ const jwt = require('jsonwebtoken');
 const {sendEmail} = require('../utils/sendEmail'); 
 const { generateToken } = require('../Middlewares/auth');
 const uploadToS3 = require("../config/fileUpload.aws");
-const registerSchema = require("../Middlewares/validation")
+const registerSchema = require("../Middlewares/validation");
 
 
 // Admin registration controller
@@ -81,12 +81,13 @@ const updateAdminProfile = async (req, res) => {
     const { name, dateOfBirth, phoneNumber, confirmPassword, email, password } = req.body;
     console.log(req.body, "from body");
 
+    const phoneNumberRegex = /^\+91\d{10}$/;
+    if (!phoneNumberRegex.test(phoneNumber)) {
+      return res.status(400).json({ message: "Phone number must be in the format +91 followed by 10 digits." });
+    }
+
     let imageURL;
-    console.log(req.file, "from file");
-
     if (req.file) imageURL = await uploadToS3(req.file, "images");
-
-    console.log(imageURL, "from image");
 
     const admin = await Admin.findByPk(req.admin.id);
     if (!admin) return res.status(404).json({ message: "This Mail ID is not associated as Admin" });

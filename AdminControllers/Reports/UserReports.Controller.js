@@ -7,6 +7,10 @@ const Organization = require("../../Models/Organization.model");
 const User = require("../../Models/ReportsModel/User.model");
 
 const getAllUsers = async (req, res) => {
+    const admin = req.admin?.id;
+    if (!admin) {
+      return res.status(401).json({ message: "Unauthorized!" });
+    }
     try {
       // Only keeping filter and search
       const { filter = "", search = "" } = req.query;
@@ -69,6 +73,10 @@ const getAllUsers = async (req, res) => {
 
 
 const getAllUsersByOrganizationName = async (req, res) => {
+    const admin = req.admin?.id;
+    if (!admin) {
+      return res.status(401).json({ message: "Unauthorized!" });
+    }
     try {
         const { organization_id } = req.params;
         const { page = 1, limit = 10, search = "", filter = "" } = req.query;
@@ -141,6 +149,10 @@ const getAllUsersByOrganizationName = async (req, res) => {
 
 
 const CreateUser = async (req, res) => {
+    const admin = req.admin?.id;
+    if (!admin) {
+      return res.status(401).json({ message: "Unauthorized!" });
+    }
     const {
         id,
         prefix,
@@ -259,6 +271,10 @@ const CreateUser = async (req, res) => {
 };
 
 const getById = async (req, res) => {
+    const admin = req.admin?.id;
+    if (!admin) {
+      return res.status(401).json({ message: "Unauthorized!" });
+    }
     const { id } = req.params;
     const t = await sequelize.transaction();
     const user = await User.findByPk(id, {
@@ -287,6 +303,10 @@ const getById = async (req, res) => {
 }
 
 const deleteUser = async (req, res) => {
+    const admin = req.admin?.id;
+    if (!admin) {
+      return res.status(401).json({ message: "Unauthorized!" });
+    }
     const { id } = req.params;
     const { forceDelete } = req.query;
 
@@ -324,6 +344,10 @@ const deleteUser = async (req, res) => {
 };
 
 const filterByDate = async (req, res) => {
+    const admin = req.admin?.id;
+    if (!admin) {
+      return res.status(401).json({ message: "Unauthorized!" });
+    }
     try {
         const { fromDate, toDate } = req.params;
         // console.log(req.params)

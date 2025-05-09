@@ -19,26 +19,26 @@ router.put("/admin/profile/update",verifyAdmin,upload.single('profileImage'), up
 router.post('/admin/forgotpassword', forgotPassword);
 router.post('/admin/createnewpass/:token', resetPassword);
 
-router.post("/admin/createrole" , createRole)
+router.post("/admin/createrole" ,verifyAdmin, createRole)
 router.get("/admin/viewrole", viewRoles)
-router.post("/admin/createservice", upsertService);
-router.get("/admin/getbyid/:id", serviceGetByid);
+router.post("/admin/createservice",verifyAdmin, upsertService);
+router.get("/admin/getbyid/:id",verifyAdmin, serviceGetByid);
 
 // Get All Services
-router.get("/admin/allservices", getAllServices);
-router.get("/admin/allorgservices", getorgAllServices);
-router.post("/admin/assign-service",OrganizationTypeController.assignServiceToOrganization)
-router.get("/admin/getorgservices",  OrganizationTypeController.getOrganizationService)
+router.get("/admin/allservices",verifyAdmin, getAllServices);
+router.get("/admin/allorgservices",verifyAdmin, getorgAllServices);
+router.post("/admin/assign-service",verifyAdmin,OrganizationTypeController.assignServiceToOrganization)
+router.get("/admin/getorgservices",verifyAdmin,  OrganizationTypeController.getOrganizationService)
 
 // Delete a Service (Soft or Permanent)
-router.delete("/admin/deleteservice/:id", deleteService);
+router.delete("/admin/deleteservice/:id",verifyAdmin, deleteService);
 
 // for order
-router.get("/admin/getallorder" ,OrderReport.getAllOrderReports)
+router.get("/admin/getallorder" ,verifyAdmin,OrderReport.getAllOrderReports)
 
 
-router.get("/admin/getsettings",  FetchSettings);
-router.get("/admin/getbyid",  FetchSettingsById);
-router.put("/admin/updatesettings", upload.single("websiteImage"), createOrUpdateSettings);
+router.get("/admin/getsettings",verifyAdmin,  FetchSettings);
+router.get("/admin/getbyid",verifyAdmin,  FetchSettingsById);
+router.put("/admin/updatesettings",verifyAdmin, upload.single("websiteImage"), createOrUpdateSettings);
 
 module.exports = router;

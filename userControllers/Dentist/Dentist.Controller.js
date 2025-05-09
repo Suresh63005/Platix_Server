@@ -14,6 +14,7 @@ const Roles = require("../../Models/TblRoles.model");
 const axios = require("axios");
 const UploadImages = require("../../Models/ReportsModel/UploadImages.model");
 const { initiateRefund } = require("../Payments/cashFree");
+const { sendSMS } = require("../../helper/sendSms");
 
 // If I pass only the userUUID, it means the request is coming from the owner. If I pass both the userUUID and delivery_boy, it means the request is coming from the delivery boy. If I do not pass the delivery_boy and userUUID, it means the request is coming from the dentist.
 const fromDentist = async (req, res) => {
@@ -179,6 +180,89 @@ const fromDentist = async (req, res) => {
       } else {
         console.log(`No doctor notification sent for order ${orderReport.orderId}: ${isDentist ? "User is a dentist" : "userUUID not provided"}`);
       }
+
+      // send sms lab owner or radilogy owner
+      const ownersFromOrganization = await User.findAll({
+        where: {
+          organization_id: toOrganization,
+        },
+        include: [
+          {
+            model: Roles,
+            as: "role",
+            attributes: ["id", "rolename"],
+            where: {
+              rolename: "owner",
+            },
+          },
+        ],
+        transaction,
+      });
+
+      // Fetch organization type
+      const organization = await Organization.findByPk(toOrganization, {
+        include: [
+          {
+            model: TblOrganizationType,
+            as: "organizationType",
+            attributes: ["id", "organizationType"]
+          }
+        ]
+      });
+
+      const organizationType = organization?.organizationType?.organizationType;
+
+      let smsContent = '';
+      if (creator.prefix === "DR") {
+        // when doctor create order msg recived radilogy or Dental Laboratory owner
+        if (organizationType === 'Radiology') {
+          smsContent = `A Radiology order was raised by ${creator.firstName, creator.lastName} on ${new Date(orderReport.createdAt).toISOString().split('T')[0]}. Check it on the Platix app. Download from Play Store or App Store. – Team Platix`;
+        } else if (organizationType === 'Dental Laboratory') {
+          smsContent = `A lab order was raised by ${creator.firstName, creator.lastName} on ${new Date(orderReport.createdAt).toISOString().split('T')[0]}. Check it on the Platix app. Download from Play Store or App Store. – Team Platix`;
+        } else {
+          console.log('Unknown organization type. SMS not sent.');
+          return;
+        }
+
+        if (ownersFromOrganization.length > 0) {
+          console.log(`Sending SMS to ${ownersFromOrganization.length} owners for order ${orderReport.orderId}`);
+
+          for (const owner of ownersFromOrganization) {
+            const phoneNumber = owner.mobile;
+
+            if (phoneNumber) {
+              try {
+                await sendSMS(smsContent, phoneNumber);
+              } catch (error) {
+                console.log(error)
+              }
+              console.log(`SMS sent to ${phoneNumber}: ${smsContent}`);
+            } else {
+              console.log(`No phone number available for owner (userId: ${owner.id}) for order ${orderReport.orderId}. SMS not sent.`);
+            }
+          }
+        } else {
+          console.log(`No owners found for organization (organization_id: ${toOrganization}) for order ${orderReport.orderId}. SMS not sent.`);
+        }
+      } else {
+        // msg recived dentist when delivery boy create an order
+        const dentist = await User.findByPk(orderReport.userUUID, { transaction });
+        if (!dentist) {
+          await transaction.rollback();
+          return res.status(404).json({
+            success: false,
+            message: "Dentist not found",
+          });
+        }
+        smsContent = `Hello Dr, ${creator.firstName} ${creator.lastName} created an order in ${organization.name}. View it on the Platix app. Get it from Play Store or App Store. – Team Platix`;
+        try {
+          await sendSMS(smsContent,dentist.mobileNo)
+        } catch (error) {
+             console.log(error)
+        }
+      }
+
+
     }
 
     const sendUser = await User.findByPk(userId);
@@ -248,8 +332,8 @@ const fromDentist = async (req, res) => {
         organization_id: toOrganization,
         uid: owner.id,
         datetime: new Date(),
-        title: "New Order Received",
-        description: `New Order ${orderReport.orderId} has been received to your organization.`,
+        title: id ? `Order Updated`:`New Order Received`,
+        description: id ? ` Order ${orderReport.orderId} has been sucessfully updated`:`New Order ${orderReport.orderId} has been received to your organization.`,
       }));
       await Notification.bulkCreate(notifications, { transaction });
       console.log(`✅ Database notifications created for ${ownersFromOrganization.length} organization owners for order ${orderReport.orderId}`);
@@ -268,8 +352,8 @@ const fromDentist = async (req, res) => {
               {
                 app_id: process.env.ONESIGNAL_APP_ID,
                 include_player_ids: ownerSubscriptions,
-                headings: { en: "New Order Received" },
-                contents: { en: `New Order ${orderReport.orderId} has been received to your organization.` },
+                headings: { en: id ? `Order Updated`:`New Order Received` },
+                contents: { en: id ? ` Order ${orderReport.orderId} has been sucessfully updated`:`New Order ${orderReport.orderId} has been received to your organization.` },
               },
               {
                 headers: {
@@ -455,76 +539,6 @@ const cancelledOrders = async (req, res) => {
         message: "Order not found",
       });
     }
-
-
-    // try {
-    //   const orderResponse = await axios.get(`${CASHFREE_BASE_URL}/orders/${cashfreeOrderId}`, {
-    //     headers: {
-    //       'Content-Type': 'application/json',
-    //       'x-api-version': CASHFREE_API_VERSION,
-    //       'x-client-id': CASHFREE_APP_ID,
-    //       'x-client-secret': CASHFREE_SECRET_KEY
-    //     }
-    //   });
-
-    //   cashfreeOrderStatus = orderResponse.data.order_status;
-    //   orderAmount = orderResponse.data.order_amount;
-
-    // } catch (error) {
-    //   console.error(`Failed to fetch Cashfree order ${cashfreeOrderId}:`, error.response?.data || error.message);
-    //   await transaction.rollback();
-    //   return res.status(500).json({
-    //     success: false,
-    //     message: "Failed to verify payment status",
-    //     error: error.response?.data || error.message
-    //   });
-    // }
-
-    // if(cashfreeOrderStatus !=='PAID'){
-    //   await transaction.rollback()
-    //   return res.status(400).json({success:false,message:"Order is not paid or not eligible for refund"})
-    // }
-
-    // // Check if order is already refunded
-    // if (orderReport.refundId) {
-    //   await transaction.rollback();
-    //   return res.status(400).json({
-    //     success: false,
-    //     message: "Order has already been refunded",
-    //   });
-    // }
-    // // Initiate refund for the full order amount
-    // const refundId = `refund_${cashfreeOrderId}_${Date.now()}`;
-    // let refundResponse = null;
-
-    // try {
-    //   const refundData = {
-    //     refund_amount: parseFloat(orderAmount),
-    //     refund_id: refundId,
-    //     refund_note: `Refund for cancelled order ${orderReport.orderId}`,
-    //     refund_speed: 'STANDARD' // Use 'INSTANT' if enabled
-    //   };
-
-    //   refundResponse = await axios.post(`${CASHFREE_BASE_URL}/orders/${cashfreeOrderId}/refunds`, refundData, {
-    //     headers: {
-    //       'Content-Type': 'application/json',
-    //       'x-api-version': CASHFREE_API_VERSION,
-    //       'x-client-id': CASHFREE_APP_ID,
-    //       'x-client-secret': CASHFREE_SECRET_KEY,
-    //       'x-idempotency-key': generateIdempotencyKey()
-    //     }
-    //   });
-
-    //   console.log(`Refund initiated for order ${cashfreeOrderId}:`, refundResponse.data);
-    // } catch (error) {
-    //   console.error(`Failed to initiate refund for order ${cashfreeOrderId}:`, error.response?.data || error.message);
-    //   await transaction.rollback();
-    //   return res.status(500).json({
-    //     success: false,
-    //     message: "Failed to initiate refund",
-    //     error: error.response?.data || error.message
-    //   });
-    // }
 
     // Update order status to cancelled
     await orderReport.update(
@@ -773,6 +787,7 @@ const orderReport = async (req, res) => {
       orderStatus: {
         [Op.eq]: "completed",
       },
+      payment_status:"paid",
       userUUID: uid
     };
 
@@ -893,9 +908,9 @@ const orderDetailsgetById = async (req, res) => {
           attributes: ['transactionId', 'amount', 'createdAt'],
         },
         {
-          model:UploadImages,
-          as:"orderImages",
-          attributes:["order_id","images"]
+          model: UploadImages,
+          as: "orderImages",
+          attributes: ["order_id", "images"]
         }
       ],
     });
@@ -1131,6 +1146,7 @@ const orderAndPaymentSearch = async (req, res) => {
     const orderReports = await OrderReports.findAll({
       where: {
         orderStatus: "completed",
+        payment_status:"paid",
         userUUID: uid,
         [Op.or]: [
           { orderId: { [Op.like]: `%${search}%` } },
@@ -1167,10 +1183,10 @@ const orderAndPaymentSearch = async (req, res) => {
 
 // get organization details get by id
 const getorganizationDetailsById = async (req, res) => {
-  const uid = req.user?.id;
-  if (!uid) {
-    return res.status(401).json({ message: "Unauthorized!" });
-  }
+  // const uid = req.user?.id;
+  // if (!uid) {
+  //   return res.status(401).json({ message: "Unauthorized!" });
+  // }
   const id = req.params.id;
 
   try {
@@ -1333,7 +1349,7 @@ const payNow = async (req, res) => {
         `No OneSignal push notification sent to user ID ${uid} for order ID ${orderReport.orderId}: no subscriptions found`
       );
     }
-    
+
     await Notification.create({
       uid: uid,
       datetime: new Date(),

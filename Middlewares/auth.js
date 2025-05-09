@@ -26,7 +26,7 @@ const verifyAdmin = async (req, res, next) => {
     const bearerToken = token.startsWith("Bearer ") ? token.slice(7) : token;
     const decoded = jwt.verify(bearerToken, JWT_SECRET);
     const admin = await Admin.findByPk(decoded.id);
-
+     console.log(admin,"token")
     if (!admin) {
       return res.status(403).json({ message: "Access denied. Admin not found." });
     }

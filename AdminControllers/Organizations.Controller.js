@@ -52,7 +52,10 @@ const validateIFSC = (ifscCode) => {
 };
 
 const upsertOrganizations = async (req, res) => {
-    const uid = req.user?.id;
+    const admin = req.admin?.id;
+    if (!admin) {
+      return res.status(401).json({ message: "Unauthorized!" });
+    }
     const {
         id, addresses, businessName, description, designation, email, googleCoordinates,
         gstNumber, mobile, name, registrationId, organizationType_id, whatsapp, bankName,
@@ -310,6 +313,10 @@ const upsertOrganizations = async (req, res) => {
 };
 
 const getAll = async (req, res) => {
+    const admin = req.admin?.id;
+    if (!admin) {
+      return res.status(401).json({ message: "Unauthorized!" });
+    }
     console.log("Fetching organizations...");
 
     const { page = 1, limit = 10, filter = "", search = "" } = req.query;
@@ -365,6 +372,10 @@ const getAll = async (req, res) => {
 };
 
 const deleteOrganization = async (req, res) => {
+    const admin = req.admin?.id;
+    if (!admin) {
+      return res.status(401).json({ message: "Unauthorized!" });
+    }
     const t = await sequelize.transaction();
     try {
         const { error } = deleteOrganizationSchema.validate({ ...req.params, ...req.query });
@@ -428,6 +439,10 @@ const deleteOrganization = async (req, res) => {
 };
 
 const organizationGetByid = async (req, res) => {
+    const admin = req.admin?.id;
+    if (!admin) {
+      return res.status(401).json({ message: "Unauthorized!" });
+    }
     const t = await sequelize.transaction();
 
     try {

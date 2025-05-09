@@ -13,6 +13,7 @@ const { sequelize } = require("../../config/db");
 const Roles = require("../../Models/TblRoles.model");
 const axios = require("axios");
 const Notification = require("../../Models/Notification.model");
+const { sendSMS } = require("../../helper/sendSms");
 
 const technicianDashboardData = async (req, res) => {
   const uid = req.user?.id;
@@ -51,6 +52,7 @@ const technicianDashboardData = async (req, res) => {
     const orderList = await OrderReports.findAll({
       where: {
         technician: uid,
+        orderStatus: "processing",
         technician_assignment_status: "assigned_to_technician",
       },
       include: [
@@ -146,6 +148,26 @@ const FetchTechnicianOrdersByStatus = async (req, res) => {
               model: Organization,
               as: "organization",
               attributes: ["name"],
+            },
+          ],
+        },
+        {
+          model: OrderServices,
+          as: "orderServices",
+          attributes: ["id"],
+          required: false,
+          include: [
+            {
+              model: TblOrganization_Service,
+              as: "orgservice",
+              attributes: ["id", "organization_id", "service_id"],
+              include: [
+                {
+                  model: Services,
+                  as: "servicess",
+                  attributes: ["id", "servicename"],
+                },
+              ],
             },
           ],
         },
@@ -249,6 +271,7 @@ const ViewOrderDetails = async (req, res) => {
       technician: order.technician,
       doctorName: order.userDetails ? order.userDetails.firstName : "Unknown Doctor",
       laboratoryName: order.toOrg ? order.toOrg.name : "Unknown Laboratory",
+      hosptialName:order.userDetails?.organization ? order.userDetails.organization.name : "Unknown Hospital",
       orderServices: order.orderServices.map((service) => ({
         id: service.id,
         quantity: service.quantity,
@@ -289,6 +312,8 @@ const UploadImagesByTechnician = async (req, res) => {
     return res.status(400).json({ message: "At least one image is required!" });
   }
 
+  const transaction = await sequelize.transaction({ autocommit: false });
+
   try {
     const order = await OrderReports.findOne({
       where: {
@@ -297,8 +322,23 @@ const UploadImagesByTechnician = async (req, res) => {
         orderStatus:{[Op.in]:[ "processing","completed"]},
         technician_assignment_status: { [Op.in]: ["assigned_to_technician", "technician_completed"] },
       },
+      attributes:["id", "orderId", "userUUID", "payment_status"],
+      include: [
+        {
+          model: Organization,
+          as: "toOrg",
+          attributes: ["name"],
+        },
+        {
+          model: User,
+          as: "userDetails",
+          attributes: ["id", "mobileNo", "firstName", "lastName"],
+        },
+      ],
+      transaction,
     });
     if (!order) {
+      await transaction.rollback();
       return res.status(404).json({
         message: "Order not found, not in valid status, or you don't have permission to upload images for it!",
       });
@@ -314,8 +354,33 @@ const UploadImagesByTechnician = async (req, res) => {
       uid: uid,
       order_id: orderId,
       images: JSON.stringify(imageUrls),
-    });
+    },{transaction});
 
+    if (order.payment_status === "paid" || order.payment_status === "unpaid") {
+      console.log(`Checking dentist SMS for order ID ${order.orderId}, userUUID: ${order.userUUID}, payment_status: ${order.payment_status}`);
+      const dentist = order.userDetails;
+      if (!dentist) {
+        console.log(`No dentist found for userUUID ${order.userUUID} for order ID ${order.orderId}`);
+      } else {
+        console.log(`Dentist found: ID ${dentist.id}, mobileNo: ${dentist.mobileNo}, firstName: ${dentist.firstName}, lastName: ${dentist.lastName}`);
+        if (dentist.mobileNo && /^[+\d][\d\s-]{8,}$/.test(dentist.mobileNo)) {
+          const message = `Hello ${dentist.firstName} ${dentist.lastName || ''}, Images for Order ${order.orderId} were uploaded by ${order.toOrg?.name || 'Technician Organization'} on ${new Date(uploadRecord.createdAt).toISOString().split('T')[0]}. View them on the Platix app. Download from Play Store or App Store. – Team Platix`;
+          console.log(`Preparing SMS for dentist ID ${order.userUUID} at ${dentist.mobileNo}: ${message}`);
+          try {
+            await sendSMS(message, dentist.mobileNo);
+            console.log(`SMS sent successfully to dentist ID ${order.userUUID} at ${dentist.mobileNo} for order ID ${order.orderId}`);
+          } catch (error) {
+            console.error(`Failed to send SMS to dentist ID ${order.userUUID} at ${dentist.mobileNo} for order ID ${order.orderId}:`, error.message, error.stack);
+          }
+        } else {
+          console.log(`No SMS sent to dentist ID ${order.userUUID} for order ID ${order.orderId}: invalid or missing mobile number (${dentist.mobileNo})`);
+        }
+      }
+    } else {
+      console.log(`No dentist SMS sent for order ID ${order.orderId}: payment_status is ${order.payment_status}`);
+    }
+
+    await transaction.commit();
     return res.status(200).json({
       message: "Images uploaded successfully!",
       data: {
@@ -325,6 +390,9 @@ const UploadImagesByTechnician = async (req, res) => {
       },
     });
   } catch (error) {
+    if (transaction.finished !== "commit") {
+      await transaction.rollback();
+    }
     console.error("Error in UploadImagesByTechnician:", error);
     return res.status(500).json({
       message: "Internal server error: " + error.message,
@@ -332,6 +400,7 @@ const UploadImagesByTechnician = async (req, res) => {
   }
 };
   
+
 const CloseOrder = async (req, res) => {
   const uid = req.user?.id;
   const { orderId } = req.body;
@@ -387,7 +456,7 @@ const CloseOrder = async (req, res) => {
 
     // Find order
     const order = await OrderReports.findOne({
-      where: { id: orderId,is_visible_to_technician: true },
+      where: { id: orderId, is_visible_to_technician: true },
       transaction,
     });
 
@@ -425,30 +494,27 @@ const CloseOrder = async (req, res) => {
       return res.status(400).json({ message: "Order is already marked as completed." });
     }
 
-    if(isRadiology){
-      order.orderStatus = "completed";
-      order.technician_assignment_status = "technician_completed";
-      await order.save({ transaction });
-    }
-    else{
-      order.orderStatus = "processing";
-      order.technician_assignment_status = "technician_completed";
-      await order.save({ transaction });
-    }
-
     // Update status
-
-   if(isRadiology){
+    if (isRadiology) {
       order.orderStatus = "completed";
       order.technician_assignment_status = "technician_completed";
       await order.save({ transaction });
-    }
-    else{
+    } else {
       order.orderStatus = "processing";
       order.technician_assignment_status = "technician_completed";
       await order.save({ transaction });
     }
 
+    // Duplicate status update (preserved as provided)
+    if (isRadiology) {
+      order.orderStatus = "completed";
+      order.technician_assignment_status = "technician_completed";
+      await order.save({ transaction });
+    } else {
+      order.orderStatus = "processing";
+      order.technician_assignment_status = "technician_completed";
+      await order.save({ transaction });
+    }
 
     // Notify technician (only for Radiology)
     if (isRadiology) {
@@ -467,17 +533,21 @@ const CloseOrder = async (req, res) => {
         console.error(`Failed to create notification for technician ID ${uid} for order ID ${order.orderId}:`, error.message);
       }
 
-      if (technician.one_subscription) {
+      let technicianSubscriptions = technician.one_subscription || [];
+      if (!Array.isArray(technicianSubscriptions)) {
+        console.warn(`Invalid one_subscription for technician ${uid}:`, technician.one_subscription);
+        technicianSubscriptions = [];
+      }
+
+      if (technicianSubscriptions.length > 0) {
         try {
           const response = await axios.post(
             "https://onesignal.com/api/v1/notifications",
             {
               app_id: process.env.ONESIGNAL_APP_ID,
-              include_player_ids: [technician.one_subscription],
+              include_player_ids: technicianSubscriptions,
               headings: { en: "Order Completed" },
-              contents: {
-                en: `Order ${order.orderId} has been marked as completed by you.`,
-              },
+              contents: { en: `Order ${order.orderId} has been marked as completed by you.` },
             },
             {
               headers: {
@@ -486,17 +556,17 @@ const CloseOrder = async (req, res) => {
               },
             }
           );
-          console.log(`OneSignal push notification sent successfully to technician ID ${uid} for order ID ${order.orderId}`, response.data);
+          console.log(`✅ OneSignal push notification sent successfully to technician ID ${uid} for order ID ${order.orderId} on ${technicianSubscriptions.length} devices:`, response.data);
         } catch (error) {
-          console.error(`Failed to send OneSignal push notification to technician ID ${uid} for order ID ${order.orderId}:`, error.response?.data || error.message);
+          console.error(`⚠️ Failed to send OneSignal push notification to technician ID ${uid} for order ID ${order.orderId}:`, error.response?.data || error.message);
         }
       } else {
-        console.log(`No OneSignal push notification sent to technician ID ${uid} for order ID ${order.orderId}: one_subscription is missing`);
+        console.log(`No OneSignal push notification sent to technician ID ${uid} for order ID ${order.orderId}: no subscriptions found`);
       }
     }
 
-    // Notify dentist (only for Radiology, if payment_status is paid)
-    if (isRadiology || isDentalLaboratory && order.payment_status === "paid") {
+    // Notify dentist (only if payment_status is paid)
+    if (order.payment_status === "paid") {
       const dentist = await User.findOne({
         where: { id: order.userUUID },
         include: [
@@ -527,17 +597,21 @@ const CloseOrder = async (req, res) => {
           console.error(`Failed to create notification for dentist ID ${order.userUUID} for order ID ${order.orderId}:`, error.message);
         }
 
-        if (dentist.one_subscription) {
+        let dentistSubscriptions = dentist.one_subscription || [];
+        if (!Array.isArray(dentistSubscriptions)) {
+          console.warn(`Invalid one_subscription for dentist ${order.userUUID}:`, dentist.one_subscription);
+          dentistSubscriptions = [];
+        }
+
+        if (dentistSubscriptions.length > 0) {
           try {
             const response = await axios.post(
               "https://onesignal.com/api/v1/notifications",
               {
                 app_id: process.env.ONESIGNAL_APP_ID,
-                include_player_ids: [dentist.one_subscription],
+                include_player_ids: dentistSubscriptions,
                 headings: { en: "Order Completed" },
-                contents: {
-                  en: `Order ${order.orderId} has been marked as completed by the technician.`,
-                },
+                contents: { en: `Order ${order.orderId} has been marked as completed by the technician.` },
               },
               {
                 headers: {
@@ -546,17 +620,17 @@ const CloseOrder = async (req, res) => {
                 },
               }
             );
-            console.log(`OneSignal push notification sent successfully to dentist ID ${order.userUUID} for order ID ${order.orderId}`, response.data);
+            console.log(`✅ OneSignal push notification sent successfully to dentist ID ${order.userUUID} for order ID ${order.orderId} on ${dentistSubscriptions.length} devices:`, response.data);
           } catch (error) {
-            console.error(`Failed to send OneSignal push notification to dentist ID ${order.userUUID} for order ID ${order.orderId}:`, error.response?.data || error.message);
+            console.error(`⚠️ Failed to send OneSignal push notification to dentist ID ${order.userUUID} for order ID ${order.orderId}:`, error.response?.data || error.message);
           }
         } else {
-          console.log(`No OneSignal push notification sent to dentist ID ${order.userUUID} for order ID ${order.orderId}: one_subscription is missing`);
+          console.log(`No OneSignal push notification sent to dentist ID ${order.userUUID} for order ID ${order.orderId}: no subscriptions found`);
         }
       }
     }
 
-    // Notify organization owners (for both Radiology and Dental Laboratory)
+    // Notify organization owners (for both paid and unpaid)
     const ownersFromOrganization = await User.findAll(
       {
         where: {
@@ -572,8 +646,8 @@ const CloseOrder = async (req, res) => {
             },
           },
         ],
-      },
-      { transaction }
+        transaction,
+      }
     );
 
     if (ownersFromOrganization.length > 0) {
@@ -593,36 +667,44 @@ const CloseOrder = async (req, res) => {
       }
 
       const pushNotifications = ownersFromOrganization
-        .filter((owner) => owner.one_subscription)
-        .map((owner) =>
-          axios.post(
-            "https://onesignal.com/api/v1/notifications",
-            {
-              app_id: process.env.ONESIGNAL_APP_ID,
-              include_player_ids: [owner.one_subscription],
-              headings: { en: "Order Completed" },
-              contents: {
-                en: `Order ${order.orderId} has been marked as completed by the technician.`,
+        .filter((owner) => owner.one_subscription && Array.isArray(owner.one_subscription) && owner.one_subscription.length > 0)
+        .map((owner) => {
+          console.log(`Sending OneSignal push notification to organization owner ID ${owner.id} for order ID ${order.orderId} on ${owner.one_subscription.length} devices`);
+          return axios
+            .post(
+              "https://onesignal.com/api/v1/notifications",
+              {
+                app_id: process.env.ONESIGNAL_APP_ID,
+                include_player_ids: owner.one_subscription,
+                headings: { en: "Order Completed" },
+                contents: { en: `Order ${order.orderId} has been marked as completed by the technician.` },
               },
-            },
-            {
-              headers: {
-                "Content-Type": "application/json",
-                Authorization: `Basic ${process.env.ONESIGNAL_API_KEY}`,
-              },
-            }
-          )
-        );
+              {
+                headers: {
+                  "Content-Type": "application/json",
+                  Authorization: `Basic ${process.env.ONESIGNAL_API_KEY}`,
+                },
+              }
+            )
+            .then((response) => {
+              console.log(`✅ OneSignal push notification sent successfully to organization owner ID ${owner.id} for order ID ${order.orderId} on ${owner.one_subscription.length} devices:`, response.data);
+              return response;
+            })
+            .catch((error) => {
+              console.error(`⚠️ Failed to send OneSignal push notification to organization owner ID ${owner.id} for order ID ${order.orderId}:`, error.response?.data || error.message);
+              throw error;
+            });
+        });
 
       if (pushNotifications.length > 0) {
         try {
           const responses = await Promise.all(pushNotifications);
-          console.log(`OneSignal push notifications sent successfully to ${pushNotifications.length} owners of organization ID ${toOrganization} for order ID ${order.orderId}`, responses.map((r) => r.data));
+          console.log(`✅ OneSignal push notifications sent successfully to ${pushNotifications.length} owners of organization ID ${toOrganization} for order ID ${order.orderId}:`, responses.map((r) => r.data));
         } catch (error) {
-          console.error(`Failed to send one or more OneSignal push notifications to owners of organization ID ${toOrganization} for order ID ${order.orderId}:`, error.response?.data || error.message);
+          console.error(`⚠️ Failed to send one or more OneSignal push notifications to owners of organization ID ${toOrganization} for order ID ${order.orderId}:`, error.message);
         }
       } else {
-        console.log(`No OneSignal push notifications sent to owners of organization ID ${toOrganization} for order ID ${order.orderId}: no owners with one_subscription`);
+        console.log(`No OneSignal push notifications sent to owners of organization ID ${toOrganization} for order ID ${order.orderId}: no owners with valid subscriptions`);
       }
     } else {
       console.log(`No owners found for organization ID ${toOrganization} for order ID ${order.orderId}`);
@@ -639,62 +721,181 @@ const CloseOrder = async (req, res) => {
   }
 };
 
-  const SearchAPI = async(req,res)=>{
-    const uid = req.user?.id;
-    if(!uid){
-        return res.status(401).json({message:"Unauthorized: User not found!"})
-    }
-    const {orderId,orderDate,fromOrg} = req.query;
-    const whereClause = {technician:uid}
+const SearchAPI = async (req, res) => {
+  const uid = req.user?.id;
+  if (!uid) {
+    return res.status(401).json({ message: "Unauthorized: User not found!" });
+  }
 
-    if(orderId){
-        whereClause.id = {[Op.like]:`${orderId}`}
-    }
-    if(fromOrg){
+  // Extract search term from query
+  const searchTerm = Object.keys(req.query)[0]?.trim();
+  console.log("Search Term:", searchTerm);
 
-    }
-    if(orderDate){
-        whereClause.orderDate={
-            [Op.gte]:new Date(orderDate).setHours(0,0,0,0),
-            [Op.lte]: new Date(orderDate).setHours(23,59,59,999)
-        }
-    }
-    try {
-      const orders = await OrderReports.findAll({
-        where: whereClause,
-        include: [
+  if (!searchTerm || searchTerm === "") {
+    return res.status(400).json({ message: "A valid search term is required" });
+  }
+
+  try {
+    // Safe search term for SQL
+    const searchPattern = `%${searchTerm}%`;
+    console.log("Preparing query with searchPattern:", searchPattern);
+
+    // Fetch orders with search across orderId, orderDate, organization name, service name, patientName, fromOrganization, and doctorName
+    const orders = await OrderReports.findAll({
+      where: {
+        technician: uid,
+        orderStatus: "processing",
+        technician_assignment_status: "assigned_to_technician",
+        is_visible_to_technician: true,
+        [Op.or]: [
+          { orderId: { [Op.like]: searchPattern } },
+          // Cast orderDate to DD-MM-YYYY for search
+          OrderReports.sequelize.where(
+            OrderReports.sequelize.fn(
+              "DATE_FORMAT",
+              OrderReports.sequelize.col("order_date"),
+              "%d-%m-%Y"
+            ),
+            { [Op.like]: searchPattern }
+          ),
+          // Subquery for organization name
           {
-            model: Organization,
-            as: "fromOrg",
-            attributes: ["name"],
-            where: fromOrg
-              ? { name: { [Op.like]: `%${fromOrg}%` } }
-              : undefined,
+            userUUID: {
+              [Op.in]: Sequelize.literal(`
+                (SELECT id FROM User
+                 WHERE organization_id IN (
+                   SELECT id FROM Organization
+                   WHERE name LIKE ?)
+                )
+              `),
+            },
+          },
+          // Subquery for service name
+          {
+            id: {
+              [Op.in]: Sequelize.literal(`
+                (SELECT order_id FROM OrderServices
+                 WHERE orgservice_id IN (
+                   SELECT id FROM Organization_Service
+                   WHERE service_id IN (
+                     SELECT id FROM Services
+                     WHERE servicename LIKE ?)
+                 ))
+              `),
+            },
+          },
+          // Search by patientName
+          { patientName: { [Op.like]: searchPattern } },
+          // Search by fromOrganization
+          { fromOrganization: { [Op.like]: searchPattern } },
+          // Subquery for doctorName (User.firstName)
+          {
+            userUUID: {
+              [Op.in]: Sequelize.literal(`
+                (SELECT id FROM User
+                 WHERE firstName LIKE ?)
+              `),
+            },
           },
         ],
-        order: [["orderDate", "DESC"]],
-      });
-      if (!orders || orders.length === 0) {
-        return res
-          .status(404)
-          .json({ message: "No orders found matching the search criteria!" });
-      }
-      const response = orders.map((order) => ({
-        ...order.toJSON(),
-        fromOrganizationName: order.fromOrg ? order.fromOrg.name : "Unknown",
-      }));
+      },
+      include: [
+        {
+          model: User,
+          as: "userDetails",
+          attributes: ["id", "firstName"],
+          required: false,
+          include: [
+            {
+              model: Organization,
+              as: "organization",
+              attributes: ["id", "name"],
+              required: false,
+            },
+          ],
+        },
+        {
+          model: OrderServices,
+          as: "orderServices",
+          attributes: ["id"],
+          required: false,
+          include: [
+            {
+              model: TblOrganization_Service,
+              as: "orgservice",
+              attributes: ["id", "organization_id", "service_id"],
+              include: [
+                {
+                  model: Services,
+                  as: "servicess",
+                  attributes: ["id", "servicename"],
+                },
+              ],
+            },
+          ],
+        },
+      ],
+      attributes: [
+        "id",
+        "orderId",
+        "orderDate",
+        "requiredDate",
+        "toothName",
+        "shades",
+        "remarks",
+        "patientId",
+        "patientName",
+        "subTotal",
+        "totalAmount",
+        "payment_status",
+        "fromOrganization",
+        "userUUID",
+      ],
+      order: [["orderDate", "DESC"]],
+      replacements: [searchPattern, searchPattern, searchPattern], // For organization, service, and doctorName subqueries
+    });
 
-      return res.status(200).json({
-        message: "Orders fetched successfully!",
-        orders: response,
-      });
-    } catch (error) {
-      console.error("Error in SearchAPI:", error);
-      return res
-        .status(500)
-        .json({ message: "Internal Server Error: " + error.message });
+    console.log("Raw Orders:", JSON.stringify(orders, null, 2));
+
+    if (!orders || orders.length === 0) {
+      return res.status(404).json({ message: "No orders found matching the search criteria!" });
     }
+
+    // Map orders to response format
+    const filteredOrders = orders.map((order) => {
+      console.log(`Order ID: ${order.orderId}, userUUID: ${order.userUUID}, userDetails:`, order.userDetails);
+      return {
+        id: order.id,
+        orderId: order.orderId,
+        orderDate: order.orderDate,
+        requiredDate: order.requiredDate,
+        toothName: order.toothName,
+        shades: order.shades,
+        remarks: order.remarks,
+        patientId: order.patientId,
+        patientName: order.patientName?.trim() || "",
+        subTotal: order.subTotal,
+        totalAmount: order.totalAmount,
+        payment_status: order.payment_status,
+        fromOrganizationId: order.userDetails?.organization?.id || order.fromOrganization || null,
+        fromOrganizationName: order.userDetails?.organization?.name || "Unknown",
+        doctorName: order.userDetails?.firstName || "Unknown",
+        services: order.orderServices.map((service) => ({
+          id: service.id,
+          servicename: service.orgservice?.servicess?.servicename || "Unknown",
+        })),
+      };
+    });
+
+    return res.status(200).json({
+      message: "Orders fetched successfully!",
+      filteredOrders,
+    });
+  } catch (error) {
+    console.error("Error in SearchAPI:", error.stack);
+    return res.status(500).json({ message: "Internal Server Error: " + error.message });
   }
+};
 
   const TechnicianDashboardOrderSearch = async (req, res) => {
     const uid = req.user?.id;
@@ -718,6 +919,9 @@ const CloseOrder = async (req, res) => {
       const orders = await OrderReports.findAll({
         where: {
           technician: uid,
+          orderStatus: "processing",
+          technician_assignment_status: "assigned_to_technician",
+          is_visible_to_technician: true,
           [Op.or]: [
             { orderId: { [Op.like]: searchPattern } },
             // Cast orderDate to YYYY-MM-DD for search
@@ -725,7 +929,7 @@ const CloseOrder = async (req, res) => {
               OrderReports.sequelize.fn(
                 "DATE_FORMAT",
                 OrderReports.sequelize.col("order_date"),
-                "%Y-%m-%d"
+                "%d-%m-%Y"
               ),
               { [Op.like]: searchPattern }
             ),
@@ -760,6 +964,15 @@ const CloseOrder = async (req, res) => {
                 ],
               },
             },
+            {patientName:{[Op.like]:searchPattern}},
+            {fromOrganization:{[Op.like]:searchPattern}},
+            OrderReports.sequelize.literal(`
+              EXISTS (
+                SELECT 1 FROM User u
+                WHERE u.id = OrderReports.user_u_u_i_d
+                AND u.firstName LIKE :searchPattern
+              )
+            `),
           ],
         },
         include: [
@@ -881,7 +1094,7 @@ const CloseOrder = async (req, res) => {
         {
           where: {
             technician: uid,
-            orderStatus: "completed",
+            orderStatus:{[Op.or]:["processing","completed"]},
             technician_assignment_status: "technician_completed",
             is_visible_to_technician: true
           },
@@ -911,7 +1124,8 @@ const CloseOrder = async (req, res) => {
         {
           where: {
             technician: uid,
-            technician_assignment_status: "cancelled",
+            orderStatus: "cancelled",
+            // technician_assignment_status: "cancelled",
             is_visible_to_technician: true
           },
         }

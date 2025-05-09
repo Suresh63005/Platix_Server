@@ -7,6 +7,10 @@ const { Op, Sequelize } = require("sequelize");
 
 // Upsert (Create or Update) Service
 const upsertService = asyncHandler(async (req, res) => {
+  const admin = req.admin?.id;
+    if (!admin) {
+      return res.status(401).json({ message: "Unauthorized!" });
+    }
     // const { error } = ServiceSchema.validate(req.body);
     // if (error) {
     //     return res.status(400).json({ message: error.details[0].message });
@@ -33,6 +37,10 @@ const upsertService = asyncHandler(async (req, res) => {
 
 // Delete Service (Soft or Permanent)
 const deleteService = asyncHandler(async (req, res) => {
+  const admin = req.admin?.id;
+    if (!admin) {
+      return res.status(401).json({ message: "Unauthorized!" });
+    }
   const { id } = req.params;
   const { forceDelete } = req.query;
   
@@ -64,6 +72,10 @@ const deleteService = asyncHandler(async (req, res) => {
 
 // Get All Services with Pagination and Filtering
 const getAllServices = asyncHandler(async (req, res) => {
+  const admin = req.admin?.id;
+    if (!admin) {
+      return res.status(401).json({ message: "Unauthorized!" });
+    }
     const { page = 1, limit = 10, filter = '', search = '' } = req.query;
     const pageNumber = parseInt(page);
     const pageSize = parseInt(limit);
@@ -122,6 +134,10 @@ const getAllServices = asyncHandler(async (req, res) => {
     });
 });
 const getorgAllServices = asyncHandler(async (req, res) => {
+  const admin = req.admin?.id;
+    if (!admin) {
+      return res.status(401).json({ message: "Unauthorized!" });
+    }
   
   const currentDate = new Date();
 
@@ -149,6 +165,10 @@ const getorgAllServices = asyncHandler(async (req, res) => {
 
 
 const serviceGetByid = async (req, res, next) => {
+  const admin = req.admin?.id;
+    if (!admin) {
+      return res.status(401).json({ message: "Unauthorized!" });
+    }
   const { id } = req.params;
 
   try {

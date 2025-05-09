@@ -2,6 +2,7 @@
 const { DataTypes } = require("sequelize");
 const { sequelize } = require("../config/db");
 
+
 const Settings = sequelize.define(
   "Settings",
   {
